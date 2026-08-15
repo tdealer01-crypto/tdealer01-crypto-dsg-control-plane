@@ -115,6 +115,7 @@ jobs:
       - name: Checkout DSG scanner
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
           path: dsg
           persist-credentials: false
 
@@ -146,7 +147,7 @@ jobs:
       - name: Install DSG scanner dependencies
         working-directory: dsg
         shell: bash
-        run: npm ci --ignore-scripts
+        run: npm ci
 
       - name: Run deterministic Ising + Z3/SMT + DSG gate scan
         working-directory: dsg
