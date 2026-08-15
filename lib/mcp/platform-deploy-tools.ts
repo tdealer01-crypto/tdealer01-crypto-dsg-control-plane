@@ -73,7 +73,7 @@ const WORKFLOW_ID = 'dsg-platform-deploy.yml';
 const REQUIRED_SECRETS: Record<DeployTarget, readonly string[]> = {
   netlify: ['NETLIFY_BUILD_HOOK_URL'],
   render: ['RENDER_DEPLOY_HOOK_URL'],
-  supabase: ['SUPABASE_ACCESS_TOKEN', 'SUPABASE_PROJECT_REF', 'SUPABASE_DB_PASSWORD'],
+  supabase: ['SUPABASE_ACCESS_TOKEN', 'SUPABASE_DB_PASSWORD'],
 };
 
 function hasMutationRole(auth: UnifiedAuthContext): boolean {

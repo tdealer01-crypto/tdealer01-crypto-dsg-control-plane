@@ -2,8 +2,9 @@ name: Production Readiness Check
 # Required repository secrets for full offline verification:
 # - VERCEL_TOKEN
 # - VERCEL_TOKEN_NEW (only when .github/vercel-routing.json selects new)
+# - SUPABASE_ACCESS_TOKEN
 # - SUPABASE_DB_PASSWORD
-# - SUPABASE_PROJECT_REF
+# - SUPABASE_PROJECT_REF (optional override; project ID fallback is configured)
 #
 # Runtime readiness is verified through /api/finance-governance/readiness
 # (authoritative gate) and /api/readiness (basic env/config check).
@@ -39,6 +40,10 @@ jobs:
 
       - name: Check available secrets
         id: check
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF || secrets.SUPABASE_PROJECT_ID || 'zeyguilldygozufpgxms' }}
         run: |
           if [ -n "$VERCEL_TOKEN" ] && [ -n "$VERCEL_ORG_ID" ] && [ -n "$VERCEL_PROJECT_ID" ]; then
             echo "has_vercel=true" >> $GITHUB_OUTPUT
@@ -48,7 +53,7 @@ jobs:
             echo "⚠ Vercel management secrets missing — offline env-var-check will be skipped"
           fi
 
-          if [ -n "${{ secrets.SUPABASE_DB_PASSWORD }}" ] && [ -n "${{ secrets.SUPABASE_PROJECT_REF }}" ]; then
+          if [ -n "${SUPABASE_ACCESS_TOKEN:-}" ] && [ -n "${SUPABASE_DB_PASSWORD:-}" ] && [ -n "${SUPABASE_PROJECT_REF:-}" ]; then
             echo "has_supabase=true" >> $GITHUB_OUTPUT
             echo "✓ Supabase migration secrets available"
           else
@@ -181,6 +186,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: preflight-secrets-check
     if: needs.preflight-secrets-check.outputs.has_supabase == 'true'
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF || secrets.SUPABASE_PROJECT_ID || 'zeyguilldygozufpgxms' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -189,8 +198,7 @@ jobs:
         run: npm install -g supabase
 
       - name: Link to Supabase project
-        run: |
-          echo "${{ secrets.SUPABASE_DB_PASSWORD }}" | supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
 
       - name: Check pending migrations
         id: migration_check

@@ -38,7 +38,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY           # Public API key (safe to expose to clie
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY    # Same as anon key
 SUPABASE_SERVICE_ROLE_KEY               # Admin key (server-only, never expose)
 SUPABASE_PROJECT_ID                     # Project ID slug from Supabase dashboard
-SUPABASE_DB_PASSWORD                    # Database password from project settings
+SUPABASE_DB_PASSWORD                    # Raw database password from project settings (server-only)
 SUPABASE_ACCESS_TOKEN                   # Personal access token for migrations
 CRON_SECRET                             # Random secret for /api/cron/* endpoints
 ```
@@ -65,7 +65,9 @@ From Supabase Dashboard:
 
 2. **Database Password**:
    - Settings → Database
-   - Copy: Database password from connection info
+   - Reset the database password if the existing value is unknown
+   - Store the raw value in `SUPABASE_DB_PASSWORD`
+   - Percent-encode it only when manually embedding it inside a PostgreSQL connection URI; do not percent-encode the GitHub secret itself
 
 3. **Access Token**:
    - Account Settings → Access Tokens
