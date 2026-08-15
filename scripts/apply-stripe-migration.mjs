@@ -1,55 +1,58 @@
 #!/usr/bin/env node
-// Apply Supabase migration for stripe_app_tables using a caller-supplied PostgreSQL connection
+// Apply the legacy stripe_app_tables migration using a caller-supplied PostgreSQL URL.
+// Prefer the canonical Supabase CLI migration workflow for normal deployments.
 import pg from 'pg';
 
 const { Client } = pg;
+const POSTGRES_URL = process.env.SUPABASE_DB_URL;
 
-const POSTGRES_URL = process.env.SUPABASE_DB_URL || 'postgres://postgres.zeyguilldygozufpgxms:Tar0638815592@aws-1-ap-southeast-2.pooler.supabase.com:6543/postgres?sslmode=disable&pgbouncer=true';
+if (!POSTGRES_URL) {
+  console.error('SUPABASE_DB_URL is required; no database credential fallback is embedded in source.');
+  process.exit(1);
+}
 
 async function applyMigration() {
-  const client = new Client({ 
-    connectionString: POSTGRES_URL, 
-    ssl: process.env.SUPABASE_DB_SSL === 'false' ? false : { rejectUnauthorized: false } 
+  const client = new Client({
+    connectionString: POSTGRES_URL,
+    ssl: process.env.SUPABASE_DB_SSL === 'false' ? false : { rejectUnauthorized: false },
   });
-  
+
   try {
     await client.connect();
-    console.log('Connected to Supabase PostgreSQL (SSL disabled)');
-    
+    console.log('Connected to Supabase PostgreSQL');
+
     const fs = await import('fs');
     const migrationSQL = fs.readFileSync('./supabase/migrations/20260606185643_stripe_app_tables.sql', 'utf8');
-    
-    // Split by semicolon and execute each statement
+
+    // Keep this legacy runner behavior for compatibility. Canonical deployments use Supabase CLI migrations.
     const statements = migrationSQL
       .split(';')
-      .map(s => s.trim())
-      .filter(s => s.length > 0 && !s.startsWith('--'));
-    
-    for (const stmt of statements) {
+      .map((statement) => statement.trim())
+      .filter((statement) => statement.length > 0 && !statement.startsWith('--'));
+
+    for (const statement of statements) {
       try {
-        console.log(`Executing: ${stmt.substring(0, 80)}...`);
-        await client.query(stmt);
+        console.log(`Executing: ${statement.substring(0, 80)}...`);
+        await client.query(statement);
         console.log('✓ Success');
-      } catch (e) {
-        // Some statements might already exist (IF NOT EXISTS), that's OK
-        console.error(`⚠ ${e.message}`);
+      } catch (error) {
+        console.error(`⚠ ${error.message}`);
       }
     }
-    
-    // Verify tables were created
+
     const result = await client.query(`
-      SELECT table_name FROM information_schema.tables 
-      WHERE table_schema = 'public' 
+      SELECT table_name FROM information_schema.tables
+      WHERE table_schema = 'public'
       AND table_name IN ('stripe_app_accounts', 'stripe_operation_policies', 'stripe_operation_audits')
     `);
-    
+
     console.log('\n=== Tables Created ===');
-    result.rows.forEach(row => console.log(`✓ ${row.table_name}`));
-    
-  } catch (e) {
-    console.error(`Fatal: ${e.message}`);
+    result.rows.forEach((row) => console.log(`✓ ${row.table_name}`));
+  } catch (error) {
+    console.error(`Fatal: ${error.message}`);
+    process.exitCode = 1;
   } finally {
-    await client.end();
+    await client.end().catch(() => undefined);
   }
 }
 
