@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "activeAccount": "legacy",
+  "activeAccount": "new",
   "accounts": {
     "legacy": {
       "teamId": "team_n189mlAdVHR6cGGiaAwsKzQ0",
