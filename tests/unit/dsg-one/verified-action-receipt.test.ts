@@ -266,6 +266,73 @@ describe('verified action request validation', () => {
     }
   });
 
+  it('rejects a problem large enough to exhaust the dense QUBO matrix', () => {
+    // buildQUBOMatrix allocates numVariables x numVariables, so 64 x 64 = 4096
+    // variables would be a ~16.8M cell matrix. Each list is individually within
+    // its own cap here — only the product catches it.
+    const result = validateVerifiedActionRequest({
+      ...baseRequest,
+      optimization: {
+        ...optimization,
+        tasks: Array.from({ length: 64 }, (_, i) => ({ id: `task-${i}` })),
+        agentCapacities: Array.from({ length: 64 }, (_, i) => ({ agentId: i })),
+      },
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      const problem = result.details.find((detail) => detail.field === 'optimization');
+      expect(problem?.message).toContain('QUBO variables');
+      expect(result.details.map((detail) => detail.field)).not.toContain('optimization.tasks');
+    }
+  });
+
+  it('rejects oversized task and agent lists individually', () => {
+    const result = validateVerifiedActionRequest({
+      ...baseRequest,
+      optimization: {
+        ...optimization,
+        tasks: Array.from({ length: 65 }, (_, i) => ({ id: `task-${i}` })),
+        agentCapacities: Array.from({ length: 65 }, (_, i) => ({ agentId: i })),
+      },
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      const fields = result.details.map((detail) => detail.field);
+      expect(fields).toContain('optimization.tasks');
+      expect(fields).toContain('optimization.agentCapacities');
+    }
+  });
+
+  it.each([
+    ['not a number', 'soon'],
+    ['NaN, which Math.min passes through', Number.NaN],
+    ['Infinity', Number.POSITIVE_INFINITY],
+    ['zero', 0],
+    ['negative', -1],
+    ['above the 30s ceiling', 30_001],
+  ])('rejects a request timeout that is %s', (_label, timeout) => {
+    const result = validateVerifiedActionRequest({
+      ...baseRequest,
+      optimization: { ...optimization, timeout },
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.details.map((detail) => detail.field)).toContain('optimization.timeout');
+    }
+  });
+
+  it('accepts a timeout inside the ceiling', () => {
+    expect(
+      validateVerifiedActionRequest({
+        ...baseRequest,
+        optimization: { ...optimization, timeout: 30_000 },
+      }).ok,
+    ).toBe(true);
+  });
+
   it('rejects an execution result carrying no evidence', () => {
     const result = validateVerifiedActionRequest({
       ...baseRequest,

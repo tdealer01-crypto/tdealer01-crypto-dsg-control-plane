@@ -84,6 +84,26 @@ const SURFACES: readonly VerifiedActionSurface[] = ['api', 'unify', 'trinity-mcp
 const EXECUTION_STATUSES = ['SUCCESS', 'FAILED', 'PARTIAL'] as const;
 const HEX_64 = /^[0-9a-f]{64}$/;
 
+/**
+ * Problem-size ceilings.
+ *
+ * buildQUBOMatrix allocates a dense numVariables x numVariables matrix, where
+ * numVariables = tasks * agentCapacities, and it applies no ceiling of its own.
+ * Without a bound here a caller within the route's 64 KB body limit can still
+ * request, say, 200 tasks against 200 agents — 40,000 variables, so a 1.6
+ * billion cell matrix — and exhaust the process before any gate runs. The
+ * product is what matters; the per-list caps just keep the error specific.
+ *
+ * CodeQL alert #79 (Resource exhaustion, lib/dsg-one/ising-optimizer.ts:230)
+ * reports the same class of problem at the request-timeout sink.
+ */
+const MAX_TASKS = 64;
+const MAX_AGENT_CAPACITIES = 64;
+const MAX_QUBO_VARIABLES = 1024;
+
+/** callLiveIsingSolver clamps with Math.min, which passes NaN through. */
+const MAX_TIMEOUT_MS = 30_000;
+
 function record(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -120,11 +140,52 @@ export function validateVerifiedActionRequest(input: unknown): VerifiedActionVal
     if (!nonEmptyString(optimization.problemId)) {
       details.push({ field: 'optimization.problemId', message: 'required' });
     }
-    if (!Array.isArray(optimization.tasks) || optimization.tasks.length === 0) {
+    const tasks = optimization.tasks;
+    const agents = optimization.agentCapacities;
+
+    if (!Array.isArray(tasks) || tasks.length === 0) {
       details.push({ field: 'optimization.tasks', message: 'must be a non-empty array' });
+    } else if (tasks.length > MAX_TASKS) {
+      details.push({
+        field: 'optimization.tasks',
+        message: `must contain at most ${MAX_TASKS} entries`,
+      });
     }
-    if (!Array.isArray(optimization.agentCapacities) || optimization.agentCapacities.length === 0) {
+
+    if (!Array.isArray(agents) || agents.length === 0) {
       details.push({ field: 'optimization.agentCapacities', message: 'must be a non-empty array' });
+    } else if (agents.length > MAX_AGENT_CAPACITIES) {
+      details.push({
+        field: 'optimization.agentCapacities',
+        message: `must contain at most ${MAX_AGENT_CAPACITIES} entries`,
+      });
+    }
+
+    // The dense QUBO matrix is allocated from the product, so bound it even
+    // when each list is individually acceptable.
+    if (Array.isArray(tasks) && Array.isArray(agents)) {
+      const variables = tasks.length * agents.length;
+      if (variables > MAX_QUBO_VARIABLES) {
+        details.push({
+          field: 'optimization',
+          message: `tasks x agentCapacities must not exceed ${MAX_QUBO_VARIABLES} QUBO variables (got ${variables})`,
+        });
+      }
+    }
+
+    if (optimization.timeout !== undefined) {
+      const timeout = optimization.timeout;
+      if (
+        typeof timeout !== 'number' ||
+        !Number.isFinite(timeout) ||
+        timeout <= 0 ||
+        timeout > MAX_TIMEOUT_MS
+      ) {
+        details.push({
+          field: 'optimization.timeout',
+          message: `must be a finite number between 1 and ${MAX_TIMEOUT_MS}`,
+        });
+      }
     }
     // The canonical chain only compiles an Action IR from VERIFIED_GLOBAL_OPTIMUM,
     // which the pipeline only emits for an explicitly bound business objective.
