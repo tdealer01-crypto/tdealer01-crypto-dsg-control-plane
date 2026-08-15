@@ -1,20 +1,34 @@
 export default async function RequestAccessPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ email?: string; workspace_name?: string; success?: string }>;
+  searchParams?: Promise<{
+    email?: string;
+    workspace_name?: string;
+    success?: string;
+    integration?: string;
+  }>;
 }) {
   const params = await searchParams;
   const email = String(params?.email || '').trim().toLowerCase();
   const workspaceName = String(params?.workspace_name || '').trim();
   const success = params?.success === '1';
+  const requestedIntegration = String(params?.integration || '').trim().toLowerCase();
+  const integration = requestedIntegration === 'github' || requestedIntegration === 'vercel'
+    ? requestedIntegration
+    : '';
+  const integrationLabel = integration === 'github' ? 'GitHub' : integration === 'vercel' ? 'Vercel' : '';
 
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
       <div className="mx-auto max-w-3xl rounded-[2rem] border border-white/10 bg-white/5 p-8 backdrop-blur-sm">
         <p className="text-sm uppercase tracking-[0.3em] text-emerald-200">Request access</p>
-        <h1 className="mt-4 text-4xl font-bold">Your finance organization requires approval</h1>
+        <h1 className="mt-4 text-4xl font-bold">
+          {integrationLabel ? `Request DSG ONE + ${integrationLabel} integration` : 'Request governed workspace access'}
+        </h1>
         <p className="mt-4 text-base leading-7 text-slate-300">
-          Submit this request when your organization restricts governed workspace access. Public proof pages can remain open for evaluation, while protected finance workspace pages require approved access.
+          {integrationLabel
+            ? `Submit this request so the ${integrationLabel} connection can be provisioned and verified before it is treated as an automated production install.`
+            : 'Submit this request when your organization restricts governed workspace access. Public proof pages can remain open for evaluation, while protected workspace pages require approved access.'}
         </p>
 
         {success ? (
@@ -24,6 +38,8 @@ export default async function RequestAccessPage({
         ) : null}
 
         <form action="/api/access/request" method="post" className="mt-8 space-y-4">
+          {integration ? <input type="hidden" name="integration" value={integration} /> : null}
+
           <div>
             <label htmlFor="email" className="mb-2 block text-sm font-medium text-slate-200">
               Work email
@@ -65,12 +81,13 @@ export default async function RequestAccessPage({
 
           <div>
             <label htmlFor="reason" className="mb-2 block text-sm font-medium text-slate-200">
-              Reason (optional)
+              What do you want to connect? (optional)
             </label>
             <textarea
               id="reason"
               name="reason"
               rows={4}
+              defaultValue={integrationLabel ? `Provision and verify DSG ONE for ${integrationLabel}.` : undefined}
               className="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-4 text-slate-100 outline-none"
             />
           </div>
