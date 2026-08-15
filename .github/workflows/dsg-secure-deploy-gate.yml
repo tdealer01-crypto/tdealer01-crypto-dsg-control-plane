@@ -10,10 +10,15 @@ jobs:
   dsg-gate:
     runs-on: ubuntu-latest
     steps:
+      # The origin is a repository variable so it can follow the production
+      # deployment without a code change — set DSG_PRODUCTION_ORIGIN once a
+      # custom domain exists. The default is the rebuilt Vercel project; the
+      # previous hardcoded host belonged to the retired project and answers 402
+      # DEPLOYMENT_DISABLED, so the gate was reporting on a dead origin.
       - uses: tdealer01-crypto/dsg-secure-deploy-gate-action@v1
         with:
-          readiness_url: "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/finance-governance/readiness"
+          readiness_url: "${{ vars.DSG_PRODUCTION_ORIGIN || 'https://tdealer01-crypto-dsg-control-plane-thanawats-projects-336871dc.vercel.app' }}/api/finance-governance/readiness"
           expected_status: "200"
           require_json_ok: "true"
-          protected_url: "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/api-keys"
+          protected_url: "${{ vars.DSG_PRODUCTION_ORIGIN || 'https://tdealer01-crypto-dsg-control-plane-thanawats-projects-336871dc.vercel.app' }}/api/api-keys"
           protected_expected: "401,403"
