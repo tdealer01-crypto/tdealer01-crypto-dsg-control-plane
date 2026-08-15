@@ -65,21 +65,31 @@ async function resolveCheckoutProfile(
   user: { id: string; email?: string | null },
   email?: string | null
 ): Promise<CheckoutProfileResult> {
-  const { data: existingProfile } = await supabase
+  const { data: existingProfile, error: existingProfileError } = await supabase
     .from('users')
     .select('org_id, is_active, email')
     .eq('auth_user_id', user.id)
     .maybeSingle();
 
+  if (existingProfileError) {
+    return { ok: false, status: 500, error: 'workspace_profile_lookup_failed' };
+  }
+
+  // Billing must never act as an implicit identity-reactivation workflow.
+  // Existing disabled/suspended identities fail closed before Stripe is called.
+  if (existingProfile && existingProfile.is_active !== true) {
+    return { ok: false, status: 403, error: 'ACCOUNT_INACTIVE' };
+  }
+
   if (existingProfile?.org_id) {
     return {
       ok: true,
-      bootstrapped: existingProfile.is_active !== true,
+      bootstrapped: false,
       profile: {
         auth_user_id: user.id,
         email: existingProfile.email || email || user.email || null,
         org_id: String(existingProfile.org_id),
-        is_active: existingProfile.is_active === true,
+        is_active: true,
       },
     };
   }
@@ -112,7 +122,8 @@ export async function GET(request: Request) {
     const workspace = await resolveCheckoutProfile(supabase, user, user.email || null);
 
     if (isWorkspaceFailure(workspace)) {
-      return NextResponse.redirect(`${appUrl}/marketplace/skills?checkout=setup_failed`);
+      const checkoutState = workspace.error === 'ACCOUNT_INACTIVE' ? 'account_inactive' : 'setup_failed';
+      return NextResponse.redirect(`${appUrl}/marketplace/skills?checkout=${checkoutState}`);
     }
 
     const profile = workspace.profile;
