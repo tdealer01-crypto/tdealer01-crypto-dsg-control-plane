@@ -6761,6 +6761,24 @@ export type Database = {
         }
         Relationships: []
       }
+      integration_test: {
+        Row: {
+          created_at: string | null
+          id: number
+          test_name: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: number
+          test_name: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: number
+          test_name?: string
+        }
+        Relationships: []
+      }
       job_executions: {
         Row: {
           agent_id: string
