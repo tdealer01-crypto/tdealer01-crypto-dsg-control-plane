@@ -23,7 +23,8 @@ import {
 export type DsgMeteredGateRoute =
   | 'gates/evaluate'
   | 'proofs/prove'
-  | 'encoding/prove';
+  | 'encoding/prove'
+  | 'actions/verify';
 
 export interface DsgGateTier {
   tier: GateTier;

@@ -7,7 +7,7 @@ import {
 } from '@/lib/dsg-one/canonical-action-e2e';
 import type { ActionPlan } from './verified-action-tools';
 
-export type CanonicalActionAdapterSurface = 'unify' | 'trinity-mcp';
+export type CanonicalActionAdapterSurface = 'api' | 'unify' | 'trinity-mcp';
 
 export type CanonicalActionAdapterHooks = {
   simulate: (plan: ActionPlan) => Promise<PreExecutionSimulationResult>;
