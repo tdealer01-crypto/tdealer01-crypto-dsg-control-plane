@@ -42,7 +42,8 @@ export class TrinityClient {
   constructor(config: TrinityClientConfig) {
     this.apiUrl = config.apiUrl.replace(/\/$/, '');
     this.jwtToken = config.jwtToken;
-    this.backendMode = config.backendMode ?? 'trinity';
+    this.backendMode =
+      config.backendMode ?? (process.env.DSG_ONE_API_URL ? 'dsg-one' : 'trinity');
   }
 
   private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
