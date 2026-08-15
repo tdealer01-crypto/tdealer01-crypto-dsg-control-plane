@@ -10,4 +10,4 @@ create table if not exists public.runtime_policy_governance_events (
 
 create index if not exists idx_runtime_policy_events_org_created on public.runtime_policy_governance_events(org_id, created_at desc);
 
-notify pgrst, 'reload schema';
+notify pgrst, 'reload schema';;

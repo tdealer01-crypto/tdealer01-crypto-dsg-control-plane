@@ -29,3 +29,4 @@ insert into public.dsg_templates (slug, name, description, category, stack, star
   ('job-board', 'Job Board', 'Post job listings, collect applications, and manage candidate status.', 'SaaS', ARRAY['Next.js', 'Supabase', 'Resend'], 540, false),
   ('invoice-generator', 'Invoice Generator', 'Create PDF invoices, send by email, and collect payments via Stripe.', 'SaaS', ARRAY['Next.js', 'Stripe', 'Resend'], 890, false)
 on conflict (slug) do nothing;
+;

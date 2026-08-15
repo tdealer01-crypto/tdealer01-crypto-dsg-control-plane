@@ -19,3 +19,4 @@ alter table marketing_content enable row level security;
 create policy "public can read published content"
   on marketing_content for select
   using (status = 'published');
+;

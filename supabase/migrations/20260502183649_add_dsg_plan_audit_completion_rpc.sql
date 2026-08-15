@@ -253,4 +253,4 @@ $$;
 revoke execute on function public.dsg_create_plan(uuid, text, jsonb, jsonb, text, jsonb) from anon;
 revoke execute on function public.dsg_create_evidence_manifest(uuid, text, uuid[]) from anon;
 revoke execute on function public.dsg_create_audit_export(uuid, text) from anon;
-revoke execute on function public.dsg_create_completion_report(uuid, text, uuid, uuid, uuid, uuid, uuid, boolean, boolean) from anon;
+revoke execute on function public.dsg_create_completion_report(uuid, text, uuid, uuid, uuid, uuid, uuid, boolean, boolean) from anon;;

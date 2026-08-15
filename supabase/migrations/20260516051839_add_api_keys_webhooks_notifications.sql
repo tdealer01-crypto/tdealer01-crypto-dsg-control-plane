@@ -75,3 +75,4 @@ create table if not exists public.notification_settings (
 alter table public.notification_settings enable row level security;
 create policy "users can manage own notification settings" on public.notification_settings
   using (user_id in (select id from public.users where auth_user_id = auth.uid()));
+;

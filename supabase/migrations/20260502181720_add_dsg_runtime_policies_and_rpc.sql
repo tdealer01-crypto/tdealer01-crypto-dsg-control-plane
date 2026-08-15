@@ -255,4 +255,4 @@ revoke execute on function public.dsg_claim_gate(boolean, boolean, boolean, bool
 revoke execute on function public.dsg_create_workspace(text, text) from anon;
 revoke execute on function public.dsg_create_runtime_job(uuid, text, jsonb) from anon;
 revoke execute on function public.dsg_record_evidence(uuid, text, text, text, text, jsonb) from anon;
-revoke execute on function public.dsg_record_replay_proof(uuid, text, text, jsonb) from anon;
+revoke execute on function public.dsg_record_replay_proof(uuid, text, text, jsonb) from anon;;

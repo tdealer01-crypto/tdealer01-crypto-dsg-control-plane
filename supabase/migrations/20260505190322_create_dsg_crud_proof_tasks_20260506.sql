@@ -13,4 +13,4 @@ create index if not exists dsg_crud_proof_tasks_workspace_idx
   on public.dsg_crud_proof_tasks (workspace_id);
 
 create index if not exists dsg_crud_proof_tasks_org_idx
-  on public.dsg_crud_proof_tasks (org_id);
+  on public.dsg_crud_proof_tasks (org_id);;

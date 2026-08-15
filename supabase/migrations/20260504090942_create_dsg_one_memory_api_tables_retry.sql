@@ -70,4 +70,4 @@ grant select, insert, update, delete on api.dsg_memory_events to service_role;
 grant select, insert, update, delete on api.dsg_memory_retrievals to service_role;
 grant select, insert, update, delete on api.dsg_memory_context_packs to service_role;
 
-select pg_notify('pgrst', 'reload schema');
+select pg_notify('pgrst', 'reload schema');;

@@ -22,4 +22,4 @@ alter table public.dsg_template_sales enable row level security;
 
 create policy "sellers and buyers see own sales"
   on public.dsg_template_sales for select
-  using (seller_id = auth.uid() or buyer_id = auth.uid());
+  using (seller_id = auth.uid() or buyer_id = auth.uid());;

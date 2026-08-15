@@ -116,4 +116,4 @@ using (
 );
 
 comment on table public.dsg_agent_command_gate_decisions is 'Append-only DSG agent command gate decisions persisted before agent execution.';
-comment on table public.dsg_agent_action_result_receipts is 'Append-only DSG agent action result receipts persisted after agent execution callback.';
+comment on table public.dsg_agent_action_result_receipts is 'Append-only DSG agent action result receipts persisted after agent execution callback.';;

@@ -329,4 +329,4 @@ drop trigger if exists trg_dsg_runtime_jobs_touch on public.dsg_runtime_jobs;
 create trigger trg_dsg_runtime_jobs_touch before update on public.dsg_runtime_jobs for each row execute function public.dsg_touch_updated_at();
 
 drop trigger if exists trg_dsg_connectors_touch on public.dsg_connectors;
-create trigger trg_dsg_connectors_touch before update on public.dsg_connectors for each row execute function public.dsg_touch_updated_at();
+create trigger trg_dsg_connectors_touch before update on public.dsg_connectors for each row execute function public.dsg_touch_updated_at();;

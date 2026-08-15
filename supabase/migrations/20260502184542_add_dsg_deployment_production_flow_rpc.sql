@@ -71,4 +71,4 @@ end;
 $$;
 
 revoke execute on function public.dsg_record_deployment_proof(uuid, text, text, text, text, jsonb) from anon;
-revoke execute on function public.dsg_record_production_flow_proof(uuid, text, text, text, jsonb) from anon;
+revoke execute on function public.dsg_record_production_flow_proof(uuid, text, text, text, jsonb) from anon;;

@@ -13,4 +13,4 @@ comment on table public.agent_gate_settings is
   'Per-organization Core DSG Spin / CospinDSG mode switch. audit_only records evidence; enforce_gate blocks or stabilizes non-ALLOW actions.';
 
 comment on column public.agent_gate_settings.gate_mode is
-  'audit_only or enforce_gate';
+  'audit_only or enforce_gate';;

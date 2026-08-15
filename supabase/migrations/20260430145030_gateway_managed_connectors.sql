@@ -65,4 +65,4 @@ create policy gateway_tools_org_select
 on public.gateway_tools
 for select
 to authenticated
-using (auth.uid() is not null and org_id = (auth.jwt() ->> 'org_id'));
+using (auth.uid() is not null and org_id = (auth.jwt() ->> 'org_id'));;

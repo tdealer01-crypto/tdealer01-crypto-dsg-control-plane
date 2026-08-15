@@ -88,4 +88,4 @@ create index if not exists dsg_app_builder_tool_audits_job_created_idx
 
 alter table public.dsg_app_builder_tool_audits enable row level security;
 
-select pg_notify('pgrst', 'reload schema');
+select pg_notify('pgrst', 'reload schema');;

@@ -44,4 +44,4 @@ create policy gateway_monitor_events_org_select
 on public.gateway_monitor_events
 for select
 to authenticated
-using (auth.uid() is not null and org_id = (auth.jwt() ->> 'org_id'));
+using (auth.uid() is not null and org_id = (auth.jwt() ->> 'org_id'));;
