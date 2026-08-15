@@ -146,7 +146,7 @@ jobs:
         id: preview
         shell: bash
         run: |
-          PREVIEW_URL=$(npx --yes "vercel@$VERCEL_CLI_VERSION" deploy --yes --token="$VERCEL_TOKEN" \
+          PREVIEW_URL=$(npx --yes "vercel@$VERCEL_CLI_VERSION" --local-config vercel.preview.json deploy --yes --token="$VERCEL_TOKEN" \
             --meta=branch="${{ github.head_ref }}" \
             --meta=commit="${{ github.event.pull_request.head.sha }}")
           test -n "$PREVIEW_URL"
@@ -162,7 +162,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `Preview verified: ${{ steps.preview.outputs.preview_url }}\n\nProduction was not deployed. Production requires the separate Promoted Production Deployment workflow.`
+              body: `Preview verified: ${{ steps.preview.outputs.preview_url }}\n\nPreview deployment intentionally uses vercel.preview.json without production cron schedules so Hobby preview validation does not alter production cron semantics. Production was not deployed. Production requires the separate Promoted Production Deployment workflow.`
             })
 
   notify-failure:
