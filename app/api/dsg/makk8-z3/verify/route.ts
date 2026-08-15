@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   }
 
   const parsed = parseStrictActionData(context);
-  if (!parsed.ok) {
+  if ('missing' in parsed) {
     return NextResponse.json(
       {
         ok: false,
