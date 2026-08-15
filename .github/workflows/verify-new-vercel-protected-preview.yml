@@ -1,0 +1,88 @@
+name: Verify New Vercel Protected Preview
+
+on:
+  workflow_run:
+    workflows: ["Bootstrap New Vercel Runtime ENV"]
+    types: [completed]
+  workflow_dispatch:
+
+concurrency:
+  group: verify-new-vercel-protected-preview
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  VERCEL_CLI_VERSION: 58.0.0
+  VERCEL_ORG_ID: team_6pEhvA6GmVXYajBuJ2PUPFcs
+  VERCEL_PROJECT_ID: prj_EsrB0dLrqbDKPDTMiKFGadZMny5M
+
+jobs:
+  verify:
+    name: Deploy and Verify Protected Preview
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: "Production – dsg-qubo-api"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Validate new-account authorization
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
+        run: |
+          set -euo pipefail
+          test -n "$VERCEL_TOKEN" || { echo "Missing VERCEL_TOKEN_NEW"; exit 1; }
+          test "$VERCEL_ORG_ID" != "team_n189mlAdVHR6cGGiaAwsKzQ0" || exit 1
+          test "$VERCEL_PROJECT_ID" != "prj_k02PTNzCJRBN5CcRtg6hFdd0HjuW" || exit 1
+
+      - name: Pull destination preview configuration
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
+        run: npx --yes "vercel@$VERCEL_CLI_VERSION" pull --yes --environment=preview --token="$VERCEL_TOKEN"
+
+      - name: Deploy current main to protected preview
+        id: preview
+        shell: bash
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
+        run: |
+          set -euo pipefail
+          cp vercel.json "$RUNNER_TEMP/vercel.production.json"
+          trap 'cp "$RUNNER_TEMP/vercel.production.json" vercel.json' EXIT
+          cp vercel.preview.json vercel.json
+
+          PREVIEW_URL=$(npx --yes "vercel@$VERCEL_CLI_VERSION" deploy --yes --token="$VERCEL_TOKEN" \
+            --meta=protected_health_proof=true \
+            --meta=commit="$(git rev-parse HEAD)")
+          test -n "$PREVIEW_URL"
+          echo "preview_url=$PREVIEW_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Verify application health behind Vercel Authentication
+        shell: bash
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
+          VERCEL_SCOPE: thanawats-projects-336871dc
+        run: bash scripts/verify-vercel-health.sh "${{ steps.preview.outputs.preview_url }}" /api/health
+
+      - name: Record proof
+        env:
+          PREVIEW_URL: ${{ steps.preview.outputs.preview_url }}
+        run: |
+          {
+            echo "## Protected preview health proof"
+            echo ""
+            echo "- Team: $VERCEL_ORG_ID"
+            echo "- Project: $VERCEL_PROJECT_ID"
+            echo "- Preview: $PREVIEW_URL"
+            echo "- Deployment Protection: accessed through authenticated Vercel CLI"
+            echo "- Application health: HTTP 200 + JSON ok=true"
+            echo "- Production deploy: not performed"
+          } >> "$GITHUB_STEP_SUMMARY"
