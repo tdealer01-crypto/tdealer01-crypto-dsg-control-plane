@@ -9,20 +9,19 @@ const legacy = {
   projectName: 'tdealer01-crypto-dsg-control-plane',
 };
 
+const blankNew = {
+  teamId: '',
+  projectId: '',
+  projectName: 'tdealer01-crypto-dsg-control-plane',
+};
+
 describe('Vercel routing configuration', () => {
-  it('keeps legacy routing active until a verified config commit switches it', () => {
+  it('keeps legacy routing available as the rollback identity', () => {
     const result = resolveVercelRouting({
       config: {
         schemaVersion: 1,
         activeAccount: 'legacy',
-        accounts: {
-          legacy,
-          new: {
-            teamId: '',
-            projectId: '',
-            projectName: 'tdealer01-crypto-dsg-control-plane',
-          },
-        },
+        accounts: { legacy, new: blankNew },
       },
       legacyToken: 'legacy-token',
       newToken: '',
@@ -38,22 +37,17 @@ describe('Vercel routing configuration', () => {
     });
   });
 
-  it('selects only a distinct, fully configured new account', () => {
+  it('routes to a distinct new account using protected secret IDs', () => {
     const result = resolveVercelRouting({
       config: {
         schemaVersion: 1,
         activeAccount: 'new',
-        accounts: {
-          legacy,
-          new: {
-            teamId: 'team_newAccount123',
-            projectId: 'prj_newProject123',
-            projectName: 'tdealer01-crypto-dsg-control-plane',
-          },
-        },
+        accounts: { legacy, new: blankNew },
       },
       legacyToken: 'legacy-token',
       newToken: 'new-token',
+      newTeamId: 'team_newAccount123',
+      newProjectId: 'prj_newProject123',
     });
 
     expect(result.accountMode).toBe('new');
@@ -63,24 +57,35 @@ describe('Vercel routing configuration', () => {
     expect(result.token).toBe('new-token');
   });
 
-  it('blocks new routing when IDs or credentials are incomplete', () => {
+  it('blocks new routing when protected IDs or credentials are incomplete', () => {
     expect(() =>
       resolveVercelRouting({
         config: {
           schemaVersion: 1,
           activeAccount: 'new',
-          accounts: {
-            legacy,
-            new: {
-              teamId: '',
-              projectId: '',
-              projectName: 'tdealer01-crypto-dsg-control-plane',
-            },
-          },
+          accounts: { legacy, new: blankNew },
         },
         legacyToken: 'legacy-token',
         newToken: '',
+        newTeamId: '',
+        newProjectId: '',
       }),
-    ).toThrow('new Vercel team ID is invalid');
+    ).toThrow('VERCEL_ORG_ID_NEW is missing or invalid');
+  });
+
+  it('blocks accidental reuse of the legacy destination under new routing', () => {
+    expect(() =>
+      resolveVercelRouting({
+        config: {
+          schemaVersion: 1,
+          activeAccount: 'new',
+          accounts: { legacy, new: blankNew },
+        },
+        legacyToken: 'legacy-token',
+        newToken: 'new-token',
+        newTeamId: legacy.teamId,
+        newProjectId: 'prj_newProject123',
+      }),
+    ).toThrow('New-account routing resolves to the legacy account');
   });
 });
