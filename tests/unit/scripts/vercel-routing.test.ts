@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 // @ts-expect-error The production helper is intentionally a native ESM module.
@@ -88,4 +90,42 @@ describe('Vercel routing configuration', () => {
       }),
     ).toThrow('New-account routing resolves to the legacy account');
   });
+});
+
+describe('workflows that resolve Vercel routing', () => {
+  const workflowDir = join(process.cwd(), '.github', 'workflows');
+
+  // Under activeAccount: "new", resolveVercelRouting reads the destination IDs
+  // from NEW_VERCEL_ORG_ID / NEW_VERCEL_PROJECT_ID and throws when either is
+  // absent. A workflow that only forwards the token therefore fails at the
+  // routing step, which is how the migration to the rebuilt Vercel project
+  // silently broke production-readiness, promoted-production-deploy, and
+  // set-stripe-price-env. This pins the full trio for every caller.
+  const routingSteps = readdirSync(workflowDir)
+    .filter((name) => name.endsWith('.yml') || name.endsWith('.yaml'))
+    .flatMap((name) => {
+      const content = readFileSync(join(workflowDir, name), 'utf8');
+      // Split on step boundaries so each block carries its own env: keys.
+      // `node --check <path>` is a syntax check, not an invocation, and does
+      // not match this exact command string.
+      return content
+        .split(/\n(?=\s*- )/)
+        .filter((step) => step.includes('node scripts/resolve-vercel-routing.mjs'))
+        .map((step) => ({ workflow: name, step }));
+    });
+
+  it('finds every workflow step that invokes the routing resolver', () => {
+    expect(routingSteps.length).toBeGreaterThan(0);
+  });
+
+  it.each(['NEW_VERCEL_ORG_ID', 'NEW_VERCEL_PROJECT_ID', 'NEW_VERCEL_TOKEN', 'LEGACY_VERCEL_TOKEN'])(
+    'forwards %s in every routing step',
+    (variable) => {
+      const missing = routingSteps
+        .filter(({ step }) => !step.includes(`${variable}:`))
+        .map(({ workflow }) => workflow);
+
+      expect(missing).toEqual([]);
+    },
+  );
 });
