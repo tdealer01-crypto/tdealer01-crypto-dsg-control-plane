@@ -37,8 +37,16 @@ describe('verified optimization pipeline', () => {
       seed: 7,
       useMock: true,
       exactProofMaxVariables: 8,
+      // VERIFIED_GLOBAL_OPTIMUM is only emitted for an explicitly bound business
+      // objective. Without this the pipeline correctly degrades to
+      // VERIFIED_FEASIBLE rather than claiming optimality it cannot support.
+      objective: {
+        version: 'test-cost-v1',
+        assignmentCosts: { 'task_t1_agent_1': -1 },
+      },
     });
 
+    expect(result.canonicalProblem.businessObjectiveBound).toBe(true);
     expect(result.verdict).toBe('VERIFIED_GLOBAL_OPTIMUM');
     expect(result.z3.feasible).toBe(true);
     expect(result.z3.status).toBe('sat');
@@ -58,8 +66,17 @@ describe('verified optimization pipeline', () => {
       seed: 7,
       useMock: true,
       exactProofMaxVariables: 1,
+      // Objective is bound here too, so the VERIFIED_FEASIBLE verdict below is
+      // caused by the incomplete exact proof and nothing else. Costs stay at 0
+      // so binding the objective does not perturb the capacity penalties that
+      // decide feasibility across the two candidate agents.
+      objective: {
+        version: 'test-cost-v1',
+        assignmentCosts: { 'task_t1_agent_1': 0, 'task_t1_agent_2': 0 },
+      },
     });
 
+    expect(result.canonicalProblem.businessObjectiveBound).toBe(true);
     expect(result.z3.feasible).toBe(true);
     expect(result.exact.complete).toBe(false);
     expect(result.exact.candidateIsGlobal).toBeNull();

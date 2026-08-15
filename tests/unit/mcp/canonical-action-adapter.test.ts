@@ -34,7 +34,7 @@ const baseInput = {
     exactProofMaxVariables: 8,
     objective: {
       version: 'test-cost-v1',
-      assignmentCosts: { task_task-1_agent_1: 0 },
+      assignmentCosts: { 'task_task-1_agent_1': 0 },
     },
   },
   actionSolution: {
