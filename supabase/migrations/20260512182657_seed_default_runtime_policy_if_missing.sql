@@ -25,4 +25,4 @@ where not exists (
   where rp.org_id = o.id
 );
 
-notify pgrst, 'reload schema';
+notify pgrst, 'reload schema';;

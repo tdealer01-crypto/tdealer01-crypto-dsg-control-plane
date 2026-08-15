@@ -4,6 +4,22 @@
 
 create extension if not exists pgcrypto;
 
+create table if not exists public.agent_workspaces (
+  id uuid primary key default gen_random_uuid(),
+  workspace_key text not null,
+  name text not null,
+  environment text not null default 'development',
+  status text not null default 'active',
+  repo_full_name text not null,
+  git_branch_pattern text not null default 'agent-workspace/*',
+  vercel_team_slug text,
+  vercel_project_slug text,
+  stripe_mode text not null default 'test',
+  production_access boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 alter table public.agent_workspaces
   add column if not exists org_id text,
   add column if not exists approved_plan jsonb not null default '{}'::jsonb,
@@ -17,11 +33,57 @@ alter table public.agent_workspaces
   add column if not exists stripe_account_id text,
   add column if not exists created_by text not null default 'system';
 
+create unique index if not exists idx_agent_workspaces_workspace_key
+  on public.agent_workspaces (workspace_key);
+
+create table if not exists public.agent_workspace_capabilities (
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references public.agent_workspaces(id) on delete cascade,
+  capability text not null,
+  scope text not null,
+  access_level text not null,
+  requires_runtime_approval boolean not null default false,
+  enabled boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create unique index if not exists idx_agent_workspace_capability_unique
+  on public.agent_workspace_capabilities (workspace_id, capability, scope);
+
+create table if not exists public.agent_workspace_runs (
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references public.agent_workspaces(id) on delete cascade,
+  agent_id text not null,
+  goal text not null,
+  plan jsonb not null default '{}'::jsonb,
+  status text not null default 'queued',
+  git_branch text,
+  preview_url text,
+  evidence jsonb not null default '[]'::jsonb,
+  started_at timestamptz,
+  completed_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
 alter table public.agent_workspace_runs
   add column if not exists org_id text,
   add column if not exists plan_hash text,
   add column if not exists commit_sha text,
   add column if not exists updated_at timestamptz not null default now();
+
+create table if not exists public.agent_workspace_promotions (
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references public.agent_workspaces(id) on delete cascade,
+  run_id uuid references public.agent_workspace_runs(id) on delete set null,
+  target_environment text not null,
+  requested_by text not null,
+  status text not null default 'pending',
+  checks jsonb not null default '{}'::jsonb,
+  approved_by text,
+  approved_at timestamptz,
+  executed_at timestamptz,
+  created_at timestamptz not null default now()
+);
 
 alter table public.agent_workspace_promotions
   add column if not exists org_id text,
@@ -47,12 +109,15 @@ create table if not exists public.agent_workspace_leases (
   issued_by text not null default 'system',
   metadata jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  unique (workspace_id, agent_id)
+  updated_at timestamptz not null default now()
 );
 
 create index if not exists idx_agent_workspace_leases_lookup
   on public.agent_workspace_leases (workspace_id, agent_id, status, expires_at desc);
+
+drop index if exists public.idx_agent_workspace_leases_active_unique;
+create unique index if not exists idx_agent_workspace_leases_unique
+  on public.agent_workspace_leases (workspace_id, agent_id);
 
 create table if not exists public.agent_workspace_tool_registry (
   id uuid primary key default gen_random_uuid(),
@@ -71,9 +136,11 @@ create table if not exists public.agent_workspace_tool_registry (
   production_enabled boolean not null default false,
   created_by_agent text not null,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  unique (workspace_id, name)
+  updated_at timestamptz not null default now()
 );
+
+create unique index if not exists idx_agent_workspace_tool_unique
+  on public.agent_workspace_tool_registry (workspace_id, name);
 
 create table if not exists public.agent_workspace_audit_events (
   id uuid primary key default gen_random_uuid(),
@@ -162,10 +229,10 @@ declare
   v_allowed boolean := false;
   v_reason text := 'denied';
 begin
-  select w.* into v_workspace
-  from public.agent_workspaces w
-  where w.workspace_key = p_workspace_key
-    and w.status = 'active'
+  select * into v_workspace
+  from public.agent_workspaces
+  where workspace_key = p_workspace_key
+    and status = 'active'
   limit 1;
 
   if v_workspace.id is null then
@@ -180,23 +247,17 @@ begin
   elsif coalesce(v_workspace.plan_hash, '') <> ''
     and coalesce(p_plan_hash, '') <> v_workspace.plan_hash then
     v_reason := 'plan_hash_mismatch';
-  elsif p_environment <> 'production' and (
-    p_scope like 'deploy.production%'
-    or p_scope like 'database.production%'
-    or p_scope like 'stripe.live%'
-  ) then
-    v_reason := 'production_scope_requires_production_environment';
   else
-    select l.* into v_lease
-    from public.agent_workspace_leases l
-    where l.workspace_id = v_workspace.id
-      and l.status = 'active'
-      and l.agent_id in (p_agent_id, '*')
-      and l.starts_at <= now()
-      and now() <= l.auto_renew_until
-      and p_environment = any(l.environments)
-      and public.agent_workspace_scope_matches(l.scopes, p_scope)
-    order by case when l.agent_id = p_agent_id then 0 else 1 end, l.expires_at desc
+    select * into v_lease
+    from public.agent_workspace_leases
+    where workspace_id = v_workspace.id
+      and status = 'active'
+      and agent_id in (p_agent_id, '*')
+      and starts_at <= now()
+      and now() <= auto_renew_until
+      and p_environment = any(environments)
+      and public.agent_workspace_scope_matches(scopes, p_scope)
+    order by case when agent_id = p_agent_id then 0 else 1 end, expires_at desc
     limit 1;
 
     if v_lease.id is null then
@@ -204,11 +265,11 @@ begin
     else
       if v_lease.expires_at < now() then
         if v_lease.auto_renew and v_lease.auto_renew_until > now() then
-          update public.agent_workspace_leases l
-          set expires_at = least(now() + interval '30 days', l.auto_renew_until),
+          update public.agent_workspace_leases
+          set expires_at = least(now() + interval '30 days', auto_renew_until),
               updated_at = now()
-          where l.id = v_lease.id
-          returning l.* into v_lease;
+          where id = v_lease.id
+          returning * into v_lease;
         else
           v_reason := 'lease_expired';
         end if;
@@ -220,16 +281,16 @@ begin
             if p_promotion_id is null then
               v_reason := 'production_requires_approved_promotion';
             else
-              select pr.* into v_promotion
-              from public.agent_workspace_promotions pr
-              where pr.id = p_promotion_id
-                and pr.workspace_id = v_workspace.id
-                and pr.target_environment = 'production'
-                and pr.status = 'approved'
-                and pr.commit_sha is not null
-                and pr.evidence_hash is not null
-                and (pr.expires_at is null or pr.expires_at > now())
-                and (pr.org_id is null or pr.org_id in ('', 'system') or pr.org_id = p_org_id)
+              select * into v_promotion
+              from public.agent_workspace_promotions
+              where id = p_promotion_id
+                and workspace_id = v_workspace.id
+                and target_environment = 'production'
+                and status = 'approved'
+                and commit_sha is not null
+                and evidence_hash is not null
+                and (expires_at is null or expires_at > now())
+                and (org_id is null or org_id in ('', 'system') or org_id = p_org_id)
               limit 1;
 
               if v_promotion.id is null then
@@ -302,6 +363,10 @@ grant execute on function public.authorize_agent_workspace_action(
   text, text, text, text, text, text, text, text, text, jsonb, uuid
 ) to service_role;
 
+alter table public.agent_workspaces enable row level security;
+alter table public.agent_workspace_capabilities enable row level security;
+alter table public.agent_workspace_runs enable row level security;
+alter table public.agent_workspace_promotions enable row level security;
 alter table public.agent_workspace_leases enable row level security;
 alter table public.agent_workspace_tool_registry enable row level security;
 alter table public.agent_workspace_audit_events enable row level security;
@@ -349,38 +414,90 @@ create policy agent_workspace_audit_select
 on public.agent_workspace_audit_events for select to authenticated
 using (org_id is null or org_id = (auth.jwt() ->> 'org_id'));
 
-update public.agent_workspaces
-set org_id = 'system',
-    vercel_project_id = 'prj_k02PTNzCJRBN5CcRtg6hFdd0HjuW',
-    supabase_project_ref = 'zeyguilldygozufpgxms',
-    stripe_account_id = 'acct_1Tft0OAZNzhgTUPV',
-    stripe_mode = 'test',
-    production_access = false,
-    production_locked = true,
-    allowed_environments = array['development','preview']::text[],
-    approved_plan = jsonb_build_object(
-      'goal', 'Complete DSG ONE development without repeated per-action approval inside isolated development and preview environments.',
-      'allowed', jsonb_build_array(
-        'inspect and modify repository branches',
-        'create tests, scripts, MCP tools and development utilities',
-        'read and mutate the development Supabase project including migrations',
-        'create and inspect Vercel preview deployments',
-        'read and mutate Stripe test-mode resources',
-        'run builds, tests, security checks and evidence collection'
-      ),
-      'excluded', jsonb_build_array(
-        'production deployment without an approved promotion',
-        'production database mutation without an approved promotion',
-        'Stripe live-mode write without an approved promotion',
-        'secret value export or logging',
-        'claims not supported by recorded evidence'
-      )
+insert into public.agent_workspaces (
+  workspace_key,
+  name,
+  org_id,
+  environment,
+  status,
+  repo_full_name,
+  git_branch_pattern,
+  vercel_team_slug,
+  vercel_project_slug,
+  vercel_project_id,
+  supabase_project_ref,
+  stripe_account_id,
+  stripe_mode,
+  production_access,
+  production_locked,
+  allowed_environments,
+  approved_plan,
+  plan_hash,
+  auto_authorize_plan_actions,
+  allow_tool_creation,
+  created_by,
+  updated_at
+) values (
+  'dsg-agent-dev',
+  'DSG Agent Development Workspace',
+  'system',
+  'development',
+  'active',
+  'tdealer01-crypto/tdealer01-crypto-dsg-control-plane',
+  'agent-workspace/*',
+  'tdealer01-crypto-dsg-control-plane',
+  'tdealer01-crypto-dsg-control-plane',
+  'prj_k02PTNzCJRBN5CcRtg6hFdd0HjuW',
+  'zeyguilldygozufpgxms',
+  'acct_1Tft0OAZNzhgTUPV',
+  'test',
+  false,
+  true,
+  array['development','preview']::text[],
+  jsonb_build_object(
+    'goal', 'Complete DSG ONE development without repeated per-action approval inside isolated development and preview environments.',
+    'allowed', jsonb_build_array(
+      'inspect and modify repository branches',
+      'create tests, scripts, MCP tools and development utilities',
+      'read and mutate the development Supabase project including migrations',
+      'create and inspect Vercel preview deployments',
+      'read and mutate Stripe test-mode resources',
+      'run builds, tests, security checks and evidence collection'
     ),
-    auto_authorize_plan_actions = true,
-    allow_tool_creation = true,
-    created_by = 'user-approved-plan-2026-08-04',
-    updated_at = now()
-where workspace_key = 'dsg-agent-dev';
+    'excluded', jsonb_build_array(
+      'production deployment without an approved promotion',
+      'production database mutation without an approved promotion',
+      'Stripe live-mode write without an approved promotion',
+      'secret value export or logging',
+      'claims not supported by recorded evidence'
+    )
+  ),
+  null,
+  true,
+  true,
+  'user-approved-plan-2026-08-04',
+  now()
+)
+on conflict (workspace_key) do update set
+  name = excluded.name,
+  org_id = excluded.org_id,
+  repo_full_name = excluded.repo_full_name,
+  git_branch_pattern = excluded.git_branch_pattern,
+  vercel_team_slug = excluded.vercel_team_slug,
+  vercel_project_slug = excluded.vercel_project_slug,
+  vercel_project_id = excluded.vercel_project_id,
+  supabase_project_ref = excluded.supabase_project_ref,
+  stripe_account_id = excluded.stripe_account_id,
+  stripe_mode = 'test',
+  production_access = false,
+  production_locked = true,
+  allowed_environments = excluded.allowed_environments,
+  approved_plan = excluded.approved_plan,
+  plan_hash = excluded.plan_hash,
+  auto_authorize_plan_actions = true,
+  allow_tool_creation = true,
+  status = 'active',
+  updated_at = now();
 
 update public.agent_workspaces
 set plan_hash = encode(digest(convert_to(approved_plan::text, 'UTF8'), 'sha256'), 'hex'),
@@ -415,10 +532,7 @@ select
     'browser.*',
     'logs.read',
     'evidence.*',
-    'workspace.*',
-    'deploy.production',
-    'database.production.*',
-    'stripe.live.*'
+    'workspace.*'
   ]::text[],
   array['development','preview','production']::text[],
   'active',
@@ -438,4 +552,4 @@ do update set
   auto_renew_until = excluded.auto_renew_until,
   issued_by = excluded.issued_by,
   metadata = excluded.metadata,
-  updated_at = now();
+  updated_at = now();;

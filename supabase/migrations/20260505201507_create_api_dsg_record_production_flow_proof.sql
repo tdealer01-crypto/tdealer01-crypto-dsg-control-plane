@@ -79,4 +79,4 @@ $$;
 
 grant usage on schema api to anon, authenticated, service_role;
 grant execute on function api.dsg_record_production_flow_proof(jsonb, text, text, text, text)
-to anon, authenticated, service_role;
+to anon, authenticated, service_role;;

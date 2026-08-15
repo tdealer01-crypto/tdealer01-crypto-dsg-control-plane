@@ -216,3 +216,4 @@ comment on table dsg_memory_retrievals is
 
 comment on table dsg_memory_context_packs is
   'Bound context payloads created from gated memory for planner, approval, runtime, verification, or reports.';
+;

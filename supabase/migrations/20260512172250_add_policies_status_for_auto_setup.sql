@@ -5,4 +5,4 @@ update public.policies
 set status = 'active'
 where status is null;
 
-notify pgrst, 'reload schema';
+notify pgrst, 'reload schema';;

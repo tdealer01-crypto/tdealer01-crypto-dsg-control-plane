@@ -14,4 +14,4 @@ create table if not exists public.runtime_policies (
 
 create index if not exists idx_runtime_policies_org_updated on public.runtime_policies(org_id, updated_at desc);
 
-notify pgrst, 'reload schema';
+notify pgrst, 'reload schema';;

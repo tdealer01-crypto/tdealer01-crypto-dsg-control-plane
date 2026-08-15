@@ -166,4 +166,4 @@ begin
 end;
 $$;
 
-notify pgrst, 'reload schema';
+notify pgrst, 'reload schema';;

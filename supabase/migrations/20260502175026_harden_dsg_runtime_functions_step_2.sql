@@ -50,4 +50,4 @@ $$;
 revoke execute on function public.dsg_touch_updated_at() from anon, authenticated;
 revoke execute on function public.dsg_current_actor_id() from anon;
 revoke execute on function public.dsg_is_workspace_member(uuid) from anon;
-revoke execute on function public.dsg_compute_audit_hash(text, text, text, text, jsonb) from anon;
+revoke execute on function public.dsg_compute_audit_hash(text, text, text, text, jsonb) from anon;;

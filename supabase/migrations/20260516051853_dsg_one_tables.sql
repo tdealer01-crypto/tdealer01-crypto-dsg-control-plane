@@ -35,3 +35,4 @@ alter table public.dsg_notifications enable row level security;
 
 create policy "users can manage own notifications" on public.dsg_notifications
   using (user_id = auth.uid());
+;

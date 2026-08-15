@@ -65,4 +65,4 @@ create table if not exists public.runtime_roles (
 create index if not exists idx_runtime_roles_org_user
   on public.runtime_roles(org_id, user_id);
 
-notify pgrst, 'reload schema';
+notify pgrst, 'reload schema';;

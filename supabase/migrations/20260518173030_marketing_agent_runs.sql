@@ -12,3 +12,4 @@ create index if not exists idx_marketing_agent_runs_run_at
   on marketing_agent_runs(run_at desc);
 
 alter table marketing_agent_runs enable row level security;
+;

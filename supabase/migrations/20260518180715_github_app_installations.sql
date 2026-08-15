@@ -8,3 +8,4 @@ create table if not exists github_app_installations (
 );
 alter table github_app_installations enable row level security;
 -- no public access — server-side only via service role
+;

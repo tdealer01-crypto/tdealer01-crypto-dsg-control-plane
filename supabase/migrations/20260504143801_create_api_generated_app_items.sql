@@ -18,4 +18,4 @@ alter table api.generated_app_items enable row level security;
 grant usage on schema api to anon, authenticated, service_role;
 grant select, insert, update, delete on api.generated_app_items to service_role;
 
-select pg_notify('pgrst', 'reload schema');
+select pg_notify('pgrst', 'reload schema');;

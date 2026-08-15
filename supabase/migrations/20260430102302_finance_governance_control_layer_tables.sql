@@ -73,4 +73,4 @@ create policy finance_approval_decisions_org_select
 on public.finance_approval_decisions
 for select
 to authenticated
-using (auth.uid() is not null and org_id = (auth.jwt() ->> 'org_id'));
+using (auth.uid() is not null and org_id = (auth.jwt() ->> 'org_id'));;

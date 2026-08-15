@@ -101,4 +101,4 @@ $$;
 
 grant execute on function public.runtime_commit_execution(text,text,uuid,text,text,jsonb,text,jsonb,integer,jsonb,jsonb,text,jsonb,numeric,timestamptz,integer,integer) to authenticated;
 grant execute on function public.runtime_commit_execution(text,text,uuid,text,text,jsonb,text,jsonb,integer,jsonb,jsonb,text,jsonb,numeric,timestamptz,integer,integer) to service_role;
-notify pgrst, 'reload schema';
+notify pgrst, 'reload schema';;

@@ -61,4 +61,4 @@ grant select, insert, update, delete on api.dsg_app_builder_jobs to service_role
 grant select, insert, update, delete on api.dsg_app_builder_approvals to service_role;
 grant select, insert, update, delete on api.dsg_app_builder_tool_audits to service_role;
 
-select pg_notify('pgrst', 'reload schema');
+select pg_notify('pgrst', 'reload schema');;

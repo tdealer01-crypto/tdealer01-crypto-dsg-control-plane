@@ -107,3 +107,4 @@ create policy "service role full access" on public.leads
   to service_role
   using (true)
   with check (true);
+;
