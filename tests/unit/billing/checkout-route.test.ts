@@ -90,7 +90,7 @@ describe('POST /api/billing/checkout', () => {
     expect(res.status).toBe(401);
   });
 
-  it('allows inactive trial profile with org_id', async () => {
+  it('blocks inactive profile before creating a Stripe session', async () => {
     mockCreateClient.mockResolvedValue(
       makeSupabaseClient(
         { id: 'user-1' },
@@ -98,7 +98,9 @@ describe('POST /api/billing/checkout', () => {
       ) as any
     );
     const res = await POST(makeRequest({ plan: 'pro' }));
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(403);
+    await expect(res.json()).resolves.toMatchObject({ error: 'ACCOUNT_INACTIVE' });
+    expect(mockStripeInstance.checkout.sessions.create).not.toHaveBeenCalled();
   });
 
   it('returns 403 when org_id in body does not match user org', async () => {
