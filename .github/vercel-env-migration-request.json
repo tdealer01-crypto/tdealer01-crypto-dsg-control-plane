@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "requestId": "dry-run-20260813-token-scope-probe",
-  "newTeamId": "",
-  "newProjectId": "",
+  "requestId": "dry-run-20260816-new-vercel-account",
+  "newTeamId": "team_6pEhvA6GmVXYajBuJ2PUPFcs",
+  "newProjectId": "prj_EsrB0dLrqbDKPDTMiKFGadZMny5M",
   "newProjectName": "tdealer01-crypto-dsg-control-plane",
   "dryRun": true,
   "includeIntegrationManaged": false,
