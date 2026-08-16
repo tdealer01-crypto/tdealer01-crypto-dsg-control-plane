@@ -15,13 +15,7 @@ export type OptimizationVerdict =
   | 'BLOCKED_NOT_GLOBAL_OPTIMUM';
 
 export interface OptimizationObjective {
-  /** Stable semantic version for the business objective. */
   version: string;
-  /**
-   * Sparse additive cost per canonical QUBO assignment variable.
-   * Keys are the builder variable ids, e.g. task_<taskId>_agent_<agentId>.
-   * Lower total cost is better. Missing variables have cost 0.
-   */
   assignmentCosts: Record<string, number>;
 }
 
@@ -30,14 +24,9 @@ export interface VerifiedOptimizationRequest {
   tasks: Task[];
   agentCapacities: AgentCapacity[];
   seed?: number;
-  useMock?: boolean;
+  solverMode?: 'local' | 'live';
   timeout?: number;
   exactProofMaxVariables?: number;
-  /**
-   * Optional explicit business objective. Without one, DSG may prove feasibility
-   * and even the minimum penalty state of the feasibility QUBO, but MUST NOT
-   * market or emit VERIFIED_GLOBAL_OPTIMUM for a business objective.
-   */
   objective?: OptimizationObjective;
   constraintVersion?: string;
 }
@@ -260,7 +249,7 @@ export async function runVerifiedOptimizationPipeline(
     problemId: req.problemId,
     quboMatrix: canonical.qubo,
     seed: req.seed ?? 0,
-    useMock: req.useMock,
+    solverMode: req.solverMode ?? 'local',
     timeout: req.timeout,
   });
 
@@ -305,6 +294,8 @@ export async function runVerifiedOptimizationPipeline(
     businessObjectiveBound: canonical.businessObjectiveBound,
     solutionHash,
     candidateEnergy: candidate.energy,
+    solverMode: candidate.mode,
+    solverVersion: candidate.solverVersion,
     z3ProofHash: z3.proofHash,
     exactProofHash: exact.proofHash,
     verdict,
