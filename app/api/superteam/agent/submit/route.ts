@@ -1,8 +1,12 @@
+import { randomUUID } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient as createServiceClient } from '@supabase/supabase-js';
-import { SuperteamAgentClient, Submission } from '@/lib/superteam/agent-client';
+import { SuperteamAgentClient, type Submission } from '@/lib/superteam/agent-client';
 import { TelegramSubmitter } from '@/lib/superteam/telegram-submitter';
-import { testMemoryStore } from '@/lib/superteam/test-store';
+import {
+  getSuperteamSupabase,
+  requireSuperteamAgentCredential,
+  superteamErrorStatus,
+} from '@/lib/superteam/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,266 +23,132 @@ interface SubmitRequest {
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as SubmitRequest;
-    const {
-      agentId,
+    const agentId = body.agentId?.trim();
+    const listingId = body.listingId?.trim();
+    const link = body.link?.trim();
+    const otherInfo = body.otherInfo?.trim();
+
+    if (!agentId || !listingId || !link || !otherInfo) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+    if (body.ask !== undefined && (!Number.isFinite(body.ask) || body.ask < 0)) {
+      return NextResponse.json({ error: 'ask must be a non-negative number' }, { status: 400 });
+    }
+
+    const supabase = getSuperteamSupabase();
+    const { agent, apiKey } = await requireSuperteamAgentCredential(supabase, agentId);
+    const client = new SuperteamAgentClient(apiKey, agent.name);
+    const submission: Submission = {
       listingId,
       link,
       otherInfo,
-      telegram,
-      ask,
-      eligibilityAnswers,
-    } = body;
+      telegram: body.telegram || undefined,
+      ask: body.ask ?? null,
+      eligibilityAnswers: body.eligibilityAnswers?.length ? body.eligibilityAnswers : undefined,
+    };
 
-    let claimCode: string | null = null;
+    const externalResult = await client.submitListing(submission);
+    const submissionId = `submit-${randomUUID()}`;
+    const submittedAt = new Date().toISOString();
+    const externalData = externalResult.data as Record<string, unknown> | undefined;
+    const externalClaimCode = externalResult.success && externalData
+      ? String(externalData.claimCode ?? externalData.claim_code ?? '') || null
+      : null;
 
-    if (!agentId || !listingId || !link || !otherInfo) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
+    const { error: persistError } = await supabase.from('agent_submissions').insert({
+      id: submissionId,
+      agent_id: agentId,
+      listing_id: listingId,
+      listing_title: listingId,
+      link,
+      other_info: otherInfo,
+      status: externalResult.success ? 'submitted' : 'failed',
+      superteam_response: externalResult,
+      telegram: body.telegram ?? null,
+      ask: body.ask ?? null,
+      submitted_at: submittedAt,
+    });
+
+    if (persistError) {
+      console.error('[superteam/submit] external result could not be persisted:', persistError.message);
+      return NextResponse.json({
+        success: false,
+        externalSubmitted: Boolean(externalResult.success),
+        error: 'SUPERTEAM_SUBMISSION_AUDIT_PERSIST_FAILED',
+        externalClaimCode,
+      }, { status: 503 });
     }
 
-    // Get agent from Supabase or memory store
-    let agent: any = null;
-
-    // Prefer real SUPERTEAM_API_KEY if available
-    if (process.env.SUPERTEAM_API_KEY) {
-      agent = {
-        api_key: process.env.SUPERTEAM_API_KEY,
-        name: 'superteam-agent-live',
-        claim_code: `DSG-${agentId}`,
-      };
-      console.log('Using real Superteam API key for submission');
-    } else {
-      try {
-        const supabase = createServiceClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.SUPABASE_SERVICE_ROLE_KEY!
-        );
-        const { data: dbAgent, error } = await supabase
-          .from('dsg_agents')
-          .select('api_key, name, claim_code')
-          .eq('id', agentId)
-          .single();
-
-        if (error) {
-          console.warn(`Supabase agent lookup error: ${error.message}`);
-        } else if (dbAgent) {
-          agent = dbAgent;
-        }
-      } catch (e) {
-        console.warn(`Supabase unavailable for agent lookup: ${String(e).slice(0, 100)}`);
-      }
-    }
-
-    // Fallback to memory store
-    if (!agent) {
-      const memAgent = testMemoryStore.getAgent(agentId);
-      if (memAgent) {
-        agent = {
-          api_key: memAgent.apiKey,
-          name: memAgent.name,
-          claim_code: memAgent.claimCode,
-        };
-      }
-    }
-
-    if (!agent) {
-      return NextResponse.json(
-        { error: 'Agent not found' },
-        { status: 404 }
-      );
-    }
-
-    // First submit to Superteam API to get real claim code
-    let superteamResult: any = { success: false };
-
-    try {
-      const client = new SuperteamAgentClient(agent.api_key, agent.name);
-      const submission: Submission = {
-        listingId,
-        link,
-        otherInfo,
-        telegram: telegram || undefined,
-        ask: ask || null,
-        eligibilityAnswers:
-          eligibilityAnswers && eligibilityAnswers.length > 0
-            ? eligibilityAnswers
-            : undefined,
-      };
-      superteamResult = await client.submitListing(submission);
-
-      // Extract claim code from Superteam response
-      // Superteam returns the real claim code on successful submission
-      if (superteamResult.success && superteamResult.data) {
-        claimCode = superteamResult.data.claimCode ||
-                   superteamResult.data.claim_code ||
-                   superteamResult.data.submissionId ||
-                   superteamResult.data.id;
-      }
-
-      // If no claim code from API, use listing ID as reference
-      if (!claimCode) {
-        claimCode = listingId;
-      }
-    } catch (apiError) {
-      console.error('Superteam API submission error:', apiError);
-    }
-
-    // Use Telegram notification if bot token is available
-    let result: any = superteamResult;
-
-    if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID) {
+    let telegramResult: unknown = null;
+    if (externalResult.success && process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID) {
       try {
         const telegramSubmitter = new TelegramSubmitter(
           process.env.TELEGRAM_BOT_TOKEN,
-          process.env.TELEGRAM_CHAT_ID
+          process.env.TELEGRAM_CHAT_ID,
         );
-        const telegramResult = await telegramSubmitter.submitBounty({
+        telegramResult = await telegramSubmitter.submitBounty({
           listingId,
-          title: otherInfo || 'Bounty Submission',
-          reward: ask || 0,
+          title: otherInfo,
+          reward: body.ask ?? 0,
           rewardToken: 'USDC',
           link,
-          otherInfo: `Agent: ${agent.name} | Info: ${otherInfo}`,
-          claimCode: claimCode,
+          otherInfo: `Agent: ${agent.name}`,
+          claimCode: externalClaimCode ?? undefined,
         });
-        console.log(`✅ Telegram notification sent for ${listingId}:`, telegramResult);
-
-        // Combine results
-        result = {
-          ...superteamResult,
-          telegram: telegramResult,
-        };
-      } catch (telegramError) {
-        console.error('Telegram notification error:', telegramError);
+      } catch (error) {
+        console.error('[superteam/submit] Telegram notification failed:', error);
       }
     }
 
-    // Log submission
-    const submissionId = `submit-${agentId}-${listingId}-${Date.now()}`;
-
-    // Try to store in Supabase (with fallback)
-    try {
-      const supabase = createServiceClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-      );
-
-      const { error } = await supabase.from('agent_submissions').insert({
-        id: submissionId,
-        agent_id: agentId,
-        listing_id: listingId,
-        listing_title: listingId,
-        link,
-        other_info: otherInfo,
-        status: 'submitted',
-        superteam_response: result,
-        telegram,
-        ask,
-        submitted_at: new Date().toISOString(),
-      });
-
-      if (error) {
-        throw new Error(`Supabase insert error: ${error.message}`);
-      }
-
-      console.log(`✅ Submission logged to Supabase: ${submissionId}`);
-    } catch (dbError) {
-      console.warn(
-        `⚠️ Supabase unavailable for submission, using memory store: ${String(dbError).slice(0, 100)}`
-      );
-      testMemoryStore.addSubmission({
-        id: submissionId,
-        agentId,
-        listingId,
-        link,
-        otherInfo,
-        createdAt: Date.now(),
-      });
+    if (!externalResult.success) {
+      return NextResponse.json({
+        success: false,
+        submissionId,
+        persisted: true,
+        status: 'failed',
+        error: externalResult.error ?? 'SUPERTEAM_API_SUBMISSION_FAILED',
+        telegramResult,
+      }, { status: 502 });
     }
 
     return NextResponse.json({
-      success: result.success || false,
+      success: true,
+      source: 'superteam_api',
+      persisted: true,
       submissionId,
-      claimCode: claimCode || agent.claim_code,
-      message:
-        result.success
-          ? 'Submitted to Superteam. Use claim code to claim bounty.'
-          : 'Submission attempted. Check Telegram for details.',
-      result,
+      status: 'submitted',
+      claimCode: externalClaimCode,
+      submittedAt,
+      telegramResult,
     });
   } catch (error) {
-    console.error('Submission error:', error);
+    console.error('[superteam/submit] failed:', error);
     return NextResponse.json(
-      {
-        error: 'Submission failed',
-        details: String(error),
-      },
-      { status: 500 }
+      { error: error instanceof Error ? error.message.split(':')[0] : 'SUPERTEAM_SUBMISSION_FAILED' },
+      { status: superteamErrorStatus(error) },
     );
   }
 }
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const agentId = searchParams.get('agentId');
+    const agentId = new URL(request.url).searchParams.get('agentId')?.trim();
+    if (!agentId) return NextResponse.json({ error: 'agentId required' }, { status: 400 });
 
-    if (!agentId) {
-      return NextResponse.json(
-        { error: 'agentId required' },
-        { status: 400 }
-      );
-    }
+    const supabase = getSuperteamSupabase();
+    const { data, error } = await supabase
+      .from('agent_submissions')
+      .select('*')
+      .eq('agent_id', agentId)
+      .order('submitted_at', { ascending: false });
+    if (error) throw new Error(`SUPERTEAM_SUBMISSIONS_FETCH_FAILED:${error.message}`);
 
-    let submissions = null;
-
-    // Try Supabase first
-    try {
-      const supabase = createServiceClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-      );
-      const { data: dbSubmissions, error } = await supabase
-        .from('agent_submissions')
-        .select('*')
-        .eq('agent_id', agentId)
-        .order('submitted_at', { ascending: false });
-
-      if (error) {
-        console.warn(`Supabase submissions fetch error: ${error.message}`);
-      } else if (dbSubmissions) {
-        submissions = dbSubmissions;
-      }
-    } catch (e) {
-      console.warn(`Supabase unavailable for submissions fetch: ${String(e).slice(0, 100)}`);
-    }
-
-    // Fallback to memory store
-    if (!submissions) {
-      submissions = testMemoryStore.getSubmissions(agentId).map((s) => ({
-        id: s.id,
-        agent_id: s.agentId,
-        listing_id: s.listingId,
-        link: s.link,
-        other_info: s.otherInfo,
-        submitted_at: new Date(s.createdAt).toISOString(),
-      }));
-    }
-
-    return NextResponse.json({
-      success: true,
-      submissions,
-    });
+    return NextResponse.json({ success: true, source: 'supabase', submissions: data ?? [] });
   } catch (error) {
-    console.error('Error fetching submissions:', error);
+    console.error('[superteam/submit:get] failed:', error);
     return NextResponse.json(
-      {
-        error: 'Failed to fetch submissions',
-        details: String(error),
-      },
-      { status: 500 }
+      { error: error instanceof Error ? error.message.split(':')[0] : 'SUPERTEAM_SUBMISSIONS_FETCH_FAILED' },
+      { status: superteamErrorStatus(error) },
     );
   }
 }
