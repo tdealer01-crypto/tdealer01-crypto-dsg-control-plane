@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSuperteamSupabase, superteamErrorStatus } from '@/lib/superteam/server';
+import { handleApiError } from '@/lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -73,10 +74,6 @@ export async function POST(request: NextRequest) {
       submissions: submissions ?? [],
     });
   } catch (error) {
-    console.error('[superteam/claim] failed:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message.split(':')[0] : 'SUPERTEAM_CLAIM_FAILED' },
-      { status: superteamErrorStatus(error) },
-    );
+    return handleApiError('superteam/claim', error, { status: superteamErrorStatus(error) });
   }
 }
