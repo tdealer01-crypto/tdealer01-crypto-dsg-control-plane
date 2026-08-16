@@ -1,245 +1,146 @@
 /**
- * Unit Tests: SOL Payment Processor
- * Tests idempotency, balance validation, and payment processing
+ * SOL payment processor truth-boundary tests.
+ *
+ * No payment/RPC API is mocked here. Dry-run is intentionally non-executing:
+ * it cannot manufacture a transaction signature, confirmation, wallet balance,
+ * payment history, or ledger evidence. Positive settlement is the responsibility
+ * of the credentialed Solana integration path.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { SOLPaymentProcessor, PaymentRequest } from '../../lib/solana/payment';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { SOLPaymentProcessor, type PaymentRequest } from '../../lib/solana/payment';
 
-vi.mock('../../lib/solana/payment-ledger', () => ({
-  writeLedgerRecord: vi.fn().mockResolvedValue({ id: 'test-id', created_at: new Date().toISOString() }),
-  checkIdempotencyRecord: vi.fn().mockResolvedValue(null),
-}));
+const TREASURY = 'So11111111111111111111111111111111111111112';
+const RECIPIENT = 'So11111111111111111111111111111111111111112';
+
+function payment(overrides: Partial<PaymentRequest> = {}): PaymentRequest {
+  return {
+    executionId: 'exec-1',
+    agentId: 'agent-1',
+    recipientWallet: RECIPIENT,
+    amountSOL: 0.001,
+    idempotencyKey: 'key-1',
+    description: 'test payment',
+    ...overrides,
+  };
+}
 
 describe('SOLPaymentProcessor', () => {
   let processor: SOLPaymentProcessor;
 
   beforeEach(() => {
     processor = new SOLPaymentProcessor(
-      'So11111111111111111111111111111111111111112',
+      TREASURY,
       'test-org-id',
       'https://api.devnet.solana.com',
-      true // dryRun mode for tests
+      true,
     );
   });
 
   describe('initialization', () => {
-    it('should initialize with treasury wallet address', () => {
+    it('starts in the explicitly requested dry-run mode', () => {
       expect(processor.isDryRun()).toBe(true);
     });
 
-    it('should toggle dry-run mode', () => {
-      expect(processor.isDryRun()).toBe(true);
+    it('can toggle the execution mode flag without claiming executor readiness', () => {
       processor.setDryRun(false);
       expect(processor.isDryRun()).toBe(false);
     });
   });
 
-  describe('payment validation', () => {
-    it('should reject payment with missing executionId', async () => {
-      const request: PaymentRequest = {
-        executionId: '',
-        agentId: 'agent-1',
-        recipientWallet: 'So11111111111111111111111111111111111111112',
-        amountSOL: 1.0,
-        idempotencyKey: 'key-1',
-        description: 'test payment',
-      };
-
-      const result = await processor.processPayment(request);
+  describe('request validation', () => {
+    it('rejects missing executionId', async () => {
+      const result = await processor.processPayment(payment({ executionId: '' }));
       expect(result.status).toBe('failed');
+      expect(result.transactionSignature).toBe('');
       expect(result.error).toContain('executionId');
     });
 
-    it('should reject payment with invalid wallet address', async () => {
-      const request: PaymentRequest = {
-        executionId: 'exec-1',
-        agentId: 'agent-1',
-        recipientWallet: 'invalid-wallet',
-        amountSOL: 1.0,
-        idempotencyKey: 'key-1',
-        description: 'test payment',
-      };
-
-      const result = await processor.processPayment(request);
+    it('rejects an invalid wallet', async () => {
+      const result = await processor.processPayment(payment({ recipientWallet: 'invalid-wallet' }));
       expect(result.status).toBe('failed');
+      expect(result.transactionSignature).toBe('');
       expect(result.error).toContain('Invalid Solana wallet address');
     });
 
-    it('should reject payment with zero amount', async () => {
-      const request: PaymentRequest = {
-        executionId: 'exec-1',
-        agentId: 'agent-1',
-        recipientWallet: 'So11111111111111111111111111111111111111112',
-        amountSOL: 0,
-        idempotencyKey: 'key-1',
-        description: 'test payment',
-      };
+    it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY])(
+      'rejects non-positive or non-finite amount %s',
+      async (amountSOL) => {
+        const result = await processor.processPayment(payment({ amountSOL }));
+        expect(result.status).toBe('failed');
+        expect(result.transactionSignature).toBe('');
+        expect(result.error).toContain('finite number greater than 0');
+      },
+    );
+  });
 
-      const result = await processor.processPayment(request);
+  describe('dry-run truth boundary', () => {
+    it('never returns a confirmed payment or fabricated signature', async () => {
+      const result = await processor.processPayment(payment());
+
       expect(result.status).toBe('failed');
-      expect(result.error).toContain('greater than 0');
+      expect(result.transactionSignature).toBe('');
+      expect(result.confirmationBlockHeight).toBeUndefined();
+      expect(result.error).toBe('DRY_RUN_DOES_NOT_EXECUTE_PAYMENT');
     });
 
-    it('should reject payment with negative amount', async () => {
-      const request: PaymentRequest = {
-        executionId: 'exec-1',
-        agentId: 'agent-1',
-        recipientWallet: 'So11111111111111111111111111111111111111112',
-        amountSOL: -1,
-        idempotencyKey: 'key-1',
-        description: 'test payment',
-      };
-
-      const result = await processor.processPayment(request);
-      expect(result.status).toBe('failed');
-      expect(result.error).toContain('greater than 0');
-    });
-  });
-
-  describe('idempotency', () => {
-    it('should return cached result for duplicate idempotencyKey', async () => {
-      const request: PaymentRequest = {
-        executionId: 'exec-1',
-        agentId: 'agent-1',
-        recipientWallet: 'So11111111111111111111111111111111111111112',
-        amountSOL: 1.0,
-        idempotencyKey: 'unique-key-1',
-        description: 'test payment',
-      };
-
-      // First call should process normally
-      const result1 = await processor.processPayment(request);
-      expect(result1.status).toBe('confirmed'); // dryRun mode
-      const sig1 = result1.transactionSignature;
-
-      // Second call with same idempotencyKey should return cached result
-      const result2 = await processor.processPayment(request);
-      expect(result2.status).toBe(result1.status);
-      expect(result2.transactionSignature).toBe(sig1);
-    });
-
-    it('should process different idempotencyKeys separately', async () => {
-      const baseRequest: PaymentRequest = {
-        executionId: 'exec-1',
-        agentId: 'agent-1',
-        recipientWallet: 'So11111111111111111111111111111111111111112',
-        amountSOL: 1.0,
-        description: 'test payment',
-      };
-
-      const request1 = { ...baseRequest, idempotencyKey: 'key-1' };
-      const request2 = { ...baseRequest, idempotencyKey: 'key-2' };
-
-      const result1 = await processor.processPayment(request1);
-      const result2 = await processor.processPayment(request2);
-
-      expect(result1.transactionSignature).not.toBe(result2.transactionSignature);
-    });
-  });
-
-  describe('dry-run mode', () => {
-    it('should generate mock signatures in dryRun mode', async () => {
-      processor.setDryRun(true);
-
-      const request: PaymentRequest = {
-        executionId: 'exec-1',
-        agentId: 'agent-1',
-        recipientWallet: 'So11111111111111111111111111111111111111112',
-        amountSOL: 0.001, // Small amount to avoid random balance issues
-        idempotencyKey: 'dry-run-key-1',
-        description: 'test payment',
-      };
-
-      const result = await processor.processPayment(request);
-      expect(result.status).toBe('confirmed');
-      expect(result.transactionSignature).toBeDefined();
-      expect(result.transactionSignature.length).toBeGreaterThan(0);
-    });
-  });
-
-  describe('payment history', () => {
-    it('should track payment history', async () => {
-      const request: PaymentRequest = {
-        executionId: 'exec-1',
-        agentId: 'agent-1',
-        recipientWallet: 'So11111111111111111111111111111111111111112',
-        amountSOL: 1.0,
-        idempotencyKey: 'history-key-1',
-        description: 'test payment',
-      };
-
-      await processor.processPayment(request);
-
-      const history = processor.getPaymentHistory();
-      expect(history.length).toBeGreaterThan(0);
-      expect(history[0].executionId).toBe('exec-1');
-      expect(history[0].amountSOL).toBe(1.0);
-    });
-
-    it('should filter history by executionId', async () => {
-      const request1: PaymentRequest = {
-        executionId: 'exec-1',
-        agentId: 'agent-1',
-        recipientWallet: 'So11111111111111111111111111111111111111112',
-        amountSOL: 1.0,
-        idempotencyKey: 'key-exec-1',
-        description: 'test',
-      };
-
-      const request2: PaymentRequest = {
-        executionId: 'exec-2',
-        agentId: 'agent-1',
-        recipientWallet: 'So11111111111111111111111111111111111111112',
-        amountSOL: 2.0,
-        idempotencyKey: 'key-exec-2',
-        description: 'test',
-      };
-
-      await processor.processPayment(request1);
-      await processor.processPayment(request2);
-
-      const execHistory = processor.getPaymentHistory('exec-1');
-      expect(execHistory.length).toBe(1);
-      expect(execHistory[0].executionId).toBe('exec-1');
-      expect(execHistory[0].amountSOL).toBe(1.0);
-    });
-  });
-
-  describe('wallet balance', () => {
-    it('should check wallet balance', async () => {
-      const balance = await processor.checkWalletBalance('So11111111111111111111111111111111111111112');
-      expect(balance).toBeDefined();
-      expect(balance.balanceSOL).toBeGreaterThanOrEqual(0);
-      expect(balance.balanceLamports).toBeGreaterThanOrEqual(0);
-    });
-
-    it('should cache balance results', async () => {
-      const wallet = 'So11111111111111111111111111111111111111112';
-      const balance1 = await processor.checkWalletBalance(wallet);
-      const balance2 = await processor.checkWalletBalance(wallet);
-
-      expect(balance1.balanceSOL).toBe(balance2.balanceSOL);
-    });
-  });
-
-  describe('payment with metadata', () => {
-    it('should include metadata in payment result', async () => {
-      const request: PaymentRequest = {
-        executionId: 'exec-1',
-        agentId: 'agent-1',
-        recipientWallet: 'So11111111111111111111111111111111111111112',
-        amountSOL: 1.0,
-        idempotencyKey: 'meta-key-1',
-        description: 'test payment',
+    it('does not convert metadata into settlement evidence', async () => {
+      const result = await processor.processPayment(payment({
         metadata: {
           orchestrationId: 'orch-123',
           taskType: 'reputation-settlement',
         },
-      };
+      }));
 
-      const result = await processor.processPayment(request);
-      expect(result.status).toBe('confirmed');
+      expect(result.status).toBe('failed');
+      expect(result.transactionSignature).toBe('');
+      expect(result.error).toBe('DRY_RUN_DOES_NOT_EXECUTE_PAYMENT');
+    });
+
+    it('does not cache failed dry-run attempts as successful idempotent payments', async () => {
+      const request = payment({ idempotencyKey: 'same-key' });
+      const first = await processor.processPayment(request);
+      const second = await processor.processPayment(request);
+
+      expect(first.status).toBe('failed');
+      expect(second.status).toBe('failed');
+      expect(first.transactionSignature).toBe('');
+      expect(second.transactionSignature).toBe('');
+      expect(processor.getPaymentHistory()).toEqual([]);
+    });
+
+    it('keeps different failed dry-run requests out of confirmed payment history', async () => {
+      await processor.processPayment(payment({ idempotencyKey: 'key-a', executionId: 'exec-a' }));
+      await processor.processPayment(payment({ idempotencyKey: 'key-b', executionId: 'exec-b' }));
+
+      expect(processor.getPaymentHistory()).toEqual([]);
+      expect(processor.getPaymentHistory('exec-a')).toEqual([]);
+      expect(processor.getPaymentHistory('exec-b')).toEqual([]);
+    });
+
+    it('refuses to invent a wallet balance', async () => {
+      await expect(processor.checkWalletBalance(TREASURY)).rejects.toThrow(
+        'DRY_RUN_HAS_NO_VERIFIED_WALLET_BALANCE',
+      );
+    });
+  });
+
+  describe('live mode without a real executor', () => {
+    it('fails closed instead of synthesizing settlement when credentials are unavailable', async () => {
+      processor.setDryRun(false);
+      const result = await processor.processPayment(payment());
+
+      expect(result.status).toBe('failed');
+      expect(result.transactionSignature).toBe('');
+      expect(result.error).toContain('SOLANA_TRANSACTION_EXECUTOR_UNAVAILABLE');
+      expect(processor.getPaymentHistory()).toEqual([]);
+    });
+
+    it('does not fabricate wallet balance without an initialized executor', async () => {
+      processor.setDryRun(false);
+      await expect(processor.checkWalletBalance(TREASURY)).rejects.toThrow(
+        'SOLANA_TRANSACTION_EXECUTOR_UNAVAILABLE',
+      );
     });
   });
 });
