@@ -102,11 +102,13 @@ export async function buildHealthReport() {
   // behind the limiter while health reports as operational.
   const strictReadiness = readBoolean(process.env.READINESS_STRICT,
     process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL));
-  // In non-strict mode the readiness gate already covers credentials and
-  // the environment; a transient DB timeout must not take the whole
-  // service offline for monitoring purposes (readiness.ok treats the
-  // live Supabase probe as informational and defers to
-  // /api/finance-governance/readiness for authoritative DB health).
+  // In non-strict mode (self-hosted / Railway commercial deploys) the
+  // readiness gate already covers credentials and the environment; a
+  // transient DB timeout must not take the whole service offline for
+  // monitoring purposes (readiness.ok treats the live Supabase probe as
+  // informational and defers to /api/finance-governance/readiness for
+  // authoritative DB health). Core/DB probes remain visible in the
+  // payload but do not gate health when strict is off.
   const allOk = strictReadiness
     ? core.ok && dbOk && readiness.ok && rateLimiterConfigured
     : readiness.ok;
