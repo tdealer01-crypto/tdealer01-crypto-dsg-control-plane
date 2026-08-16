@@ -95,7 +95,16 @@ export async function buildHealthReport() {
     error?: unknown;
   };
 
-  const allOk = core.ok && dbOk && readiness.ok && rateLimiterConfigured;
+  // Strict mode remains fail-closed (rate limiter must be configured
+  // alongside the full check matrix). Non-strict / self-hosted deploys
+  // (e.g. Railway commercial service) can operate without the
+  // distributed Redis layer — the execute gate still fails closed
+  // behind the limiter while health reports as operational.
+  const strictReadiness = readBoolean(process.env.READINESS_STRICT,
+    process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL));
+  const allOk = strictReadiness
+    ? core.ok && dbOk && readiness.ok && rateLimiterConfigured
+    : readiness.ok && dbOk;
 
   const payload = {
     ok: allOk,
@@ -104,7 +113,6 @@ export async function buildHealthReport() {
     core_ok: core.ok,
     db_ok: dbOk,
     error: allOk ? null : (
-      !rateLimiterConfigured ? 'rate_limiter_misconfigured' :
       !dbOk ? 'db_unreachable' :
       (coreDetails.error ?? 'release_not_ready')
     ),
@@ -125,4 +133,12 @@ export async function buildHealthReport() {
   };
 
   return { payload, status: allOk ? 200 : 503 };
+}
+
+function readBoolean(value: string | undefined, fallback: boolean): boolean {
+  if (value == null) return fallback;
+  const normalized = value.trim().toLowerCase();
+  if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+  if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+  return fallback;
 }
