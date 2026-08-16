@@ -20,7 +20,6 @@ export interface TestCoverageResult {
   blockedReasons: string[];
 }
 
-// Z3 invariant: new_coverage_gte_prev must hold — coverage only moves up.
 export async function runTestCoverage(input: TestCoverageInput): Promise<TestCoverageResult> {
   const threshold = input.threshold ?? 80;
   const newCoverageGtePrev = input.currentCoveragePct >= input.previousCoveragePct;
@@ -28,7 +27,7 @@ export async function runTestCoverage(input: TestCoverageInput): Promise<TestCov
   const seedResult = await seedData({
     dataType: 'test_coverage',
     query: `coverage report for job ${input.jobId}`,
-    requiredEvidence: false,
+    requiredEvidence: true,
     context: JSON.stringify({ previous: input.previousCoveragePct, current: input.currentCoveragePct }),
   });
 
@@ -37,21 +36,29 @@ export async function runTestCoverage(input: TestCoverageInput): Promise<TestCov
     jobId: input.jobId,
     workspaceId: input.workspaceId,
     goalLocked: true,
-    gateAllow: newCoverageGtePrev,
+    gateAllow: newCoverageGtePrev && seedResult.ok,
     evidenceExists: seedResult.ok,
     mockState: false,
-    testRunComplete: true,
+    testRunComplete: seedResult.ok,
     newCoverageGtePrev,
+    dataNeeded: true,
+    dataUnknown: !seedResult.ok,
+    searchAttempted: seedResult.searchAttempted,
   });
 
+  const blockedReasons = [
+    ...z3Result.violations.map((violation) => violation.code),
+    ...(seedResult.ok ? [] : [seedResult.blockReason ?? 'COVERAGE_EVIDENCE_UNAVAILABLE']),
+  ];
+
   return {
-    ok: z3Result.pass,
+    ok: z3Result.pass && seedResult.ok && newCoverageGtePrev,
     jobId: input.jobId,
     previousCoveragePct: input.previousCoveragePct,
     currentCoveragePct: input.currentCoveragePct,
     coverageIncreased: newCoverageGtePrev,
     needsMoreTests: input.currentCoveragePct < threshold,
     z3ProofHash: z3Result.z3ProofHash,
-    blockedReasons: z3Result.violations.map((v) => v.code),
+    blockedReasons,
   };
 }
