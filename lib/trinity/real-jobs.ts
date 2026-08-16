@@ -3,14 +3,41 @@
  * Replaces mock data with live job platforms and governance
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+// Do not construct the Supabase client at module evaluation time. Next.js
+// evaluates route imports while collecting page data during production builds;
+// a malformed runtime URL must not crash the entire build. Runtime operations
+// still fail closed when the database configuration is missing or invalid.
+let supabaseClient: SupabaseClient | null | undefined;
 
-const supabase = supabaseUrl && supabaseServiceKey
-  ? createClient(supabaseUrl, supabaseServiceKey)
-  : null;
+function getSupabaseClient(): SupabaseClient | null {
+  if (supabaseClient !== undefined) {
+    return supabaseClient;
+  }
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !supabaseServiceKey) {
+    supabaseClient = null;
+    return supabaseClient;
+  }
+
+  try {
+    const parsed = new URL(supabaseUrl);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      supabaseClient = null;
+      return supabaseClient;
+    }
+
+    supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
+  } catch {
+    supabaseClient = null;
+  }
+
+  return supabaseClient;
+}
 
 // Cache for API results (5 minutes)
 const cache = new Map<string, { data: any; expiry: number }>();
@@ -113,7 +140,8 @@ export async function discoverJobsReal(
       jobs.push(...solanaGrants);
     }
 
-    // Load internal DSG jobs from Supabase if connected
+    // Load internal DSG jobs from Supabase if connected.
+    const supabase = getSupabaseClient();
     if (supabase) {
       try {
         const { data: dsgJobs } = await supabase
@@ -184,6 +212,7 @@ export async function executeJobReal(
   _executionTimeTarget?: number
 ): Promise<any> {
   try {
+    const supabase = getSupabaseClient();
     if (!supabase) {
       return { error: 'Database not configured' };
     }
@@ -244,6 +273,7 @@ export async function verifyDeliverableReal(
   qualityCriteria?: string
 ): Promise<any> {
   try {
+    const supabase = getSupabaseClient();
     if (!supabase) {
       return { error: 'Database not configured' };
     }
@@ -326,6 +356,7 @@ export async function settlePaymentReal(
   amountSol: number
 ): Promise<any> {
   try {
+    const supabase = getSupabaseClient();
     if (!supabase) {
       return { error: 'Database not configured' };
     }
@@ -380,6 +411,7 @@ export async function validateGovernanceReal(
   constraints?: Record<string, any>
 ): Promise<any> {
   try {
+    const supabase = getSupabaseClient();
     if (!supabase) {
       return { error: 'Database not configured' };
     }

@@ -170,7 +170,10 @@ jobs:
           test -n "$PREVIEW_URL"
           echo "preview_url=$PREVIEW_URL" >> "$GITHUB_OUTPUT"
       - name: Smoke preview health
-        run: curl --fail --retry 5 --retry-delay 5 "${{ steps.preview.outputs.preview_url }}/api/health"
+        env:
+          HEALTH_VERIFY_ATTEMPTS: '8'
+          HEALTH_VERIFY_DELAY_MS: '5000'
+        run: node scripts/verify-health-url.mjs "${{ steps.preview.outputs.preview_url }}/api/health"
       - name: Comment PR with preview URL
         uses: actions/github-script@v7
         with:
