@@ -11,7 +11,7 @@ type Body = {
   tasks?: unknown;
   agentCapacities?: unknown;
   seed?: unknown;
-  useMock?: unknown;
+  solverMode?: unknown;
   timeout?: unknown;
   exactProofMaxVariables?: unknown;
 };
@@ -34,12 +34,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (body.solverMode !== undefined && body.solverMode !== 'local' && body.solverMode !== 'live') {
+      return NextResponse.json(
+        { ok: false, error: 'solverMode must be local or live' },
+        { status: 400 },
+      );
+    }
+
     const result = await runVerifiedOptimizationPipeline({
       problemId: body.problemId,
       tasks: body.tasks as Task[],
       agentCapacities: body.agentCapacities as AgentCapacity[],
       seed: typeof body.seed === 'number' ? body.seed : 0,
-      useMock: typeof body.useMock === 'boolean' ? body.useMock : undefined,
+      solverMode: body.solverMode as 'local' | 'live' | undefined,
       timeout: typeof body.timeout === 'number' ? body.timeout : undefined,
       exactProofMaxVariables:
         typeof body.exactProofMaxVariables === 'number' ? body.exactProofMaxVariables : undefined,
@@ -56,13 +63,6 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    // The raw message was echoed to the client here, which
-    // scripts/check-error-handlers.sh fails as error-message leakage: this
-    // catch also receives internal failures, not just the pipeline's input
-    // validation. 400 is kept because the throws that reach it are dominated
-    // by bad request payloads, so the status is unchanged and only the
-    // message stops crossing the boundary. handleApiError still logs the real
-    // error server-side with redaction.
     return handleApiError('api/dsg-one/optimization/verify', error, { status: 400 });
   }
 }
