@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
-import { testMemoryStore } from '@/lib/superteam/test-store';
 import { randomBytes } from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -16,15 +15,25 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { agentName } = body;
 
-    if (!agentName) {
+    if (!agentName || typeof agentName !== 'string') {
       return NextResponse.json(
         { error: 'agentName required' },
         { status: 400 }
       );
     }
 
-    // Generate mock registration data (since we're in test mode)
-    const mockRegistration = {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !serviceRoleKey) {
+      console.error('[superteam/register] Supabase is not configured');
+      return NextResponse.json(
+        { error: 'registration_service_unavailable' },
+        { status: 503 }
+      );
+    }
+
+    const registration = {
       agentId: `agent_${Date.now()}_${generateRandomString(7)}`,
       claimCode: `CLAIM_${generateRandomString(6).toUpperCase()}`,
       apiKey: `sk_${generateRandomString(18)}`,
@@ -34,60 +43,37 @@ export async function POST(request: NextRequest) {
         .slice(0, 30),
     };
 
-    // Try to store in Supabase (with fallback)
-    try {
-      const supabase = createServiceClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    const supabase = createServiceClient(supabaseUrl, serviceRoleKey);
+    const { error } = await supabase.from('dsg_agents').insert({
+      id: registration.agentId,
+      name: agentName,
+      api_key: registration.apiKey,
+      claim_code: registration.claimCode,
+      username: registration.username,
+      status: 'active',
+      created_at: new Date().toISOString(),
+    });
+
+    if (error) {
+      console.error('[superteam/register] Supabase insert failed:', error.message);
+      return NextResponse.json(
+        { error: 'registration_persistence_failed' },
+        { status: 503 }
       );
-
-      const { error } = await supabase.from('dsg_agents').insert({
-        id: mockRegistration.agentId,
-        name: agentName,
-        api_key: mockRegistration.apiKey,
-        claim_code: mockRegistration.claimCode,
-        username: mockRegistration.username,
-        status: 'active',
-        created_at: new Date().toISOString(),
-      });
-
-      if (error) {
-        throw new Error(`Supabase insert error: ${error.message}`);
-      }
-
-      console.log(`✅ Agent stored in Supabase: ${mockRegistration.agentId}`);
-    } catch (dbError) {
-      // Fallback to memory store if DB unavailable
-      console.warn(
-        `⚠️ Supabase unavailable, using memory store: ${String(dbError).slice(0, 100)}`
-      );
-      testMemoryStore.setAgent({
-        id: mockRegistration.agentId,
-        name: agentName,
-        apiKey: mockRegistration.apiKey,
-        claimCode: mockRegistration.claimCode,
-        username: mockRegistration.username,
-        createdAt: Date.now(),
-      });
     }
 
     return NextResponse.json({
       success: true,
       registration: {
-        agentId: mockRegistration.agentId,
-        username: mockRegistration.username,
-        claimCode: mockRegistration.claimCode,
-        // Never return API key to client
+        agentId: registration.agentId,
+        username: registration.username,
+        claimCode: registration.claimCode,
       },
-      _testMode: process.env.NODE_ENV === 'development',
     });
   } catch (error) {
     console.error('Agent registration error:', error);
     return NextResponse.json(
-      {
-        error: 'Registration failed',
-        details: String(error),
-      },
+      { error: 'Registration failed' },
       { status: 500 }
     );
   }
