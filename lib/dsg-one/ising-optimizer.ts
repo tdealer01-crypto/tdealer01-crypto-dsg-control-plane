@@ -5,9 +5,9 @@
  * - local: deterministic in-process QUBO solver from ising-solver-core.
  * - live: configured external solver endpoint.
  *
- * The local solver is a real algorithmic solver, not a simulated provider.
- * Live failures are surfaced by default. A caller may explicitly permit a
- * fallback to the local solver, which is recorded in the returned mode.
+ * The local solver is a real algorithmic solver. Live failures are surfaced by
+ * default. A caller may explicitly permit fallback to the local solver, which
+ * is recorded in the returned mode.
  */
 
 import type { QUBOMatrix } from './qubo-builder';
@@ -22,10 +22,6 @@ export interface IsingOptimizationRequest {
   solverMode?: 'local' | 'live';
   seed?: number;
   fallbackToLocal?: boolean;
-  // Transitional compatibility for older internal callers. Unknown legacy
-  // options never enable a synthetic solver; they are interpreted below only
-  // to preserve local-vs-live intent while callsites migrate.
-  [legacyOption: string]: unknown;
 }
 
 export interface IsingOptimizationResult {
@@ -59,17 +55,10 @@ export function resolveIsingLiveConfig(): IsingLiveConfig | null {
   return { url, apiKey };
 }
 
-function readLegacyBoolean(req: IsingOptimizationRequest, parts: string[]): boolean | undefined {
-  const value = req[parts.join('')];
-  return typeof value === 'boolean' ? value : undefined;
-}
-
 export async function optimizeWithIsing(
   req: IsingOptimizationRequest,
 ): Promise<IsingOptimizationResult> {
-  const legacyLocalFlag = readLegacyBoolean(req, ['use', 'Mock']);
-  const legacyFallbackFlag = readLegacyBoolean(req, ['fallbackTo', 'Mock']);
-  const mode = req.solverMode ?? (legacyLocalFlag === false ? 'live' : 'local');
+  const mode = req.solverMode ?? 'local';
 
   if (mode === 'local') {
     return solveWithLocalIsing(req.quboMatrix, req.seed);
@@ -77,17 +66,14 @@ export async function optimizeWithIsing(
 
   const config = resolveIsingLiveConfig();
   if (!config) {
-    throw new IsingConfigError(
-      'Live Ising solve requested but NVIDIA_ISING_API_URL is not set',
-    );
+    throw new IsingConfigError('Live Ising solve requested but NVIDIA_ISING_API_URL is not set');
   }
 
   try {
     return await callLiveIsingSolver(req, config);
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
-    const allowLocalFallback = req.fallbackToLocal === true || legacyFallbackFlag === true;
-    if (!allowLocalFallback) {
+    if (req.fallbackToLocal !== true) {
       throw new IsingSolverError(`Live Ising solve failed: ${reason}`);
     }
 
@@ -100,10 +86,7 @@ export async function optimizeWithIsing(
   }
 }
 
-function solveWithLocalIsing(
-  qubo: QUBOMatrix,
-  seed?: number,
-): IsingOptimizationResult {
+function solveWithLocalIsing(qubo: QUBOMatrix, seed?: number): IsingOptimizationResult {
   const startTime = Date.now();
   const solved = solveQubo({
     Q: qubo.Q,
@@ -118,7 +101,6 @@ function solveWithLocalIsing(
   }
 
   const energy = calculateQUBOEnergy(qubo, solution);
-
   return {
     solution,
     energy,
@@ -139,16 +121,6 @@ async function callLiveIsingSolver(
 ): Promise<IsingOptimizationResult> {
   const startTime = Date.now();
   const timeoutMs = Math.min(req.timeout ?? 5000, 30000);
-
-  const payload = {
-    problemId: req.problemId,
-    Q: req.quboMatrix.Q,
-    linear: req.quboMatrix.linear,
-    numVariables: req.quboMatrix.numVariables,
-    timeoutMs,
-    seed: req.seed,
-  };
-
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -160,7 +132,14 @@ async function callLiveIsingSolver(
         'Content-Type': 'application/json',
         ...(config.apiKey ? { Authorization: `Bearer ${config.apiKey}` } : {}),
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        problemId: req.problemId,
+        Q: req.quboMatrix.Q,
+        linear: req.quboMatrix.linear,
+        numVariables: req.quboMatrix.numVariables,
+        timeoutMs,
+        seed: req.seed,
+      }),
       signal: controller.signal,
     });
   } catch (error) {
@@ -174,16 +153,13 @@ async function callLiveIsingSolver(
     clearTimeout(timer);
   }
 
-  if (!response.ok) {
-    throw new Error(`solver HTTP ${response.status}`);
-  }
+  if (!response.ok) throw new Error(`solver HTTP ${response.status}`);
 
   const result = (await response.json()) as {
     solution?: unknown;
     version?: unknown;
     confidence?: unknown;
   };
-
   const solution = normalizeSolution(result.solution, req.quboMatrix);
   const energy = calculateQUBOEnergy(req.quboMatrix, solution);
   const confidence =
@@ -209,21 +185,13 @@ async function callLiveIsingSolver(
   };
 }
 
-function normalizeSolution(
-  apiSolution: unknown,
-  qubo: QUBOMatrix,
-): Record<string, number> {
+function normalizeSolution(apiSolution: unknown, qubo: QUBOMatrix): Record<string, number> {
   const raw: Record<string, unknown> = {};
-
   if (Array.isArray(apiSolution)) {
     if (apiSolution.length !== qubo.variables.length) {
-      throw new Error(
-        `solver returned ${apiSolution.length} values for ${qubo.variables.length} variables`,
-      );
+      throw new Error(`solver returned ${apiSolution.length} values for ${qubo.variables.length} variables`);
     }
-    for (let i = 0; i < qubo.variables.length; i += 1) {
-      raw[qubo.variables[i].id] = apiSolution[i];
-    }
+    for (let i = 0; i < qubo.variables.length; i += 1) raw[qubo.variables[i].id] = apiSolution[i];
   } else if (apiSolution !== null && typeof apiSolution === 'object') {
     Object.assign(raw, apiSolution as Record<string, unknown>);
   } else {
@@ -233,15 +201,10 @@ function normalizeSolution(
   const solution: Record<string, number> = {};
   for (const variable of qubo.variables) {
     const value = raw[variable.id];
-    if (value === 0 || value === false) {
-      solution[variable.id] = 0;
-    } else if (value === 1 || value === true) {
-      solution[variable.id] = 1;
-    } else {
-      throw new Error(`solver returned non-binary value for variable ${variable.id}`);
-    }
+    if (value === 0 || value === false) solution[variable.id] = 0;
+    else if (value === 1 || value === true) solution[variable.id] = 1;
+    else throw new Error(`solver returned non-binary value for variable ${variable.id}`);
   }
-
   return solution;
 }
 
