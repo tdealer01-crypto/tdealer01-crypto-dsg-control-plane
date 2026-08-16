@@ -14,6 +14,10 @@ export interface SeedRequest {
   dataType: SeedDataType;
   query: string;
   requiredEvidence: boolean;
+  /**
+   * Context is query context only. It is never accepted as evidence and is
+   * never hashed into a PASS result. A caller cannot self-certify its input.
+   */
   context?: string;
 }
 
@@ -29,61 +33,53 @@ export interface SeedResult {
   searchAttempted: boolean;
 }
 
-// Z3 invariant enforced at runtime:
-// data_needed ∧ data_unknown → must_search ∧ ¬can_proceed_without_search
-// If search fails and requiredEvidence=true → always BLOCK, never return guessed data.
+const EXTERNAL_CONTEXT_TYPES = new Set<SeedDataType>(['github_search', 'external_api']);
+
+/**
+ * Seed Engine accepts evidence only from a configured external connector.
+ * Caller-supplied JSON is never promoted to verified data.
+ */
 export async function seedData(request: SeedRequest): Promise<SeedResult> {
   const { dataType, query, requiredEvidence, context } = request;
 
-  let data: unknown = null;
-  let sourceUrl = '';
-  let searchAttempted = false;
+  if (!EXTERNAL_CONTEXT_TYPES.has(dataType)) {
+    return failedSeed(
+      dataType,
+      query,
+      `NO_VERIFIED_FETCHER_FOR_${dataType.toUpperCase()}${context ? ':CALLER_CONTEXT_REJECTED' : ''}`,
+      requiredEvidence,
+      false,
+    );
+  }
 
   try {
-    searchAttempted = true;
+    const externalQuery = context ? `${query}\nContext: ${context}` : query;
+    const { items } = await loadExternalAgentContext(externalQuery);
+    const used = items.find((item) => item.status === 'used' && item.data !== undefined);
 
-    if (dataType === 'github_search') {
-      const { items } = await loadExternalAgentContext(query);
-      const used = items.find((i) => i.status === 'used');
-      if (!used) {
-        if (requiredEvidence) {
-          return failedSeed(dataType, query, 'SEARCH_RETURNED_NO_RESULTS', true);
-        }
-        return failedSeed(dataType, query, 'SEARCH_RETURNED_NO_RESULTS', false);
-      }
-      data = used.data;
-      sourceUrl = used.sourceUrl ?? '';
-    } else if (dataType === 'external_api') {
-      const { items } = await loadExternalAgentContext(query);
-      const used = items.find((i) => i.status === 'used');
-      if (!used) {
-        return failedSeed(dataType, query, 'EXTERNAL_CONTEXT_UNAVAILABLE', requiredEvidence);
-      }
-      data = used.data;
-      sourceUrl = used.sourceUrl ?? '';
-    } else {
-      // For codebase_state, ci_status, test_coverage, deployment_status, browser_content:
-      // callers must inject data via their own fetcher — seed engine wraps with evidence
-      // This path is for pre-fetched data passed as context JSON
-      if (context) {
-        try {
-          data = JSON.parse(context);
-          sourceUrl = `internal:${dataType}`;
-        } catch {
-          return failedSeed(dataType, query, 'CONTEXT_PARSE_FAILED', requiredEvidence);
-        }
-      } else if (requiredEvidence) {
-        return failedSeed(dataType, query, 'NO_DATA_AND_NO_SEARCH_PATH', true);
-      } else {
-        return failedSeed(dataType, query, 'NO_DATA_SOURCE_CONFIGURED', false);
-      }
+    if (!used) {
+      return failedSeed(
+        dataType,
+        query,
+        dataType === 'github_search' ? 'SEARCH_RETURNED_NO_RESULTS' : 'EXTERNAL_CONTEXT_UNAVAILABLE',
+        requiredEvidence,
+        true,
+      );
     }
 
-    if (data === null || data === undefined) {
-      return failedSeed(dataType, query, 'SEARCH_RETURNED_EMPTY_DATA', requiredEvidence);
+    const sourceUrl = used.sourceUrl ?? '';
+    if (!sourceUrl) {
+      return failedSeed(dataType, query, 'EXTERNAL_SOURCE_URL_MISSING', requiredEvidence, true);
     }
 
-    const evidenceHash = sha256Json({ dataType, query, data, sourceUrl });
+    const data = used.data;
+    const evidenceHash = sha256Json({
+      dataType,
+      query,
+      data,
+      sourceUrl,
+      connectorEvidence: used.evidence ?? [],
+    });
 
     return {
       ok: true,
@@ -93,10 +89,10 @@ export async function seedData(request: SeedRequest): Promise<SeedResult> {
       evidenceHash,
       sourceUrl,
       gateStatus: 'PASS',
-      searchAttempted,
+      searchAttempted: true,
     };
   } catch (err) {
-    return failedSeed(dataType, query, String(err), requiredEvidence);
+    return failedSeed(dataType, query, String(err), requiredEvidence, true);
   }
 }
 
@@ -105,6 +101,7 @@ function failedSeed(
   query: string,
   reason: string,
   block: boolean,
+  searchAttempted: boolean,
 ): SeedResult {
   return {
     ok: false,
@@ -115,14 +112,14 @@ function failedSeed(
     sourceUrl: '',
     gateStatus: block ? 'BLOCK' : 'PASS',
     blockReason: reason,
-    searchAttempted: true,
+    searchAttempted,
   };
 }
 
 export function assertSeedPass(results: SeedResult[]): void {
-  const blocked = results.filter((r) => r.gateStatus === 'BLOCK');
+  const blocked = results.filter((result) => result.gateStatus === 'BLOCK');
   if (blocked.length > 0) {
-    const reasons = blocked.map((r) => `${r.dataType}:${r.blockReason}`).join(', ');
+    const reasons = blocked.map((result) => `${result.dataType}:${result.blockReason}`).join(', ');
     throw new Error(`SEED_ENGINE_BLOCK: ${reasons}`);
   }
 }
