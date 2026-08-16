@@ -4,19 +4,46 @@ import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { internalErrorMessage, logApiError } from '../../../../lib/security/api-error';
 import { captureEvent } from '../../../../lib/telemetry/capture-event';
 
-export async function POST() {
-  const supabase = await createClient();
+type ProvisionUser = { id: string; email: string };
 
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
+function getBearerToken(headers: Headers): string | undefined {
+  const value = headers.get('authorization');
+  if (!value?.toLowerCase().startsWith('bearer ')) return undefined;
+  return value.slice('bearer '.length).trim();
+}
 
-  if (userError || !user?.id || !user.email) {
-    return NextResponse.json(
-      { ok: false, reason: 'UNAUTHENTICATED' },
-      { status: 401 }
-    );
+async function resolveUserFromBearer(bearerToken: string): Promise<ProvisionUser | null> {
+  try {
+    const admin = getSupabaseAdmin();
+    const { data, error } = await (admin as any).auth.getUser(bearerToken);
+    if (error || !data?.user?.id || !data.user.email) return null;
+    return { id: data.user.id, email: data.user.email };
+  } catch {
+    return null;
+  }
+}
+
+export async function POST(request: Request) {
+  // Prefer an Authorization: Bearer JWT so programmatic clients (MCP bridges,
+  // CLI installers) can provision access without a session cookie.
+  const bearerToken = getBearerToken(request.headers);
+  let user: ProvisionUser | null = bearerToken ? await resolveUserFromBearer(bearerToken) : null;
+
+  if (!user) {
+    const supabase = await createClient();
+
+    const {
+      data: { user: sessionUser },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !sessionUser?.id || !sessionUser.email) {
+      return NextResponse.json(
+        { ok: false, reason: 'UNAUTHENTICATED' },
+        { status: 401 }
+      );
+    }
+    user = { id: sessionUser.id, email: sessionUser.email };
   }
 
   const admin = getSupabaseAdmin();
