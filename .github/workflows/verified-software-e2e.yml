@@ -1,0 +1,316 @@
+name: Verified Software E2E
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      release:
+        description: "Request production release verification before governed promotion"
+        required: true
+        default: false
+        type: boolean
+      benchmark_base_url:
+        description: "Staging/public DSG URL used for the required release benchmark"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify-software:
+    name: Scan → Test → Benchmark → Evidence Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    outputs:
+      gate_status: ${{ steps.meta.outputs.gate_status }}
+      evidence_bundle_hash: ${{ steps.meta.outputs.evidence_bundle_hash }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prepare evidence directory
+        run: mkdir -p .dsg-evidence
+
+      - name: Static scan
+        id: scan
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run lint 2>&1 | tee .dsg-evidence/scan.log
+
+      - name: Type check
+        id: typecheck
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run typecheck 2>&1 | tee .dsg-evidence/typecheck.log
+
+      - name: Unit tests
+        id: unit
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run test:unit -- --reporter=dot 2>&1 | tee .dsg-evidence/unit.log
+
+      - name: Production build
+        id: build
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run build 2>&1 | tee .dsg-evidence/build.log
+
+      - name: Dependency security scan
+        id: security
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          npm audit --omit=dev --audit-level=high --json 2>&1 | tee .dsg-evidence/security.log
+
+      - name: Credentialed release benchmark
+        id: benchmark
+        if: github.event_name == 'workflow_dispatch' && inputs.release == true
+        continue-on-error: true
+        shell: bash
+        env:
+          BENCHMARK_BASE_URL: ${{ inputs.benchmark_base_url }}
+          BENCHMARK_API_KEY: ${{ secrets.BENCHMARK_API_KEY }}
+          BENCHMARK_AGENT_ID: ${{ secrets.BENCHMARK_AGENT_ID }}
+          BENCHMARK_ACTION: scan
+          BENCHMARK_CASES_FILE: benchmarks/cases/gate-cases.json
+          BENCHMARK_OUT_DIR: artifacts/benchmark
+        run: |
+          set -o pipefail
+          test -n "$BENCHMARK_BASE_URL" || { echo 'BENCHMARK_BASE_URL missing' | tee .dsg-evidence/benchmark.log; exit 1; }
+          test -n "$BENCHMARK_API_KEY" || { echo 'BENCHMARK_API_KEY missing' | tee .dsg-evidence/benchmark.log; exit 1; }
+          test -n "$BENCHMARK_AGENT_ID" || { echo 'BENCHMARK_AGENT_ID missing' | tee .dsg-evidence/benchmark.log; exit 1; }
+          npm run benchmark 2>&1 | tee .dsg-evidence/benchmark.log
+          cp artifacts/benchmark/benchmark-result.json .dsg-evidence/benchmark-result.json
+          cp artifacts/benchmark/benchmark-summary.md .dsg-evidence/benchmark-summary.md
+
+      - name: Build hashed evidence bundle
+        if: always()
+        env:
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          SCAN_OUTCOME: ${{ steps.scan.outcome }}
+          TYPECHECK_OUTCOME: ${{ steps.typecheck.outcome }}
+          UNIT_OUTCOME: ${{ steps.unit.outcome }}
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+          SECURITY_OUTCOME: ${{ steps.security.outcome }}
+          BENCHMARK_OUTCOME: ${{ steps.benchmark.outcome }}
+          BENCHMARK_REQUIRED: ${{ github.event_name == 'workflow_dispatch' && inputs.release == true }}
+        run: node scripts/build-software-evidence.mjs
+
+      - name: Evaluate deterministic software evidence gate
+        if: always()
+        continue-on-error: true
+        run: >-
+          node scripts/verified-software-gate.mjs
+          --input .dsg-evidence/software-evidence.json
+          --output .dsg-evidence/software-gate.json
+
+      - name: Read gate metadata
+        id: meta
+        if: always()
+        run: |
+          node --input-type=module <<'NODE' >> "$GITHUB_OUTPUT"
+          import { readFile } from 'node:fs/promises';
+          const gate = JSON.parse(await readFile('.dsg-evidence/software-gate.json', 'utf8'));
+          process.stdout.write(`gate_status=${gate.status}\n`);
+          process.stdout.write(`evidence_bundle_hash=${gate.evidenceBundleHash}\n`);
+          NODE
+
+      - name: Print machine-readable gate result
+        if: always()
+        run: cat .dsg-evidence/software-gate.json
+
+      - name: User-facing result
+        if: always()
+        run: |
+          echo '## DSG Verified Software E2E' >> "$GITHUB_STEP_SUMMARY"
+          node --input-type=module <<'NODE' >> "$GITHUB_STEP_SUMMARY"
+          import { readFile } from 'node:fs/promises';
+          const gate = JSON.parse(await readFile('.dsg-evidence/software-gate.json', 'utf8'));
+          console.log(`\n**Result:** ${gate.status}`);
+          console.log(`\n**Evidence:** \`${gate.evidenceBundleHash}\``);
+          if (gate.blockers.length) {
+            console.log('\n**Must fix:**');
+            for (const blocker of gate.blockers) console.log(`- ${blocker}`);
+          }
+          if (gate.warnings.length) {
+            console.log('\n**Warnings:**');
+            for (const warning of gate.warnings) console.log(`- ${warning}`);
+          }
+          console.log(`\n**Next:** ${gate.nextAction}`);
+          console.log(`\n> ${gate.truthBoundary}`);
+          NODE
+
+      - name: Upload verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dsg-software-evidence-${{ github.run_id }}
+          path: .dsg-evidence/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Enforce evidence gate
+        if: always()
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFile } from 'node:fs/promises';
+          const gate = JSON.parse(await readFile('.dsg-evidence/software-gate.json', 'utf8'));
+          if (gate.status !== 'READY_FOR_DSG_GATE') {
+            console.error(JSON.stringify(gate, null, 2));
+            console.error(`BLOCK: ${gate.blockers.join(', ')}`);
+            process.exit(1);
+          }
+          console.log('READY_FOR_DSG_GATE');
+          NODE
+
+  dsg-production-gate:
+    name: Canonical DSG Production Gate
+    needs: verify-software
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      inputs.release == true &&
+      github.ref == 'refs/heads/main' &&
+      needs.verify-software.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      gate_status: ${{ steps.meta.outputs.gate_status }}
+      proof_hash: ${{ steps.meta.outputs.proof_hash }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Require real DSG credential
+        env:
+          DSG_API_KEY: ${{ secrets.DSG_API_KEY }}
+        run: |
+          test -n "$DSG_API_KEY" || {
+            echo 'DSG_API_KEY missing: production authorization is unverified.' >&2
+            exit 1
+          }
+
+      - name: Build exact release context
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+          SOFTWARE_EVIDENCE_HASH: ${{ needs.verify-software.outputs.evidence_bundle_hash }}
+        run: |
+          mkdir -p .dsg-release
+          node --input-type=module <<'NODE'
+          import { writeFile } from 'node:fs/promises';
+          const body = {
+            target: 'production',
+            commit: process.env.COMMIT_SHA,
+            softwareEvidenceBundleHash: process.env.SOFTWARE_EVIDENCE_HASH,
+            requestedEffect: 'deploy_production',
+          };
+          await writeFile('.dsg-release/context.json', `${JSON.stringify(body, null, 2)}\n`);
+          NODE
+
+      - name: Obtain remote DSG PASS
+        env:
+          DSG_API_KEY: ${{ secrets.DSG_API_KEY }}
+          DSG_CONTROL_PLANE_URL: ${{ secrets.DSG_CONTROL_PLANE_URL }}
+        shell: bash
+        run: |
+          set -o pipefail
+          node skills/dsg-production-gate/scripts/dsg-production-gate.mjs evaluate \
+            --risk high \
+            --action deploy_production \
+            --plan-id "software-release-${{ github.sha }}" \
+            --context-file .dsg-release/context.json \
+            | tee .dsg-release/dsg-gate.json
+
+      - name: Read DSG proof metadata
+        id: meta
+        run: |
+          node --input-type=module <<'NODE' >> "$GITHUB_OUTPUT"
+          import { readFile } from 'node:fs/promises';
+          const gate = JSON.parse(await readFile('.dsg-release/dsg-gate.json', 'utf8'));
+          if (gate.gateStatus !== 'PASS' || gate.canProceed !== true) process.exit(1);
+          process.stdout.write(`gate_status=${gate.gateStatus}\n`);
+          process.stdout.write(`proof_hash=${gate.proofHash ?? ''}\n`);
+          NODE
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dsg-production-gate-${{ github.run_id }}
+          path: .dsg-release/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 90
+
+  governed-promotion-handoff:
+    name: Verified Release → Governed Promotion Handoff
+    needs: [verify-software, dsg-production-gate]
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      inputs.release == true &&
+      github.ref == 'refs/heads/main' &&
+      needs.dsg-production-gate.outputs.gate_status == 'PASS'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Build immutable promotion handoff evidence
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+          SOFTWARE_EVIDENCE_HASH: ${{ needs.verify-software.outputs.evidence_bundle_hash }}
+          DSG_PROOF_HASH: ${{ needs.dsg-production-gate.outputs.proof_hash }}
+        run: |
+          mkdir -p .dsg-release
+          node --input-type=module <<'NODE'
+          import { createHash } from 'node:crypto';
+          import { writeFile } from 'node:fs/promises';
+          const body = {
+            schema: 'dsg.verified-release-handoff.v1',
+            commit: process.env.COMMIT_SHA,
+            softwareEvidenceBundleHash: process.env.SOFTWARE_EVIDENCE_HASH,
+            dsgProofHash: process.env.DSG_PROOF_HASH,
+            productionPath: '.github/workflows/promoted-production-deploy.yml',
+            requiredState: 'promotion record pending or approved for this exact current main commit',
+            productionExecuted: false,
+          };
+          const canonical = JSON.stringify(body, Object.keys(body).sort());
+          const handoffHash = `sha256:${createHash('sha256').update(canonical).digest('hex')}`;
+          await writeFile('.dsg-release/promotion-handoff.json', `${JSON.stringify({ ...body, handoffHash }, null, 2)}\n`);
+          NODE
+
+      - name: Upload verified promotion handoff
+        uses: actions/upload-artifact@v4
+        with:
+          name: dsg-promotion-handoff-${{ github.run_id }}
+          path: .dsg-release/promotion-handoff.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Release handoff summary
+        run: |
+          echo '## DSG Verified Release Handoff' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Software evidence: READY_FOR_DSG_GATE' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Required release benchmark: PASS' >> "$GITHUB_STEP_SUMMARY"
+          echo '- DSG production gate: PASS' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Production mutation: NOT EXECUTED by this workflow' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Next: request an audited promotion for this exact current main commit and run the sole governed production deployment workflow.' >> "$GITHUB_STEP_SUMMARY"
