@@ -118,6 +118,10 @@ jobs:
           process.stdout.write(`evidence_bundle_hash=${gate.evidenceBundleHash}\n`);
           NODE
 
+      - name: Print machine-readable gate result
+        if: always()
+        run: cat .dsg-evidence/software-gate.json
+
       - name: User-facing result
         if: always()
         run: |
@@ -145,6 +149,7 @@ jobs:
         with:
           name: dsg-software-evidence-${{ github.run_id }}
           path: .dsg-evidence/
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 30
 
@@ -155,6 +160,7 @@ jobs:
           import { readFile } from 'node:fs/promises';
           const gate = JSON.parse(await readFile('.dsg-evidence/software-gate.json', 'utf8'));
           if (gate.status !== 'READY_FOR_DSG_GATE') {
+            console.error(JSON.stringify(gate, null, 2));
             console.error(`BLOCK: ${gate.blockers.join(', ')}`);
             process.exit(1);
           }
@@ -233,6 +239,7 @@ jobs:
         with:
           name: dsg-production-gate-${{ github.run_id }}
           path: .dsg-release/
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 90
 
@@ -311,6 +318,7 @@ jobs:
         with:
           name: dsg-release-proof-${{ github.run_id }}
           path: .dsg-release/
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 90
 
