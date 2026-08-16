@@ -2,12 +2,11 @@
  * Stripe Gateway Provider
  *
  * Executes approved Stripe operations after gateway policy evaluation passes.
- * Responsible for calling the Stripe API and returning results.
- *
- * Phase 4: Gateway Integration scaffold
+ * This module never returns synthetic payment IDs or success states.
  */
 
 import type { GatewayToolProviderResult, GatewayToolRequest } from '@/lib/gateway/types';
+import { getStripeClient } from '@/lib/stripe-products';
 
 export interface StripeExecutionInput {
   amount_cents?: number;
@@ -19,54 +18,65 @@ export interface StripeExecutionInput {
   [key: string]: unknown;
 }
 
-/**
- * Execute an approved Stripe charge operation
- *
- * @param input - Charge parameters
- * @returns Execution result with charge ID or error
- *
- * SCAFFOLD: Currently logs and returns mock result.
- * Implementation: Connect to actual Stripe SDK.
- */
+function metadataToStrings(metadata?: Record<string, unknown>): Record<string, string> | undefined {
+  if (!metadata) return undefined;
+  return Object.fromEntries(
+    Object.entries(metadata).map(([key, value]) => [key, String(value)])
+  );
+}
+
+function requirePositiveAmount(amount: unknown): number {
+  if (typeof amount !== 'number' || !Number.isInteger(amount) || amount <= 0) {
+    throw new Error('invalid_amount_cents');
+  }
+  return amount;
+}
+
+function requireCurrency(currency: unknown): string {
+  if (typeof currency !== 'string' || !/^[a-zA-Z]{3}$/.test(currency)) {
+    throw new Error('invalid_currency');
+  }
+  return currency.toLowerCase();
+}
+
 export async function executeChargeCreate(
   input: StripeExecutionInput
 ): Promise<GatewayToolProviderResult> {
   try {
-    // SCAFFOLD: Log the operation
-    console.log('[STRIPE-GATEWAY] executeChargeCreate:', {
-      amount_cents: input.amount_cents,
-      currency: input.currency,
+    const amount = requirePositiveAmount(input.amount_cents);
+    const currency = requireCurrency(input.currency);
+    if (!input.customer_id || typeof input.customer_id !== 'string') {
+      throw new Error('customer_id_required');
+    }
+
+    const stripe = getStripeClient();
+    const charge = await stripe.charges.create({
+      amount,
+      currency,
+      customer: input.customer_id,
       description: input.description,
+      metadata: metadataToStrings(input.metadata),
     });
 
-    // TODO: Implement actual Stripe API call
-    // const stripe = getStripeClient();
-    // const charge = await stripe.charges.create({
-    //   amount: input.amount_cents,
-    //   currency: input.currency,
-    //   customer: input.customer_id,
-    //   description: input.description,
-    //   metadata: input.metadata,
-    // });
-
-    // SCAFFOLD: Return mock result
     return {
-      ok: true,
-      provider: 'custom_http',
+      ok: charge.status === 'succeeded',
+      provider: 'stripe',
       toolName: 'stripe.charge.create',
       action: 'charge.create',
       target: 'stripe',
       result: {
-        charge_id: `ch_mock_${Date.now()}`,
-        amount_cents: input.amount_cents,
-        currency: input.currency,
-        status: 'succeeded',
+        charge_id: charge.id,
+        amount_cents: charge.amount,
+        currency: charge.currency,
+        status: charge.status,
+        paid: charge.paid,
       },
+      error: charge.status === 'succeeded' ? undefined : `stripe_charge_${charge.status}`,
     };
   } catch (error) {
     return {
       ok: false,
-      provider: 'custom_http',
+      provider: 'stripe',
       toolName: 'stripe.charge.create',
       action: 'charge.create',
       target: 'stripe',
@@ -75,53 +85,40 @@ export async function executeChargeCreate(
   }
 }
 
-/**
- * Execute an approved Stripe payout operation
- *
- * @param input - Payout parameters
- * @returns Execution result with payout ID or error
- *
- * SCAFFOLD: Currently logs and returns mock result.
- * Implementation: Connect to actual Stripe SDK.
- */
 export async function executePayoutCreate(
   input: StripeExecutionInput
 ): Promise<GatewayToolProviderResult> {
   try {
-    // SCAFFOLD: Log the operation
-    console.log('[STRIPE-GATEWAY] executePayoutCreate:', {
-      amount_cents: input.amount_cents,
-      currency: input.currency,
+    const amount = requirePositiveAmount(input.amount_cents);
+    const currency = requireCurrency(input.currency);
+    const stripe = getStripeClient();
+    const payout = await stripe.payouts.create({
+      amount,
+      currency,
       description: input.description,
+      metadata: metadataToStrings(input.metadata),
     });
 
-    // TODO: Implement actual Stripe API call
-    // const stripe = getStripeClient();
-    // const payout = await stripe.payouts.create({
-    //   amount: input.amount_cents,
-    //   currency: input.currency,
-    //   description: input.description,
-    //   metadata: input.metadata,
-    // });
-
-    // SCAFFOLD: Return mock result
     return {
-      ok: true,
-      provider: 'custom_http',
+      ok: !['failed', 'canceled'].includes(payout.status),
+      provider: 'stripe',
       toolName: 'stripe.payout.create',
       action: 'payout.create',
       target: 'stripe',
       result: {
-        payout_id: `po_mock_${Date.now()}`,
-        amount_cents: input.amount_cents,
-        currency: input.currency,
-        status: 'pending',
+        payout_id: payout.id,
+        amount_cents: payout.amount,
+        currency: payout.currency,
+        status: payout.status,
       },
+      error: ['failed', 'canceled'].includes(payout.status)
+        ? `stripe_payout_${payout.status}`
+        : undefined,
     };
   } catch (error) {
     return {
       ok: false,
-      provider: 'custom_http',
+      provider: 'stripe',
       toolName: 'stripe.payout.create',
       action: 'payout.create',
       target: 'stripe',
@@ -130,53 +127,48 @@ export async function executePayoutCreate(
   }
 }
 
-/**
- * Execute an approved Stripe refund operation
- *
- * @param input - Refund parameters (must include charge_id)
- * @returns Execution result with refund ID or error
- *
- * SCAFFOLD: Currently logs and returns mock result.
- * Implementation: Connect to actual Stripe SDK.
- */
 export async function executeRefundCreate(
   input: StripeExecutionInput
 ): Promise<GatewayToolProviderResult> {
   try {
-    // SCAFFOLD: Log the operation
-    console.log('[STRIPE-GATEWAY] executeRefundCreate:', {
-      charge_id: input.charge_id,
-      amount_cents: input.amount_cents,
-      description: input.description,
+    if (!input.charge_id || typeof input.charge_id !== 'string') {
+      throw new Error('charge_id_required');
+    }
+
+    const amount = input.amount_cents === undefined
+      ? undefined
+      : requirePositiveAmount(input.amount_cents);
+    const metadata = metadataToStrings(input.metadata) ?? {};
+    if (input.description) metadata.description = input.description;
+
+    const stripe = getStripeClient();
+    const refund = await stripe.refunds.create({
+      charge: input.charge_id,
+      amount,
+      metadata,
     });
 
-    // TODO: Implement actual Stripe API call
-    // const stripe = getStripeClient();
-    // const refund = await stripe.refunds.create({
-    //   charge: input.charge_id,
-    //   amount: input.amount_cents,
-    //   metadata: input.metadata,
-    //   reason: input.description,
-    // });
-
-    // SCAFFOLD: Return mock result
     return {
-      ok: true,
-      provider: 'custom_http',
+      ok: refund.status === 'succeeded' || refund.status === 'pending',
+      provider: 'stripe',
       toolName: 'stripe.refund.create',
       action: 'refund.create',
       target: 'stripe',
       result: {
-        refund_id: `re_mock_${Date.now()}`,
+        refund_id: refund.id,
         charge_id: input.charge_id,
-        amount_cents: input.amount_cents,
-        status: 'succeeded',
+        amount_cents: refund.amount,
+        currency: refund.currency,
+        status: refund.status,
       },
+      error: refund.status === 'failed' || refund.status === 'canceled'
+        ? `stripe_refund_${refund.status}`
+        : undefined,
     };
   } catch (error) {
     return {
       ok: false,
-      provider: 'custom_http',
+      provider: 'stripe',
       toolName: 'stripe.refund.create',
       action: 'refund.create',
       target: 'stripe',
@@ -185,15 +177,6 @@ export async function executeRefundCreate(
   }
 }
 
-/**
- * Main gateway provider executor
- *
- * Routes to appropriate Stripe operation based on tool name and input.
- * Called by the gateway executor after policy evaluation passes.
- *
- * @param request - Gateway tool request with tool name and input
- * @returns Execution result
- */
 export async function executeStripeGatewayProvider(
   request: GatewayToolRequest
 ): Promise<GatewayToolProviderResult> {
@@ -202,15 +185,17 @@ export async function executeStripeGatewayProvider(
 
   if (toolName === 'stripe.charge.create') {
     return executeChargeCreate(input);
-  } else if (toolName === 'stripe.payout.create') {
+  }
+  if (toolName === 'stripe.payout.create') {
     return executePayoutCreate(input);
-  } else if (toolName === 'stripe.refund.create') {
+  }
+  if (toolName === 'stripe.refund.create') {
     return executeRefundCreate(input);
   }
 
   return {
     ok: false,
-    provider: 'custom_http',
+    provider: 'stripe',
     toolName,
     action: request.action,
     target: 'stripe',
