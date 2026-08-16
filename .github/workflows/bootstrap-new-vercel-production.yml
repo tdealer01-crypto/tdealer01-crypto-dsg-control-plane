@@ -65,7 +65,7 @@ jobs:
             "https://api.vercel.com/v6/deployments?projectId=$VERCEL_PROJECT_ID&state=READY&limit=20&teamId=$VERCEL_ORG_ID")
           PREVIEW_HOST=$(echo "$RESPONSE" | jq -r '.deployments[] | select(.target != "production" and .state == "READY") | .url' | head -n 1)
           test -n "$PREVIEW_HOST" && test "$PREVIEW_HOST" != "null" || { echo "No READY preview found on destination project"; exit 1; }
-          bash scripts/verify-vercel-health.sh "https://$PREVIEW_HOST" /api/health
+          bash scripts/verify-vercel-health.sh "https://$PREVIEW_HOST" /api/health access
 
       - name: Install exact dependencies
         run: npm ci --ignore-scripts
@@ -124,7 +124,7 @@ jobs:
         run: |
           set -euo pipefail
           for route in /api/dsg/v1/actions/verify /api/dsg/v1/actions/replay; do
-            STATUS=$(npx --yes "vercel@$VERCEL_CLI_VERSION" --token "$VERCEL_TOKEN" curl "$route" \
+            STATUS=$(npx --yes "vercel@$VERCEL_CLI_VERSION" curl "$route" \
               --deployment "$PRODUCTION_URL" \
               --silent --show-error --output /tmp/dsg-route-body.json --write-out '%{http_code}' \
               --request POST --header 'content-type: application/json' --data '{}')
