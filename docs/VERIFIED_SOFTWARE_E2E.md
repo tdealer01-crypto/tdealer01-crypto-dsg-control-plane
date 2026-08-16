@@ -8,11 +8,13 @@ Status: implementation branch
 AI-generated change
 → static scan/check
 → findings + evidence
-→ AI repair handoff when blocked
+→ autonomous Codex/Claude candidate generation when a repair request is supplied
+→ host-side candidate validation against real source snapshots
+→ verified-repair (QUBO/Ising → Z3 → controlled worktree → fixed validations)
 → tests
 → build
 → security scan
-→ credentialed release benchmark
+→ release-only live benchmark
 → deterministic software evidence gate
 → canonical DSG production gate
 → human release
@@ -30,11 +32,10 @@ The GitHub Actions summary reports:
 - result: `READY_FOR_DSG_GATE` or `BLOCK`
 - evidence bundle hash
 - exact blockers
-- warnings such as missing measured capacity evidence
 - next action
 - truth boundary
 
-A blocked run should be repaired by the coding agent (Codex, Claude Code, or another approved agent) on the same PR. The new commit triggers the verification flow again.
+A blocked verification run can now be turned into a structured repair request and passed to `scripts/autonomous-repair.ts`. The candidate provider is not trusted with repository write authority; generated candidates must pass host validation and the existing verified-repair chain.
 
 ## Evidence stages
 
@@ -42,62 +43,87 @@ A blocked run should be repaired by the coding agent (Codex, Claude Code, or ano
 |---|---|
 | scan | static analysis/lint evidence for the checked commit |
 | typecheck | measured TypeScript compiler result |
-| unit | measured unit-test result, including the verified-software gate and release-receipt contract tests |
+| unit | measured unit-test result |
 | build | measured production build result |
 | security | static dependency-security scan result |
-| benchmark | credentialed measured benchmark against a public/staging DSG URL for a production release request |
+| benchmark | measured live benchmark only when release evidence requires it |
 
 Every required stage carries a SHA-256 evidence hash. Missing evidence, invalid hashes, failed required stages, unresolved findings, or an unverified repair state fail closed.
 
-A normal pull request does not have to possess live benchmark credentials. Its benchmark stage is marked `SKIP`, the gate records `CAPACITY_NOT_MEASURED_FOR_RELEASE_CLAIM`, and no capacity claim is allowed. A production release request makes benchmark evidence required.
+## Autonomous repair candidate generation
 
-## Repair loop
+The repair candidate generator supports:
 
-The verification workflow does not give GitHub Actions write access to source code. That boundary is intentional.
+- `auto`
+- `codex` / `openai`
+- `claude` / `anthropic`
+
+The generator reads only real files named by both `finding.affectedFiles` and `allowedFiles`. It supplies those snapshots and real diagnostics to the configured provider using structured output. Before any candidate reaches QUBO/Z3, DSG validates that:
+
+1. the path is safe and inside scope;
+2. `expected` occurs exactly once in the real source snapshot;
+3. the replacement is not a no-op;
+4. high-confidence secret-like replacement material is rejected;
+5. candidate references are valid;
+6. model-provided risk flags cannot downgrade sensitive paths or HIGH/CRITICAL execution risk.
+
+Generation evidence records provider/model, provider response id when available, attempted providers, prompt hash, diagnostic hash, source snapshot hashes, raw structured-output hash, and normalized candidate-set hash.
+
+See `docs/AUTONOMOUS_REPAIR.md` for the request shape and CLI usage.
+
+## Repair execution boundary
+
+`npx tsx scripts/autonomous-repair.ts --request ... --execute --validation full` performs:
 
 ```text
-BLOCK
-→ machine-readable blockers/evidence artifact
-→ approved AI coding agent proposes exact repair candidates
-→ existing verified-repair QUBO/Ising + Z3 path validates the candidate plan
-→ controlled worktree executor applies only selected exact-text candidates
-→ fixed validation profile runs
-→ approved agent updates the PR
-→ PR synchronize event
-→ full verification reruns
+real finding + diagnostics + approved file scope
+→ Codex/Claude structured candidates
+→ deterministic host validation
+→ QUBO/Ising proposal
+→ Z3 exact verification
+→ disposable worktree
+→ git diff check
+→ typecheck
+→ unit tests
+→ build
+→ dependency security scan
+→ evidence/audit/replay result
 ```
 
-The existing verified-repair engine accepts exact `file`, `expected`, and `replacement` candidates. It does not generate Codex/Claude candidates itself. Automatic candidate generation therefore still requires a provider adapter and must not be claimed as complete until that adapter is implemented and tested.
-
-The deterministic software gate supports bounded repair metadata (`attempts`, `maxAttempts`). This workflow does **not yet persist a cross-commit repair-attempt counter**. Do not claim the five-attempt limit is enforced across separate PR commits until persistent attempt tracking is added.
+The disposable worktree is removed after verification. The base checkout is not mutated by this command. Therefore `VERIFIED_IN_SIMULATION` must not be represented as a merged or deployed fix.
 
 ## Release flow
 
 Production release is only reachable from a manual `workflow_dispatch` on `main` with `release=true`.
 
-1. Scan, typecheck, unit tests, build, and dependency security evidence must pass.
-2. The release request must provide `benchmark_base_url` and repository secrets `BENCHMARK_API_KEY` and `BENCHMARK_AGENT_ID`.
-3. The measured benchmark must pass. Missing benchmark configuration fails closed.
-4. The workflow calls the real DSG production gate client with `DSG_API_KEY`.
-5. `REVIEW`, `BLOCK`, `UNSUPPORTED`, authentication failures, quota failures, malformed responses, or network failures stop the release.
-6. Only a real remote `PASS` may continue.
-7. The production deployment job uses the GitHub `production` environment as the release boundary.
-8. Vercel deploy runs only after the previous gates pass.
-9. `/api/health` and `/api/readiness` are observed on the returned deployment URL.
-10. `/api/readiness` must return `ready: true`.
-11. A deterministic receipt binds commit, software evidence hash, DSG proof hash, deployment URL, and observed postcondition hashes.
+1. Scan/typecheck/unit/build/security evidence must pass.
+2. A release run must also provide a real live benchmark target and benchmark credentials; the benchmark must pass.
+3. The workflow calls the real DSG production gate client with `DSG_API_KEY`.
+4. `REVIEW`, `BLOCK`, `UNSUPPORTED`, authentication failures, quota failures, malformed responses, or network failures stop the release.
+5. Only a real remote `PASS` may continue.
+6. The production deployment job uses the GitHub `production` environment as the release boundary.
+7. Vercel deploy runs only after the previous gates pass.
+8. `/api/health` and `/api/readiness` are observed on the returned deployment URL.
+9. `/api/readiness` must return `ready: true`.
+10. A deterministic receipt binds commit, software evidence hash, DSG proof hash, deployment URL, and observed postcondition hashes.
 
-## Required GitHub secrets
+## Required GitHub/runtime secrets
 
-For the release benchmark:
+For autonomous candidate generation:
 
-- `BENCHMARK_API_KEY`
-- `BENCHMARK_AGENT_ID`
+- OpenAI path: `OPENAI_API_KEY`; `OPENAI_REPAIR_MODEL` recommended
+- Anthropic path: `ANTHROPIC_API_KEY`; `ANTHROPIC_REPAIR_MODEL` optional
 
-For the DSG gate:
+For the DSG production gate:
 
 - `DSG_API_KEY` — key with `gates:evaluate`
 - `DSG_CONTROL_PLANE_URL` — optional; empty means the production-gate client uses its documented production default
+
+For release benchmark evidence:
+
+- `BENCHMARK_BASE_URL`
+- `BENCHMARK_API_KEY`
+- `BENCHMARK_AGENT_ID`
 
 For controlled Vercel deployment:
 
@@ -105,7 +131,7 @@ For controlled Vercel deployment:
 - `VERCEL_ORG_ID`
 - `VERCEL_PROJECT_ID`
 
-Missing required credentials fail closed. No mock fallback is permitted.
+Missing required credentials fail closed. No mock fallback is permitted for production authorization or release evidence.
 
 ## Human release boundary
 
@@ -113,11 +139,12 @@ Configure the GitHub `production` environment with required reviewers if organiz
 
 ## Truth boundaries
 
+- model-generated repair candidates are proposals, not fixes
 - static scan PASS is not production proof
 - unit tests PASS is not production proof
 - build PASS is not production proof
-- skipped benchmark means no measured capacity claim
-- benchmark arithmetic/estimates are not load-test evidence
+- benchmark arithmetic/estimates are not live benchmark evidence
+- `VERIFIED_IN_SIMULATION` does not mean a branch changed
 - `READY_FOR_DSG_GATE` is not `ALLOW`
 - DSG `PASS` authorizes only the exact action/context evaluated
 - deployment success alone is not completion
@@ -126,11 +153,18 @@ Configure the GitHub `production` environment with required reviewers if organiz
 
 ## Current implementation files
 
+- `lib/dsg/verified-repair/candidate-generator.ts`
+- `lib/dsg/verified-repair/pipeline.ts`
+- `lib/dsg/verified-repair/executor.ts`
+- `lib/dsg/ai/openai-adapter.ts`
+- `lib/model-provider/anthropic.ts`
+- `scripts/autonomous-repair.ts`
 - `scripts/build-software-evidence.mjs`
 - `scripts/verified-software-gate.mjs`
 - `scripts/create-software-release-receipt.mjs`
+- `tests/unit/dsg/repair-candidate-generator.test.ts`
 - `tests/unit/dsg/verified-software-gate.test.mjs`
 - `tests/unit/dsg/software-release-receipt.test.mjs`
 - `.github/workflows/verified-software-e2e.yml`
 
-The existing `.github/workflows/agent-prod-readiness.yml` is reduced to a baseline check and must no longer claim that build + typecheck + deployment config alone prove production readiness.
+The existing `.github/workflows/agent-prod-readiness.yml` remains a baseline check and must not claim that build + typecheck + deployment config alone prove production readiness.
