@@ -1,0 +1,53 @@
+name: NPM Audit Diagnostic
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/npm-audit-diagnostic.yml'
+      - 'package.json'
+      - 'package-lock.json'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Capture npm audit JSON without bypassing production gate
+        shell: bash
+        run: npm audit --json > /tmp/npm-audit.json || true
+      - name: Post compact audit evidence
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const audit = JSON.parse(fs.readFileSync('/tmp/npm-audit.json', 'utf8'));
+            const vulns = audit.vulnerabilities || {};
+            const rows = Object.entries(vulns)
+              .filter(([, v]) => ['high','critical'].includes(String(v.severity)))
+              .map(([name, v]) => {
+                const via = (v.via || []).map(x => typeof x === 'string' ? x : `${x.title || x.name || 'advisory'} (${x.url || 'no-url'})`).join('; ');
+                return `- **${name}** — severity=${v.severity}; direct=${Boolean(v.isDirect)}; range=\`${v.range || ''}\`; fix=${JSON.stringify(v.fixAvailable)}; via=${via}`;
+              });
+            const meta = audit.metadata?.vulnerabilities || {};
+            const body = [
+              '## npm audit diagnostic evidence',
+              '',
+              `Counts: ${JSON.stringify(meta)}`,
+              '',
+              ...(rows.length ? rows : ['No high/critical vulnerabilities reported.'])
+            ].join('\n');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });
