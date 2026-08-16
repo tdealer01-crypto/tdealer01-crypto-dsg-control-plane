@@ -1,0 +1,59 @@
+name: Cleanup Legacy Ising Options
+
+on:
+  push:
+    branches: [fix/remove-production-mocks-20260816]
+    paths:
+      - .github/workflows/cleanup-legacy-ising-options.yml
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/remove-production-mocks-20260816
+      - name: Replace legacy option names in product callsites
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          replacements = {
+              Path('lib/dsg/verified-repair/pipeline.ts'): [
+                  ('useMock: false', "solverMode: 'live'"),
+                  ('fallbackToMock: false', 'fallbackToLocal: false'),
+              ],
+              Path('lib/dsg-one/ising-benchmark.ts'): [
+                  ('useMock: true', "solverMode: 'local'"),
+              ],
+              Path('scripts/z3-gate.ts'): [
+                  ('useMock: true', "solverMode: 'local'"),
+                  ('useMock: false', "solverMode: 'live'"),
+                  ('fallbackToMock: false', 'fallbackToLocal: false'),
+              ],
+          }
+
+          for path, pairs in replacements.items():
+              if not path.exists():
+                  continue
+              text = path.read_text()
+              new = text
+              for old, replacement in pairs:
+                  new = new.replace(old, replacement)
+              if new != text:
+                  path.write_text(new)
+          PY
+
+          if git diff --quiet; then
+            echo 'No legacy Ising option names remain in targeted callsites.'
+            exit 0
+          fi
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add lib/dsg/verified-repair/pipeline.ts lib/dsg-one/ising-benchmark.ts scripts/z3-gate.ts
+          git commit -m 'refactor(ising): migrate legacy mock option names'
+          git push origin HEAD:fix/remove-production-mocks-20260816
