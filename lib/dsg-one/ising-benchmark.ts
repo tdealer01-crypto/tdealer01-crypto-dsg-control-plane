@@ -183,7 +183,7 @@ async function runSolverOnce(
     const isingResult = await optimizeWithIsing({
       problemId: `${testCase.id}-${mode}`,
       quboMatrix: buildResult.qubo,
-      useMock: true, // Phase 4: Use mock for determinism validation
+      solverMode: 'local', // Phase 4: Use mock for determinism validation
       seed,
     });
     const isingLatencyMs = Date.now() - isingStart;

@@ -192,9 +192,9 @@ async function solveRepairQubo(
     problemId: request.jobId,
     quboMatrix: qubo,
     timeout: request.solver?.timeoutMs ?? 5_000,
-    useMock: false,
+    solverMode: 'live',
     seed,
-    fallbackToMock: false,
+    fallbackToLocal: false,
   });
   return {
     mode: 'nvidia-live',

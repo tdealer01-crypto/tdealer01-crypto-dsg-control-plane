@@ -291,7 +291,7 @@ async function verifyIsingLayer(): Promise<boolean> {
 
   try {
     const build = await buildQUBOMatrix({ tasks, agentCapacities: agents });
-    const ising = await optimizeWithIsing({ problemId: 'z3-gate-ising', quboMatrix: build.qubo, useMock: true });
+    const ising = await optimizeWithIsing({ problemId: 'z3-gate-ising', quboMatrix: build.qubo, solverMode: 'local' });
     const feasible = await verifyIsingWithZ3({
       isingAssignment: ising.solution,
       quboMatrix: build.qubo,
