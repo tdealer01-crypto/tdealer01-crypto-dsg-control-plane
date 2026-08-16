@@ -13,12 +13,21 @@ export type OpenAIChatMessage = {
   content: string;
 };
 
+export type OpenAIJsonSchemaFormat = {
+  name: string;
+  schema: Record<string, unknown>;
+  description?: string;
+  strict?: boolean;
+};
+
 export type OpenAIAdapterInput = {
   input?: string;
   messages?: OpenAIChatMessage[];
   model?: string;
   maxOutputTokens?: number;
   temperature?: number;
+  jsonSchema?: OpenAIJsonSchemaFormat;
+  store?: boolean;
 };
 
 export type OpenAIAdapterOutput = {
@@ -122,18 +131,48 @@ function extractChatText(payload: unknown): string {
   return parts.join('\n').trim();
 }
 
+function responseTextFormat(jsonSchema: OpenAIJsonSchemaFormat | undefined) {
+  if (!jsonSchema) return undefined;
+  return {
+    format: {
+      type: 'json_schema',
+      name: jsonSchema.name,
+      description: jsonSchema.description,
+      schema: jsonSchema.schema,
+      strict: jsonSchema.strict ?? true,
+    },
+  };
+}
+
+function chatResponseFormat(jsonSchema: OpenAIJsonSchemaFormat | undefined) {
+  if (!jsonSchema) return undefined;
+  return {
+    type: 'json_schema',
+    json_schema: {
+      name: jsonSchema.name,
+      description: jsonSchema.description,
+      schema: jsonSchema.schema,
+      strict: jsonSchema.strict ?? true,
+    },
+  };
+}
+
 async function runResponsesApi(args: {
   baseUrl: string;
   model: string;
   messages: OpenAIChatMessage[];
   maxOutputTokens: number;
   temperature: number;
+  jsonSchema?: OpenAIJsonSchemaFormat;
+  store?: boolean;
   forceNoTemperature?: boolean;
 }) {
   const baseBody = {
     model: args.model,
     input: args.messages.map((message) => ({ role: message.role, content: message.content })),
     max_output_tokens: args.maxOutputTokens,
+    ...(args.jsonSchema ? { text: responseTextFormat(args.jsonSchema) } : {}),
+    ...(typeof args.store === 'boolean' ? { store: args.store } : {}),
   };
 
   const response = await fetch(`${args.baseUrl}/responses`, {
@@ -161,6 +200,8 @@ async function runChatCompletionsApi(args: {
   messages: OpenAIChatMessage[];
   maxOutputTokens: number;
   temperature: number;
+  jsonSchema?: OpenAIJsonSchemaFormat;
+  store?: boolean;
   forceNoTemperature?: boolean;
 }) {
   const baseBody = {
@@ -168,6 +209,8 @@ async function runChatCompletionsApi(args: {
     messages: toChatMessages(args.messages),
     max_tokens: args.maxOutputTokens,
     stream: false,
+    ...(args.jsonSchema ? { response_format: chatResponseFormat(args.jsonSchema) } : {}),
+    ...(typeof args.store === 'boolean' ? { store: args.store } : {}),
   };
 
   const response = await fetch(`${args.baseUrl}/chat/completions`, {
@@ -212,7 +255,15 @@ export async function runOpenAIAdapter(input: OpenAIAdapterInput): Promise<OpenA
   const maxOutputTokens = Math.min(Math.max(input.maxOutputTokens ?? 800, 1), 4096);
   const temperature = typeof input.temperature === 'number' ? input.temperature : 0.2;
   const baseUrl = status.baseUrl.replace(/\/$/, '');
-  const args = { baseUrl, model, messages, maxOutputTokens, temperature };
+  const args = {
+    baseUrl,
+    model,
+    messages,
+    maxOutputTokens,
+    temperature,
+    jsonSchema: input.jsonSchema,
+    store: input.store,
+  };
 
   try {
     const result = shouldUseChatCompletionsFirst(baseUrl)
