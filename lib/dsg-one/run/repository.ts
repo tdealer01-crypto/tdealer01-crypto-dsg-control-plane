@@ -21,6 +21,15 @@ import {
   type StepObservation,
 } from './types';
 import type { VerifiedActionSurface } from '../verified-action-receipt';
+import type { Json } from '../../database.types';
+
+/**
+ * Our run types are precise interfaces; the generated column type for a jsonb
+ * column is `Json`, which requires an index signature. Cast only at the three
+ * jsonb assignment sites rather than casting whole insert/update payloads, so
+ * every other column stays type-checked against the generated schema.
+ */
+const asJson = (value: unknown) => value as Json;
 
 const RUNS_TABLE = 'dsg_one_runs';
 const STEPS_TABLE = 'dsg_one_run_steps';
@@ -126,18 +135,18 @@ export async function createRun(input: CreateRunInput): Promise<Run> {
   const db = getSupabaseAdmin();
 
   const { data: runRow, error: runError } = await db
-    .from(RUNS_TABLE as never)
+    .from(RUNS_TABLE)
     .insert({
       org_id: input.orgId,
       actor_id: input.actorId,
       surface: input.surface,
       status: 'DRAFT',
       intent: input.plan.intent,
-      plan: input.plan,
+      plan: asJson(input.plan),
       template_id: input.templateId,
       connected_systems: input.connectedSystems,
       audit_available: input.auditAvailable,
-    } as never)
+    })
     .select('*')
     .single();
 
@@ -162,14 +171,14 @@ export async function createRun(input: CreateRunInput): Promise<Run> {
   }));
 
   const { data: inserted, error: stepError } = await db
-    .from(STEPS_TABLE as never)
-    .insert(stepRows as never)
+    .from(STEPS_TABLE)
+    .insert(stepRows)
     .select('*');
 
   if (stepError) {
     // Leave no half-built run behind: a run with no steps would read as
     // "nothing to do" and could be approved into a vacuous VERIFIED.
-    await db.from(RUNS_TABLE as never).delete().eq('run_id', row.run_id);
+    await db.from(RUNS_TABLE).delete().eq('run_id', row.run_id);
     throw new Error(`dsg_one_run_steps insert failed: ${stepError.message}`);
   }
 
@@ -181,7 +190,7 @@ export async function getRun(runId: string, orgId: string): Promise<Run | null> 
   const db = getSupabaseAdmin();
 
   const { data: runRow, error: runError } = await db
-    .from(RUNS_TABLE as never)
+    .from(RUNS_TABLE)
     .select('*')
     .eq('run_id', runId)
     .eq('org_id', orgId)
@@ -190,7 +199,7 @@ export async function getRun(runId: string, orgId: string): Promise<Run | null> 
   if (runError || !runRow) return null;
 
   const { data: steps, error: stepError } = await db
-    .from(STEPS_TABLE as never)
+    .from(STEPS_TABLE)
     .select('*')
     .eq('run_id', runId)
     .eq('org_id', orgId)
@@ -209,7 +218,7 @@ export async function listRuns(orgId: string, limit = 25): Promise<Run[]> {
   const capped = Math.min(Math.max(limit, 1), 100);
 
   const { data: runRows, error: runError } = await db
-    .from(RUNS_TABLE as never)
+    .from(RUNS_TABLE)
     .select('*')
     .eq('org_id', orgId)
     .order('created_at', { ascending: false })
@@ -221,7 +230,7 @@ export async function listRuns(orgId: string, limit = 25): Promise<Run[]> {
   if (rows.length === 0) return [];
 
   const { data: stepRows, error: stepError } = await db
-    .from(STEPS_TABLE as never)
+    .from(STEPS_TABLE)
     .select('*')
     .eq('org_id', orgId)
     .in('run_id', rows.map((row) => row.run_id))
@@ -251,7 +260,7 @@ export async function saveRun(run: Run): Promise<void> {
   const db = getSupabaseAdmin();
 
   const { error: runError } = await db
-    .from(RUNS_TABLE as never)
+    .from(RUNS_TABLE)
     .update({
       status: run.status,
       plan_hash: run.planHash,
@@ -259,7 +268,7 @@ export async function saveRun(run: Run): Promise<void> {
       approved_at: run.approvedAt,
       expires_at: run.expiresAt,
       receipt_id: run.receiptId,
-    } as never)
+    })
     .eq('run_id', run.runId)
     .eq('org_id', run.orgId);
 
@@ -267,15 +276,15 @@ export async function saveRun(run: Run): Promise<void> {
 
   for (const step of run.steps) {
     const { error: stepError } = await db
-      .from(STEPS_TABLE as never)
+      .from(STEPS_TABLE)
       .update({
         status: step.status,
         gate_verdict: step.gateVerdict,
-        observation: step.observation,
-        judgement: step.judgement,
+        observation: asJson(step.observation),
+        judgement: asJson(step.judgement),
         dispatched_at: step.dispatchedAt,
         settled_at: step.settledAt,
-      } as never)
+      })
       .eq('step_id', step.stepId)
       .eq('org_id', run.orgId);
 

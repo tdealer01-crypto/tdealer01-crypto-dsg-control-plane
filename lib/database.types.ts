@@ -4577,6 +4577,137 @@ export type Database = {
         }
         Relationships: []
       }
+      dsg_one_run_steps: {
+        Row: {
+          action_type: string
+          created_at: string
+          dispatched_at: string | null
+          gate_verdict: string | null
+          judgement: Json | null
+          observation: Json | null
+          operation: string
+          ordinal: number
+          org_id: string
+          phase: string
+          risk_level: string
+          run_id: string
+          settled_at: string | null
+          status: string
+          step_id: string
+          summary: string
+          target_system: string
+          updated_at: string
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          dispatched_at?: string | null
+          gate_verdict?: string | null
+          judgement?: Json | null
+          observation?: Json | null
+          operation: string
+          ordinal: number
+          org_id: string
+          phase: string
+          risk_level: string
+          run_id: string
+          settled_at?: string | null
+          status?: string
+          step_id?: string
+          summary: string
+          target_system: string
+          updated_at?: string
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          dispatched_at?: string | null
+          gate_verdict?: string | null
+          judgement?: Json | null
+          observation?: Json | null
+          operation?: string
+          ordinal?: number
+          org_id?: string
+          phase?: string
+          risk_level?: string
+          run_id?: string
+          settled_at?: string | null
+          status?: string
+          step_id?: string
+          summary?: string
+          target_system?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dsg_one_run_steps_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_one_runs"
+            referencedColumns: ["run_id"]
+          },
+        ]
+      }
+      dsg_one_runs: {
+        Row: {
+          actor_id: string
+          approved_at: string | null
+          approved_by: string | null
+          audit_available: boolean
+          connected_systems: Json
+          created_at: string
+          expires_at: string | null
+          intent: string
+          org_id: string
+          plan: Json
+          plan_hash: string | null
+          receipt_id: string | null
+          run_id: string
+          status: string
+          surface: string
+          template_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          actor_id: string
+          approved_at?: string | null
+          approved_by?: string | null
+          audit_available?: boolean
+          connected_systems?: Json
+          created_at?: string
+          expires_at?: string | null
+          intent: string
+          org_id: string
+          plan: Json
+          plan_hash?: string | null
+          receipt_id?: string | null
+          run_id?: string
+          status?: string
+          surface?: string
+          template_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          actor_id?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          audit_available?: boolean
+          connected_systems?: Json
+          created_at?: string
+          expires_at?: string | null
+          intent?: string
+          org_id?: string
+          plan?: Json
+          plan_hash?: string | null
+          receipt_id?: string | null
+          run_id?: string
+          status?: string
+          surface?: string
+          template_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       dsg_organizations: {
         Row: {
           created_at: string
@@ -6758,6 +6889,24 @@ export type Database = {
           status?: string
           updated_at?: string
           webhook_url?: string | null
+        }
+        Relationships: []
+      }
+      integration_test: {
+        Row: {
+          created_at: string | null
+          id: number
+          test_name: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: number
+          test_name: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: number
+          test_name?: string
         }
         Relationships: []
       }

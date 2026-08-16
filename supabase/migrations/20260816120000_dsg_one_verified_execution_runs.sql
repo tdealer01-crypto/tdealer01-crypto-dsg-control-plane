@@ -99,8 +99,11 @@ CREATE TABLE IF NOT EXISTS public.dsg_one_run_steps (
 
   CONSTRAINT dsg_one_run_steps_status_check
     CHECK (status IN ('PENDING', 'VERIFIED', 'DISPATCHED', 'PASSED', 'REVIEW', 'BLOCKED', 'SKIPPED')),
+  -- Mirrors DeterministicProofStatus in lib/dsg/deterministic/types.ts. The
+  -- raw proof status is stored, not the gate's mapped outcome, so REVIEW must
+  -- be accepted here; the risk mapping happens in verdictToStepStatus.
   CONSTRAINT dsg_one_run_steps_verdict_check
-    CHECK (gate_verdict IS NULL OR gate_verdict IN ('PASS', 'BLOCK', 'UNSUPPORTED')),
+    CHECK (gate_verdict IS NULL OR gate_verdict IN ('PASS', 'BLOCK', 'REVIEW', 'UNSUPPORTED')),
   CONSTRAINT dsg_one_run_steps_risk_check
     CHECK (risk_level IN ('low', 'medium', 'high', 'critical')),
   CONSTRAINT dsg_one_run_steps_ordinal_unique UNIQUE (run_id, ordinal)
@@ -187,7 +190,12 @@ CREATE POLICY dsg_one_runs_select_same_org
   TO authenticated
   USING (
     org_id IN (
-      SELECT u.org_id FROM public.users u
+      -- public.users.org_id is uuid; these tables use text org ids to match
+      -- requireDsgAuth (lib/dsg/auth/require-dsg-auth.ts), which resolves an
+      -- org id as a string, and to match the other DSG tables
+      -- (dsg_gate_usage, incidents). The cast is required — without it the
+      -- policy raises "operator does not exist: text = uuid" at evaluation.
+      SELECT u.org_id::text FROM public.users u
       WHERE u.auth_user_id = auth.uid() AND u.is_active = true
     )
   );
@@ -199,7 +207,12 @@ CREATE POLICY dsg_one_run_steps_select_same_org
   TO authenticated
   USING (
     org_id IN (
-      SELECT u.org_id FROM public.users u
+      -- public.users.org_id is uuid; these tables use text org ids to match
+      -- requireDsgAuth (lib/dsg/auth/require-dsg-auth.ts), which resolves an
+      -- org id as a string, and to match the other DSG tables
+      -- (dsg_gate_usage, incidents). The cast is required — without it the
+      -- policy raises "operator does not exist: text = uuid" at evaluation.
+      SELECT u.org_id::text FROM public.users u
       WHERE u.auth_user_id = auth.uid() AND u.is_active = true
     )
   );
