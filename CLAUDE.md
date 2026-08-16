@@ -897,9 +897,11 @@ In Vercel Dashboard → **Settings** → **Environment Variables**, verify prese
   `docs/RUNBOOK_DEPLOY.md` §1 for the request-promotion → dispatch sequence.
 - Preview deployments on PRs come from CI invoking the Vercel CLI, not from the
   Git integration — their deployment metadata reads `"source": "cli"`.
-- Never add a `vercel … --prod` command to another workflow to bypass this.
-  `scripts/verify-agent-workspace-boundary.mjs` fails the build when a production
-  deploy command exists outside the promoted workflow.
+- Never add a production-target Vercel deploy command to another workflow to
+  bypass this. `scripts/verify-agent-workspace-boundary.mjs` fails the build when
+  one exists outside the promoted workflow, and also when one is added anywhere
+  in a diff — including in prose, so describe such commands rather than pasting
+  them.
 - Branch deployments must have required env vars defined
 
 ### Quick live identity check

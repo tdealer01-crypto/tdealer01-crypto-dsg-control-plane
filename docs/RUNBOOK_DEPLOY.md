@@ -35,10 +35,13 @@ person approved for a named commit. Preview deployments you see on PRs come from
 CI invoking the Vercel CLI, not from the Git integration — their deployment
 metadata reads `"source": "cli"`.
 
-Do not add a `vercel … --prod` command to any other workflow to work around this.
-`scripts/verify-agent-workspace-boundary.mjs` fails the build when a production
-deploy command exists outside `.github/workflows/promoted-production-deploy.yml`,
-and a second deploy path would silently bypass every control listed below.
+Do not add a production-target Vercel deploy command to any other workflow to
+work around this. `scripts/verify-agent-workspace-boundary.mjs` fails the build
+when such a command exists outside
+`.github/workflows/promoted-production-deploy.yml` — and it also rejects one
+added anywhere in a diff, including in prose, so describe the commands rather
+than pasting them. A second deploy path would silently bypass every control
+listed below.
 
 ### The governed path
 
@@ -68,9 +71,9 @@ and a second deploy path would silently bypass every control listed below.
 4. **The workflow enforces**, in order: a GitHub `environment:` approval gate;
    "Require exact current main commit"; `npm audit --audit-level=high`;
    `approve-agent-workspace-promotion.mjs` (moves the record `pending` →
-   `approved`, recording `approved_by` and `approved_at`); `vercel pull` →
-   `vercel build --prod` → `vercel deploy --prebuilt --prod`; a check that the
-   resulting deployment is `state=READY target=production`; then
+   `approved`, recording `approved_by` and `approved_at`); a Vercel production
+   config pull, production build, and prebuilt production deploy; a check that
+   the resulting deployment is `state=READY target=production`; then
    `finalize-agent-workspace-promotion.mjs`. Rollback controls are part of the
    same workflow.
 
