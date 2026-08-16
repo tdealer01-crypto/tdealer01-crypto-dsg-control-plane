@@ -1,9 +1,11 @@
 /**
  * Z3 Formal Proof Solver HTTP Client
- * Connects TypeScript MCP tools to external Z3 and QUBO solver services
+ * Connects TypeScript MCP tools to external Z3 and QUBO solver services.
+ *
+ * Truth boundary: if the configured solver is missing, unreachable, or returns
+ * an invalid response, this client returns UNKNOWN / unavailable evidence. It
+ * never substitutes a local heuristic and never reports SAT without the solver.
  */
-
-import { z } from 'zod';
 
 export interface Z3SolverConfig {
   z3SolverUrl?: string;
@@ -22,8 +24,49 @@ export class Z3SolverClient {
     this.timeoutMs = config.timeoutMs || parseInt(process.env.DSG_SOLVER_TIMEOUT_MS || '5000', 10);
   }
 
+  private unavailableVerification(constraints: any[], reason: string) {
+    return {
+      overall_status: 'UNKNOWN' as const,
+      constraints_satisfied: 0,
+      constraints_total: constraints.length,
+      results: [],
+      solver_available: false,
+      error: reason,
+    };
+  }
+
+  private unavailableQubo(
+    input: {
+      framework: string;
+      rules: any[];
+      constraints: any[];
+      budgetConstraint?: number;
+      seed?: number;
+    },
+    reason: string
+  ) {
+    const budget = input.budgetConstraint || 1500;
+    return {
+      selected_rules: [] as number[],
+      total_cost: 0,
+      total_risk_reduction: 0,
+      total_business_value: 0,
+      energy: 0,
+      constraints_satisfied: 0,
+      constraints_total: input.constraints.length,
+      z3_status: 'UNKNOWN' as const,
+      solution_hash: '',
+      iterations: 0,
+      framework: input.framework,
+      within_budget: false,
+      budget_remaining: budget,
+      solver_available: false,
+      error: reason,
+    };
+  }
+
   /**
-   * Verify Z3 constraints using external SMT solver
+   * Verify constraints using the configured external SMT solver.
    */
   async verifyConstraints(
     solutionState: number[],
@@ -34,10 +77,11 @@ export class Z3SolverClient {
     constraints_satisfied: number;
     constraints_total: number;
     results: any[];
+    solver_available?: boolean;
+    error?: string;
   }> {
-    // If no external solver configured, fall back to local validation
     if (!this.z3Url) {
-      return this.localVerifyConstraints(solutionState, constraints, verbose);
+      return this.unavailableVerification(constraints, 'z3_solver_not_configured');
     }
 
     try {
@@ -45,11 +89,11 @@ export class Z3SolverClient {
         .map((c) => this.constraintToSMTLib(c, solutionState))
         .filter(Boolean);
 
-      const smt2Formula = `(set-logic QF_LIA)
-${solutionState.map((v, i) => `(declare-const rule_${i} () Int)`).join('\n')}
-${solutionState.map((v, i) => `(assert (= rule_${i} ${v}))`).join('\n')}
-${constraintFormulas.join('\n')}
-(check-sat)`;
+      const smt2Formula = `(set-logic QF_LIA)\n${solutionState
+        .map((_v, i) => `(declare-const rule_${i} () Int)`)
+        .join('\n')}\n${solutionState
+        .map((v, i) => `(assert (= rule_${i} ${v}))`)
+        .join('\n')}\n${constraintFormulas.join('\n')}\n(check-sat)`;
 
       const response = await fetch(this.z3Url, {
         method: 'POST',
@@ -57,39 +101,44 @@ ${constraintFormulas.join('\n')}
         body: JSON.stringify({
           smt2: smt2Formula,
           timeout_ms: this.timeoutMs,
-          nonce: `verify-${Date.now()}-${Math.random()}`,
         }),
         signal: AbortSignal.timeout(this.timeoutMs + 1000),
       });
 
       if (!response.ok) {
         console.error('[Z3 Client] Constraint verification failed:', response.status);
-        return this.localVerifyConstraints(solutionState, constraints, verbose);
+        return this.unavailableVerification(constraints, `z3_solver_http_${response.status}`);
       }
 
       const result = await response.json();
-      const isSat = result.status === 'sat';
+      const status =
+        result?.status === 'sat'
+          ? ('SAT' as const)
+          : result?.status === 'unsat'
+            ? ('UNSAT' as const)
+            : ('UNKNOWN' as const);
 
       return {
-        overall_status: isSat ? 'SAT' : result.status === 'unsat' ? 'UNSAT' : 'UNKNOWN',
-        constraints_satisfied: isSat ? constraints.length : 0,
+        overall_status: status,
+        constraints_satisfied: status === 'SAT' ? constraints.length : 0,
         constraints_total: constraints.length,
         results: verbose
           ? constraints.map((c, i) => ({
               constraint: c,
-              satisfied: isSat,
+              satisfied: status === 'SAT',
               formula: constraintFormulas[i] || '',
             }))
           : [],
+        solver_available: true,
       };
     } catch (error) {
       console.error('[Z3 Client] Error verifying constraints:', error);
-      return this.localVerifyConstraints(solutionState, constraints, verbose);
+      return this.unavailableVerification(constraints, 'z3_solver_unreachable');
     }
   }
 
   /**
-   * Solve QUBO/Ising optimization using external solver
+   * Solve QUBO/Ising optimization using the configured external solver.
    */
   async solveQubo(input: {
     framework: string;
@@ -111,10 +160,11 @@ ${constraintFormulas.join('\n')}
     framework: string;
     within_budget: boolean;
     budget_remaining: number;
+    solver_available?: boolean;
+    error?: string;
   }> {
-    // If no external solver configured, fall back to local mock
     if (!this.quboUrl) {
-      return this.localSolveQubo(input);
+      return this.unavailableQubo(input, 'qubo_solver_not_configured');
     }
 
     try {
@@ -133,150 +183,52 @@ ${constraintFormulas.join('\n')}
 
       if (!response.ok) {
         console.error('[Z3 Client] QUBO solve failed:', response.status);
-        return this.localSolveQubo(input);
+        return this.unavailableQubo(input, `qubo_solver_http_${response.status}`);
       }
 
-      return await response.json();
+      const result = await response.json();
+      if (!result || !['SAT', 'UNSAT', 'UNKNOWN'].includes(result.z3_status)) {
+        return this.unavailableQubo(input, 'qubo_solver_invalid_response');
+      }
+
+      return {
+        ...result,
+        solver_available: true,
+      };
     } catch (error) {
       console.error('[Z3 Client] Error solving QUBO:', error);
-      return this.localSolveQubo(input);
+      return this.unavailableQubo(input, 'qubo_solver_unreachable');
     }
   }
 
   /**
-   * Local fallback: verify constraints without external solver
+   * Convert DSG constraint to SMT-LIB formula.
    */
-  private localVerifyConstraints(
-    solutionState: number[],
-    constraints: any[],
-    verbose: boolean
-  ) {
-    const results = constraints.map((c) => {
-      const satisfied = this.evaluateConstraint(c, solutionState);
-      return {
-        constraint: c,
-        satisfied,
-        detail: satisfied ? 'Local validation: SAT' : 'Local validation: UNSAT',
-        formula: verbose ? this.constraintToSMTLib(c, solutionState) : '',
-      };
-    });
-
-    const allSatisfied = results.every((r) => r.satisfied);
-    return {
-      overall_status: allSatisfied ? ('SAT' as const) : ('UNSAT' as const),
-      constraints_satisfied: results.filter((r) => r.satisfied).length,
-      constraints_total: constraints.length,
-      results: verbose ? results : results.map((r) => ({ ...r, formula: undefined })),
-    };
-  }
-
-  /**
-   * Local fallback: mock QUBO solution
-   */
-  private localSolveQubo(input: {
-    framework: string;
-    rules: any[];
-    constraints: any[];
-    budgetConstraint?: number;
-    seed?: number;
-  }) {
-    const budget = input.budgetConstraint || 1500;
-    const selectedRules = input.rules
-      .map((r, i) => ({ index: i, cost: r.cost }))
-      .sort((a, b) => a.cost - b.cost)
-      .slice(0, Math.max(1, Math.floor(Math.sqrt(input.rules.length))))
-      .map((r) => r.index);
-
-    let totalCost = 0;
-    let totalRisk = 0;
-    let totalValue = 0;
-
-    selectedRules.forEach((idx) => {
-      const rule = input.rules[idx];
-      totalCost += rule.cost || 0;
-      totalRisk += rule.riskReduction || 0;
-      totalValue += rule.businessValue || 0;
-    });
-
-    const energy = -totalValue + totalRisk * 0.5;
-    const solutionHash = Buffer.from(`solution-${input.framework}-${JSON.stringify(selectedRules)}`).toString('base64');
-
-    return {
-      selected_rules: selectedRules,
-      total_cost: totalCost,
-      total_risk_reduction: totalRisk,
-      total_business_value: totalValue,
-      energy,
-      constraints_satisfied: input.constraints.length,
-      constraints_total: input.constraints.length,
-      z3_status: 'SAT' as const,
-      solution_hash: solutionHash,
-      iterations: 5000,
-      framework: input.framework,
-      within_budget: totalCost <= budget,
-      budget_remaining: budget - totalCost,
-    };
-  }
-
-  /**
-   * Convert DSG constraint to SMT-LIB formula
-   */
-  private constraintToSMTLib(constraint: any, solutionState: number[]): string | null {
+  private constraintToSMTLib(constraint: any, _solutionState: number[]): string | null {
     const { type, rules } = constraint;
 
     switch (type) {
       case 'IMPLICATION':
-        // rule_a => rule_b
         return `(assert (=> (= rule_${rules[0]} 1) (= rule_${rules[1]} 1)))`;
       case 'EQUIVALENCE':
-        // rule_a <=> rule_b
         return `(assert (= (= rule_${rules[0]} 1) (= rule_${rules[1]} 1)))`;
       case 'MUTUAL_EXCLUSION':
-        // NOT (rule_a AND rule_b)
         return `(assert (not (and (= rule_${rules[0]} 1) (= rule_${rules[1]} 1))))`;
-      case 'MIN_ACTIVE':
-        // at least N rules active
-        const count = rules.length;
+      case 'MIN_ACTIVE': {
         const sum = `(+ ${rules.map((r: number) => `rule_${r}`).join(' ')})`;
         return `(assert (>= ${sum} 1))`;
+      }
       case 'MAX_COST':
-        // total cost <= limit
-        return null; // Handled separately in solver
-      case 'AT_LEAST_ONE':
-        // at least one rule from set
+        return null;
+      case 'AT_LEAST_ONE': {
         const disjunction = rules.map((r: number) => `(= rule_${r} 1)`).join(' ');
         return `(assert (or ${disjunction}))`;
+      }
       default:
         return null;
     }
   }
 
-  /**
-   * Local constraint evaluation
-   */
-  private evaluateConstraint(constraint: any, solutionState: number[]): boolean {
-    const { type, rules } = constraint;
-
-    switch (type) {
-      case 'IMPLICATION':
-        return !(solutionState[rules[0]] === 1 && solutionState[rules[1]] === 0);
-      case 'EQUIVALENCE':
-        return solutionState[rules[0]] === solutionState[rules[1]];
-      case 'MUTUAL_EXCLUSION':
-        return !(solutionState[rules[0]] === 1 && solutionState[rules[1]] === 1);
-      case 'MIN_ACTIVE':
-        const activeCount = rules.filter((r: number) => solutionState[r] === 1).length;
-        return activeCount >= 1;
-      case 'AT_LEAST_ONE':
-        return rules.some((r: number) => solutionState[r] === 1);
-      default:
-        return true;
-    }
-  }
-
-  /**
-   * Check if solvers are reachable (health check)
-   */
   async healthCheck(): Promise<{ z3: boolean; qubo: boolean }> {
     const checks = await Promise.all([
       this.checkZ3Health(),
