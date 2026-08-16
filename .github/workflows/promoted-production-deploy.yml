@@ -157,6 +157,11 @@ jobs:
         id: preview
         shell: bash
         run: |
+          set -euo pipefail
+          cp vercel.json "$RUNNER_TEMP/vercel.production.json"
+          trap 'cp "$RUNNER_TEMP/vercel.production.json" vercel.json' EXIT
+          cp vercel.preview.json vercel.json
+
           PREVIEW_URL=$(npx --yes "vercel@$VERCEL_CLI_VERSION" deploy --yes --token="$VERCEL_TOKEN" \
             --meta=promotion_id="$PROMOTION_ID" \
             --meta=commit="$COMMIT_SHA" \
@@ -164,8 +169,8 @@ jobs:
           test -n "$PREVIEW_URL"
           echo "preview_url=$PREVIEW_URL" >> "$GITHUB_OUTPUT"
 
-      - name: Verify preview health
-        run: curl --fail --retry 8 --retry-delay 5 "${{ steps.preview.outputs.preview_url }}/api/health"
+      - name: Verify preview health behind Vercel Authentication
+        run: bash scripts/verify-vercel-health.sh "${{ steps.preview.outputs.preview_url }}" /api/health
 
       - name: Locate current READY production rollback target
         id: rollback
