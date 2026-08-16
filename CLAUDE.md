@@ -890,8 +890,16 @@ In Vercel Dashboard → **Settings** → **Environment Variables**, verify prese
 
 **GitHub integration:**
 
-- Vercel auto-deploys `main` branch to production
-- Vercel auto-deploys PRs to preview URLs
+- Vercel does **not** auto-deploy `main` to production. `vercel.json` sets
+  `git.deploymentEnabled: {"*": false}`, so no branch deploys on push or merge.
+- Production deploys go through `.github/workflows/promoted-production-deploy.yml`
+  only, gated on an audited `agent_workspace_promotions` record. See
+  `docs/RUNBOOK_DEPLOY.md` §1 for the request-promotion → dispatch sequence.
+- Preview deployments on PRs come from CI invoking the Vercel CLI, not from the
+  Git integration — their deployment metadata reads `"source": "cli"`.
+- Never add a `vercel … --prod` command to another workflow to bypass this.
+  `scripts/verify-agent-workspace-boundary.mjs` fails the build when a production
+  deploy command exists outside the promoted workflow.
 - Branch deployments must have required env vars defined
 
 ### Quick live identity check

@@ -25,9 +25,69 @@ Current production claim scope does not allow:
 - DSG Core service deployed and reachable.
 
 ## 1) Deploy Control Plane (Vercel)
-1. Merge approved changes to `main`.
-2. Trigger production deployment in Vercel (or via Git integration).
-3. Confirm deployment status is `Ready` in Vercel dashboard.
+
+**There is exactly one production deploy path, and it is not the Git integration.**
+
+`vercel.json` sets `git.deploymentEnabled: {"*": false}`, so pushing or merging to
+`main` deploys nothing. That is deliberate: production deploys are gated behind an
+audited promotion so that what reaches production is always something a named
+person approved for a named commit. Preview deployments you see on PRs come from
+CI invoking the Vercel CLI, not from the Git integration — their deployment
+metadata reads `"source": "cli"`.
+
+Do not add a `vercel … --prod` command to any other workflow to work around this.
+`scripts/verify-agent-workspace-boundary.mjs` fails the build when a production
+deploy command exists outside `.github/workflows/promoted-production-deploy.yml`,
+and a second deploy path would silently bypass every control listed below.
+
+### The governed path
+
+1. **Merge** the approved change to `main` and note the exact commit SHA.
+
+2. **Request a promotion.** This creates the `pending` record the deploy workflow
+   requires. It is org-scoped and rate limited; the response carries the
+   promotion id.
+
+   ```http
+   POST /api/agent-workspaces/promotions
+   { "action": "request", "workspaceKey": "<workspace>", "commitSha": "<main sha>", "reason": "<why>" }
+   ```
+
+   Reject a promotion you no longer want with `{ "action": "reject", "promotionId": "<id>" }`.
+   Only `pending` and `approved` records can be rejected.
+
+3. **Dispatch** `.github/workflows/promoted-production-deploy.yml`
+   (`workflow_dispatch`) with all three required inputs:
+
+   | input | value |
+   |---|---|
+   | `promotion_id` | the UUID from step 2 |
+   | `commit_sha` | the exact current `main` commit |
+   | `workspace_key` | the agent workspace key |
+
+4. **The workflow enforces**, in order: a GitHub `environment:` approval gate;
+   "Require exact current main commit"; `npm audit --audit-level=high`;
+   `approve-agent-workspace-promotion.mjs` (moves the record `pending` →
+   `approved`, recording `approved_by` and `approved_at`); `vercel pull` →
+   `vercel build --prod` → `vercel deploy --prebuilt --prod`; a check that the
+   resulting deployment is `state=READY target=production`; then
+   `finalize-agent-workspace-promotion.mjs`. Rollback controls are part of the
+   same workflow.
+
+5. **Confirm** the deployment is `Ready` and that `GET /api/agent/status` reports
+   the commit you deployed.
+
+A promotion that is not `pending` cannot be approved, and the workflow refuses a
+`commit_sha` that is not current `main` — so a stale or replayed dispatch fails
+closed rather than shipping the wrong tree.
+
+### Vercel account bootstrap
+
+Bootstrapping a new Vercel account or project is the same workflow, not a
+separate one. Call it with `operation: 'vercel-account-bootstrap'` (plus
+`migration_request_id`, `destination_team_id`, `destination_project_id`); the
+`bootstrap_vercel_account` job creates the destination production rollback
+target under the same approval gate.
 
 ## 2) Configure environment variables
 Set required production values in Vercel project settings using `.env.example` as source of truth:
