@@ -4,20 +4,6 @@ function zapierEnvKey(toolName: string) {
   return `ZAPIER_WEBHOOK_${toolName.toUpperCase().replace(/[^A-Z0-9]/g, '_')}`;
 }
 
-async function executeMockProvider(request: GatewayToolRequest): Promise<GatewayToolProviderResult> {
-  return {
-    ok: true,
-    provider: 'mock',
-    toolName: request.toolName,
-    action: request.action,
-    target: request.toolName,
-    result: {
-      echoed: request.input,
-      deterministic: true,
-    },
-  };
-}
-
 async function parseProviderResponse(response: Response) {
   const text = await response.text();
   let result: Record<string, unknown> = { raw: text };
@@ -133,10 +119,8 @@ export async function executeGatewayProvider(
   request: GatewayToolRequest,
   registryEntry?: GatewayToolRegistryEntry
 ): Promise<GatewayToolProviderResult> {
-  if (request.toolName.startsWith('mock.')) {
-    return executeMockProvider(request);
-  }
-
+  // Synthetic providers are not part of the runtime contract. Unknown or
+  // unconfigured providers fail closed and can never report successful work.
   if (registryEntry?.provider === 'custom_http' || request.toolName.startsWith('custom_http.')) {
     return executeCustomHttpProvider(request, registryEntry);
   }
