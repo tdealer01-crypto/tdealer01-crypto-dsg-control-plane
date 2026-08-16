@@ -4,7 +4,7 @@ import { internalErrorMessage, logApiError } from '@/lib/security/api-error';
 import { requireOrgRole } from '@/lib/authz';
 import { buildAndPersistManifest, verifySafeDomIntentOrFail, executeVerifiedCommand } from '@/lib/executors/browserbase-safe-dom-integration';
 import type { SafeDomCommand } from '@/lib/executors/browserbase-safe-dom-integration';
-import { verifyAgentInvariants } from '@/lib/dsg/logic/z3-runtime-check';
+import { runZ3AgentGate } from '@/lib/dsg/logic/z3-agent-gate';
 
 export const dynamic = 'force-dynamic';
 
@@ -96,36 +96,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: safeMessage, reason: message }, { status: statusCode });
     }
 
-    // Z3 runtime gate: verify agent invariants before execution
-    const z3Result = verifyAgentInvariants({
-      agentType: 'orchestrator',
+    // Formal gate runs only after RBAC and Safe DOM intent verification succeeded.
+    // runZ3AgentGate invokes the actual z3-solver Python observer and fails closed
+    // with BLOCK when Python/Z3 is unavailable.
+    const z3Result = await runZ3AgentGate({
+      agentType: 'security-gate',
       jobId: sessionId,
       workspaceId: orgId,
       goalLocked: true,
       gateAllow: true,
-      evidenceExists: true,
+      evidenceExists: Boolean(manifestId),
       mockState: false,
-      planApproved: true,
-      writesCode: true,
-      isDestructiveWrite: false,
-      destructionProof: false,
-      testRunComplete: false,
-      newCoverageGtePrev: true,
-      usesBrowserResult: false,
-      browserEvidenceHashSet: false,
       dataNeeded: false,
       dataUnknown: false,
       searchAttempted: false,
     });
 
     if (!z3Result.pass) {
-      logApiError('api/spine/execute:z3-gate', new Error(`Z3 gate blocked: ${z3Result.check}`));
+      logApiError('api/spine/execute:z3-gate', new Error(`Z3 gate blocked: ${z3Result.z3Check}`));
       return NextResponse.json({
         error: 'Z3 invariant gate blocked execution',
         z3: {
-          status: z3Result.pass ? 'PASS' : 'BLOCK',
-          check: z3Result.check,
-          proofHash: z3Result.proofHash,
+          status: z3Result.status,
+          check: z3Result.z3Check,
+          proofHash: z3Result.z3ProofHash,
           violations: z3Result.violations,
         },
       }, { status: 403 });
@@ -158,9 +152,9 @@ export async function POST(request: NextRequest) {
         frameId: actualFrameId,
       },
       z3: {
-        status: z3Result.pass ? 'PASS' : 'BLOCK',
-        proofHash: z3Result.proofHash,
-        check: z3Result.check,
+        status: z3Result.status,
+        proofHash: z3Result.z3ProofHash,
+        check: z3Result.z3Check,
       },
     });
   } catch (error) {
