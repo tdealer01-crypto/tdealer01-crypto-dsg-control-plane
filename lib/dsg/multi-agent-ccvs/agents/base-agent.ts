@@ -32,10 +32,10 @@ export interface EvidenceItem {
   level: 'L1' | 'L2' | 'L3' | 'L4' | 'L5';
   name: string;
   description: string;
-  path?: string;           // File path in repo
-  content?: string;        // Content for new files
-  hash?: string;           // SHA256
-  command?: string;        // Command to generate
+  path?: string;
+  content?: string;
+  hash?: string;
+  command?: string;
   verification?: VerificationSpec;
 }
 
@@ -57,7 +57,6 @@ export interface Agent {
   validate(result: AgentResult): boolean;
 }
 
-// Abstract base class
 export abstract class BaseAgent implements Agent {
   abstract id: string;
   abstract name: string;
@@ -73,7 +72,7 @@ export abstract class BaseAgent implements Agent {
         ...result,
         agentId: this.id,
         level: this.level,
-        durationMs: Date.now() - startTime
+        durationMs: Date.now() - startTime,
       };
     } catch (error) {
       return {
@@ -84,7 +83,7 @@ export abstract class BaseAgent implements Agent {
         metrics: {},
         errors: [error instanceof Error ? error.message : String(error)],
         warnings: [],
-        durationMs: Date.now() - startTime
+        durationMs: Date.now() - startTime,
       };
     }
   }
@@ -100,10 +99,11 @@ export abstract class BaseAgent implements Agent {
     return result.success && result.errors.length === 0;
   }
 
-  protected async runCommand(cmd: string, cwd?: string): Promise<{stdout: string; stderr: string; exitCode: number}> {
-    // In real implementation, use child_process or SSH
-    // In simulation, return mock result
-    return { stdout: '', stderr: '', exitCode: 0 };
+  protected async runCommand(_cmd: string, _cwd?: string): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+    // Command execution is a high-risk boundary. Returning exitCode 0 without
+    // executing the command creates false test/build evidence, so this base
+    // class fails closed until a controlled executor is injected.
+    throw new Error('CCVS_COMMAND_EXECUTOR_NOT_CONFIGURED');
   }
 
   protected computeHash(content: string): string {
