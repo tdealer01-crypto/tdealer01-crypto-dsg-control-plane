@@ -1,0 +1,155 @@
+name: Bootstrap New Vercel Production
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/bootstrap-new-vercel-production.yml
+      - scripts/verify-vercel-health.sh
+  workflow_dispatch:
+
+concurrency:
+  group: bootstrap-new-vercel-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  VERCEL_CLI_VERSION: 58.0.0
+  VERCEL_ORG_ID: team_6pEhvA6GmVXYajBuJ2PUPFcs
+  VERCEL_PROJECT_ID: prj_EsrB0dLrqbDKPDTMiKFGadZMny5M
+
+jobs:
+  bootstrap:
+    name: Verify Protected Preview and Create READY Production
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: "Production – dsg-qubo-api"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Validate exact main and new-account authorization
+        shell: bash
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
+        run: |
+          set -euo pipefail
+          test -n "$VERCEL_TOKEN" || { echo "Missing VERCEL_TOKEN_NEW"; exit 1; }
+          test "$VERCEL_ORG_ID" != "team_n189mlAdVHR6cGGiaAwsKzQ0" || { echo "Legacy Vercel team rejected"; exit 1; }
+          test "$VERCEL_PROJECT_ID" != "prj_k02PTNzCJRBN5CcRtg6hFdd0HjuW" || { echo "Legacy Vercel project rejected"; exit 1; }
+          git fetch origin main --depth=1
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo "Checked-out commit is not current main"; exit 1; }
+
+      - name: Pull destination project configuration
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
+        run: npx --yes "vercel@$VERCEL_CLI_VERSION" pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: Prove authenticated access on an existing READY preview
+        shell: bash
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
+        run: |
+          set -euo pipefail
+          RESPONSE=$(curl --fail --silent --show-error \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            "https://api.vercel.com/v6/deployments?projectId=$VERCEL_PROJECT_ID&state=READY&limit=20&teamId=$VERCEL_ORG_ID")
+          PREVIEW_HOST=$(echo "$RESPONSE" | jq -r '.deployments[] | select(.target != "production" and .state == "READY") | .url' | head -n 1)
+          test -n "$PREVIEW_HOST" && test "$PREVIEW_HOST" != "null" || { echo "No READY preview found on destination project"; exit 1; }
+          bash scripts/verify-vercel-health.sh "https://$PREVIEW_HOST" /api/health
+
+      - name: Install exact dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Re-run destination release safety tests
+        run: |
+          node --check scripts/resolve-vercel-routing.mjs
+          node --check scripts/lib/vercel-env-sync.mjs
+          npx vitest run \
+            tests/unit/scripts/vercel-destination-auth.test.ts \
+            tests/unit/scripts/vercel-env-sync.test.ts \
+            tests/unit/scripts/vercel-routing.test.ts \
+            tests/unit/scripts/vercel-env-migration-request.test.ts
+          npm audit --audit-level=high --omit=dev
+
+      - name: Build exact production artifact
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
+        run: npx --yes "vercel@$VERCEL_CLI_VERSION" build --prod --token="$VERCEL_TOKEN"
+
+      - name: Deploy exact current main to production
+        id: production
+        shell: bash
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
+        run: |
+          set -euo pipefail
+          PRODUCTION_URL=$(npx --yes "vercel@$VERCEL_CLI_VERSION" deploy --prebuilt --prod --token="$VERCEL_TOKEN" \
+            --meta=commit="$(git rev-parse HEAD)" \
+            --meta=release_stage=new-account-production-bootstrap \
+            --meta=bootstrap_run="${{ github.run_id }}")
+          test -n "$PRODUCTION_URL"
+          echo "production_url=$PRODUCTION_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Verify production through Vercel Authentication
+        shell: bash
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
+          PRODUCTION_URL: ${{ steps.production.outputs.production_url }}
+        run: |
+          set -euo pipefail
+          bash scripts/verify-vercel-health.sh "$PRODUCTION_URL" /api/health
+          PRODUCTION_HOST=${PRODUCTION_URL#https://}
+          RESPONSE=$(curl --fail --silent --show-error \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            "https://api.vercel.com/v6/deployments?projectId=$VERCEL_PROJECT_ID&target=production&state=READY&limit=20&teamId=$VERCEL_ORG_ID")
+          MATCH=$(echo "$RESPONSE" | jq -r --arg host "$PRODUCTION_HOST" \
+            '.deployments[] | select(.target == "production" and .state == "READY" and .url == $host) | .url' | head -n 1)
+          test "$MATCH" = "$PRODUCTION_HOST" || { echo "Production deployment is not READY target=production"; exit 1; }
+
+      - name: Prove DSG verify/replay routes are deployed and app-auth protected
+        shell: bash
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
+          PRODUCTION_URL: ${{ steps.production.outputs.production_url }}
+        run: |
+          set -euo pipefail
+          for route in /api/dsg/v1/actions/verify /api/dsg/v1/actions/replay; do
+            STATUS=$(npx --yes "vercel@$VERCEL_CLI_VERSION" --token "$VERCEL_TOKEN" curl "$route" \
+              --deployment "$PRODUCTION_URL" \
+              --silent --show-error --output /tmp/dsg-route-body.json --write-out '%{http_code}' \
+              --request POST --header 'content-type: application/json' --data '{}')
+            if test "$STATUS" != "401" && test "$STATUS" != "403"; then
+              echo "Expected app authentication denial from $route, got HTTP $STATUS"
+              cat /tmp/dsg-route-body.json || true
+              exit 1
+            fi
+            echo "$route deployed: Vercel protection bypassed; app auth correctly returned HTTP $STATUS"
+          done
+
+      - name: Record production bootstrap evidence
+        env:
+          PRODUCTION_URL: ${{ steps.production.outputs.production_url }}
+        run: |
+          {
+            echo "## New Vercel production bootstrap"
+            echo ""
+            echo "- Commit: $(git rev-parse HEAD)"
+            echo "- Destination team: $VERCEL_ORG_ID"
+            echo "- Destination project: $VERCEL_PROJECT_ID"
+            echo "- Production URL: $PRODUCTION_URL"
+            echo "- Production state: **READY**"
+            echo "- /api/health: **HTTP 200 + JSON ok=true through authenticated Vercel CLI**"
+            echo "- /api/dsg/v1/actions/verify: **deployed + app-auth protected**"
+            echo "- /api/dsg/v1/actions/replay: **deployed + app-auth protected**"
+            echo "- Full authenticated verify/replay canonical execution: **not claimed by this bootstrap smoke**"
+          } >> "$GITHUB_STEP_SUMMARY"
