@@ -1,8 +1,5 @@
 import { getSupabaseAdmin } from '../supabase-server';
 
-/**
- * Represents a raw DOM element captured from Browserbase.
- */
 export interface RawDomElement {
   tagName: string;
   id?: string;
@@ -14,9 +11,6 @@ export interface RawDomElement {
   visible?: boolean;
 }
 
-/**
- * Represents a safe DOM element in the manifest.
- */
 export interface SafeDomElement {
   tagName: string;
   id?: string;
@@ -26,9 +20,6 @@ export interface SafeDomElement {
   safe: boolean;
 }
 
-/**
- * Represents a safe DOM command to be executed.
- */
 export interface SafeDomCommand {
   elementId?: string;
   elementPath?: string;
@@ -37,9 +28,6 @@ export interface SafeDomCommand {
   frameId?: string;
 }
 
-/**
- * Manifest of safe DOM elements for a frame/session.
- */
 export interface SafeDomManifest {
   sessionId: string;
   frameId: string;
@@ -50,85 +38,40 @@ export interface SafeDomManifest {
 }
 
 /**
- * Capture live DOM from a Browserbase session.
- * This would call Browserbase API with the session ID and return raw DOM structure.
- * For now, returns a mock structure to be replaced with actual Browserbase SDK integration.
+ * Browserbase DOM capture is not implemented in this repository yet.
+ * An API key alone is not proof that a session DOM was fetched. Fail closed
+ * instead of manufacturing a DOM tree.
  */
-export async function captureLiveDOM(sessionId: string): Promise<RawDomElement[]> {
-  const apiKey = process.env.BROWSERBASE_API_KEY;
-  if (!apiKey) {
-    throw new Error('Browserbase API key not configured');
+export async function captureLiveDOM(_sessionId: string): Promise<RawDomElement[]> {
+  if (!process.env.BROWSERBASE_API_KEY) {
+    throw new Error('BROWSERBASE_API_KEY_NOT_CONFIGURED');
   }
-
-  // In a real implementation, this would call Browserbase API:
-  // const response = await fetch(`https://api.browserbase.com/v1/sessions/${sessionId}/dom`, {
-  //   headers: { 'x-bb-api-key': apiKey },
-  // });
-  // const { dom } = await response.json();
-  // return dom;
-
-  // For now, return a minimal DOM structure that would be captured
-  return [
-    {
-      tagName: 'html',
-      children: [
-        {
-          tagName: 'body',
-          children: [
-            {
-              tagName: 'div',
-              id: 'root',
-              className: 'container',
-              children: [
-                {
-                  tagName: 'button',
-                  id: 'submit-btn',
-                  className: 'btn btn-primary',
-                  textContent: 'Submit',
-                  clickable: true,
-                  visible: true,
-                  attributes: { 'data-action': 'submit' },
-                },
-              ],
-            },
-          ],
-        },
-      ],
-    },
-  ];
+  throw new Error('BROWSERBASE_SAFE_DOM_CAPTURE_NOT_IMPLEMENTED');
 }
 
-/**
- * Build a path string for a DOM element based on its ancestors.
- */
-function buildElementPath(elements: RawDomElement[], index: number, parent: RawDomElement[] = []): string {
+function buildElementPath(elements: RawDomElement[], index: number): string {
   const element = elements[index];
   if (!element) return '';
 
   const id = element.id ? `#${element.id}` : '';
   const className = element.className ? `.${element.className.split(' ')[0]}` : '';
   const tag = element.tagName.toLowerCase();
-
-  const path = id || className ? `${tag}${id}${className}` : tag;
-
-  return path;
+  return id || className ? `${tag}${id}${className}` : tag;
 }
 
-/**
- * Convert raw DOM to safe DOM manifest elements.
- */
-function convertToSafeDomElements(rawElements: RawDomElement[], path: string = ''): SafeDomElement[] {
+function convertToSafeDomElements(rawElements: RawDomElement[], path = ''): SafeDomElement[] {
   const safeElements: SafeDomElement[] = [];
 
   function walk(elements: RawDomElement[], parentPath: string) {
-    elements.forEach((elem, idx) => {
-      const elemPath = parentPath ? `${parentPath} > ${buildElementPath([elem], 0)}` : buildElementPath([elem], 0);
+    elements.forEach((elem) => {
+      const localPath = buildElementPath([elem], 0);
+      const elemPath = parentPath ? `${parentPath} > ${localPath}` : localPath;
       const isClickable = elem.clickable === true && (elem.visible === true || elem.visible === undefined);
       const isFormElement = ['input', 'textarea', 'select', 'button'].includes(elem.tagName.toLowerCase());
 
       const allowedInteractions: string[] = [];
       if (isClickable) allowedInteractions.push('click');
-      if (isFormElement || elem.tagName.toLowerCase() === 'input') allowedInteractions.push('type');
+      if (isFormElement) allowedInteractions.push('type');
       if (elem.tagName.toLowerCase() === 'form') allowedInteractions.push('submit');
       if (elem.tagName.toLowerCase() === 'a') allowedInteractions.push('navigate');
 
@@ -143,9 +86,7 @@ function convertToSafeDomElements(rawElements: RawDomElement[], path: string = '
         });
       }
 
-      if (elem.children && elem.children.length > 0) {
-        walk(elem.children, elemPath);
-      }
+      if (elem.children?.length) walk(elem.children, elemPath);
     });
   }
 
@@ -153,9 +94,6 @@ function convertToSafeDomElements(rawElements: RawDomElement[], path: string = '
   return safeElements;
 }
 
-/**
- * Persist manifest to Supabase database.
- */
 export async function persistManifest(
   sessionId: string,
   frameId: string,
@@ -164,46 +102,41 @@ export async function persistManifest(
   orgId: string,
 ): Promise<string> {
   const supabase = getSupabaseAdmin();
-
+  const createdAt = new Date().toISOString();
+  const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
   const manifest: SafeDomManifest = {
     sessionId,
     frameId,
     frameUrl,
     elements,
-    createdAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(), // 5 min TTL
+    createdAt,
+    expiresAt,
   };
 
-  // Use any type for now since safe_dom_manifests table will be added via migration
   const { data, error } = await (supabase.from('safe_dom_manifests' as any) as any)
     .insert({
       session_id: sessionId,
       frame_id: frameId,
       manifest_json: manifest,
       org_id: orgId,
-      expires_at: new Date(Date.now() + 5 * 60 * 1000),
+      expires_at: expiresAt,
     })
     .select('id')
     .single();
 
-  if (error) {
-    throw new Error(`Failed to persist manifest: ${error.message}`);
+  if (error || !(data as any)?.id) {
+    throw new Error(`SAFE_DOM_MANIFEST_PERSIST_FAILED:${error?.message ?? 'missing_id'}`);
   }
 
-  return (data as any)?.id as string;
+  return String((data as any).id);
 }
 
-/**
- * Fetch and verify manifest from DB, then verify command against it.
- */
 export async function verifySafeDomIntentOrFail(
   sessionId: string,
   frameId: string,
   command: SafeDomCommand,
 ): Promise<SafeDomManifest> {
   const supabase = getSupabaseAdmin();
-
-  // Use any type for now since safe_dom_manifests table will be added via migration
   const { data, error } = await (supabase.from('safe_dom_manifests' as any) as any)
     .select('manifest_json, expires_at')
     .eq('session_id', sessionId)
@@ -216,13 +149,8 @@ export async function verifySafeDomIntentOrFail(
 
   const manifest = (data as any).manifest_json as SafeDomManifest;
   const expiresAt = new Date((data as any).expires_at);
+  if (expiresAt < new Date()) throw new Error('Manifest has expired');
 
-  // Check expiration
-  if (expiresAt < new Date()) {
-    throw new Error('Manifest has expired');
-  }
-
-  // Verify command against manifest
   const targetElement = manifest.elements.find(
     (elem) =>
       (command.elementId && elem.id === command.elementId) ||
@@ -232,73 +160,53 @@ export async function verifySafeDomIntentOrFail(
   if (!targetElement) {
     throw new Error(`Element not found in manifest: ${command.elementId || command.elementPath}`);
   }
-
   if (!targetElement.allowedInteractions.includes(command.action)) {
-    throw new Error(`Action ${command.action} not allowed on element ${targetElement.id}`);
+    throw new Error(`Action ${command.action} not allowed on element ${targetElement.id || targetElement.path}`);
   }
 
   return manifest;
 }
 
 /**
- * Execute a verified command through Browserbase.
+ * Browser command execution is deliberately unavailable until a real provider
+ * call is implemented and its response can be persisted as evidence.
  */
-export async function executeVerifiedCommand(sessionId: string, command: SafeDomCommand): Promise<Record<string, unknown>> {
-  const apiKey = process.env.BROWSERBASE_API_KEY;
-  if (!apiKey) {
-    throw new Error('Browserbase API key not configured');
+export async function executeVerifiedCommand(
+  _sessionId: string,
+  _command: SafeDomCommand,
+): Promise<Record<string, unknown>> {
+  if (!process.env.BROWSERBASE_API_KEY) {
+    throw new Error('BROWSERBASE_API_KEY_NOT_CONFIGURED');
   }
-
-  // In a real implementation, this would send the command to Browserbase API:
-  // const response = await fetch(`https://api.browserbase.com/v1/sessions/${sessionId}/execute`, {
-  //   method: 'POST',
-  //   headers: {
-  //     'x-bb-api-key': apiKey,
-  //     'content-type': 'application/json',
-  //   },
-  //   body: JSON.stringify({ command }),
-  // });
-  // return response.json();
-
-  // For now, return a mock execution result
-  return {
-    success: true,
-    sessionId,
-    command,
-    executedAt: new Date().toISOString(),
-  };
+  throw new Error('BROWSERBASE_SAFE_DOM_EXECUTOR_NOT_IMPLEMENTED');
 }
 
-/**
- * Build manifest from live Browserbase DOM and persist it.
- */
 export async function buildAndPersistManifest(
   sessionId: string,
   frameUrl: string,
   frameId: string,
   orgId: string,
 ): Promise<SafeDomManifest> {
-  // Capture live DOM from Browserbase
   const rawDOM = await captureLiveDOM(sessionId);
-
-  // Convert to safe DOM elements
-  const elements = convertToSafeDomElements(rawDOM);
-
-  // Persist manifest to DB
-  try {
-    await persistManifest(sessionId, frameId, frameUrl, elements, orgId);
-  } catch (err) {
-    console.error('Failed to persist manifest:', err);
-    // Continue anyway for testing purposes
+  if (rawDOM.length === 0) {
+    throw new Error('BROWSERBASE_DOM_EMPTY');
   }
 
-  // Return the manifest
+  const elements = convertToSafeDomElements(rawDOM);
+  if (elements.length === 0) {
+    throw new Error('SAFE_DOM_HAS_NO_ALLOWED_ELEMENTS');
+  }
+
+  const createdAt = new Date().toISOString();
+  const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+  await persistManifest(sessionId, frameId, frameUrl, elements, orgId);
+
   return {
     sessionId,
     frameId,
     frameUrl,
     elements,
-    createdAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+    createdAt,
+    expiresAt,
   };
 }
