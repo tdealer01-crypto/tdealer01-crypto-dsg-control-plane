@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       release:
-        description: "Request production release after verification and DSG PASS"
+        description: "Request production release verification before governed promotion"
         required: true
         default: false
         type: boolean
@@ -262,8 +262,8 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
-  human-release-and-deploy:
-    name: Human Release → Deploy → Observe → Receipt
+  governed-promotion-handoff:
+    name: Verified Release → Governed Promotion Handoff
     needs: [verify-software, dsg-production-gate]
     if: >-
       github.event_name == 'workflow_dispatch' &&
@@ -271,84 +271,46 @@ jobs:
       github.ref == 'refs/heads/main' &&
       needs.dsg-production-gate.outputs.gate_status == 'PASS'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    environment: production
+    timeout-minutes: 5
 
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-          cache: npm
-
-      - run: npm ci
-
-      - name: Require deploy credentials
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-        run: |
-          test -n "$VERCEL_TOKEN" || { echo 'VERCEL_TOKEN missing' >&2; exit 1; }
-          test -n "$VERCEL_ORG_ID" || { echo 'VERCEL_ORG_ID missing' >&2; exit 1; }
-          test -n "$VERCEL_PROJECT_ID" || { echo 'VERCEL_PROJECT_ID missing' >&2; exit 1; }
-
-      - name: Controlled production deploy
-        id: deploy
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p .dsg-release
-          DEPLOY_OUTPUT=$(npx vercel deploy --prod --yes --token "$VERCEL_TOKEN")
-          printf '%s\n' "$DEPLOY_OUTPUT" | tee .dsg-release/deploy.log
-          DEPLOY_URL=$(printf '%s\n' "$DEPLOY_OUTPUT" | grep -Eo 'https://[^[:space:]]+' | tail -1)
-          test -n "$DEPLOY_URL" || { echo 'Deployment URL not found' >&2; exit 1; }
-          echo "url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
-
-      - name: Observe production postconditions
-        env:
-          DEPLOY_URL: ${{ steps.deploy.outputs.url }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          curl --fail --silent --show-error "$DEPLOY_URL/api/health" | tee .dsg-release/health.json
-          curl --fail --silent --show-error "$DEPLOY_URL/api/readiness" | tee .dsg-release/readiness.json
-          node --input-type=module <<'NODE'
-          import { readFile } from 'node:fs/promises';
-          const body = JSON.parse(await readFile('.dsg-release/readiness.json', 'utf8'));
-          if (body.ready !== true) process.exit(1);
-          NODE
-
-      - name: Create deterministic release receipt
+      - name: Build immutable promotion handoff evidence
         env:
           COMMIT_SHA: ${{ github.sha }}
-          DEPLOY_URL: ${{ steps.deploy.outputs.url }}
           SOFTWARE_EVIDENCE_HASH: ${{ needs.verify-software.outputs.evidence_bundle_hash }}
           DSG_PROOF_HASH: ${{ needs.dsg-production-gate.outputs.proof_hash }}
-        run: node scripts/create-software-release-receipt.mjs
+        run: |
+          mkdir -p .dsg-release
+          node --input-type=module <<'NODE'
+          import { createHash } from 'node:crypto';
+          import { writeFile } from 'node:fs/promises';
+          const body = {
+            schema: 'dsg.verified-release-handoff.v1',
+            commit: process.env.COMMIT_SHA,
+            softwareEvidenceBundleHash: process.env.SOFTWARE_EVIDENCE_HASH,
+            dsgProofHash: process.env.DSG_PROOF_HASH,
+            productionPath: '.github/workflows/promoted-production-deploy.yml',
+            requiredState: 'promotion record pending or approved for this exact current main commit',
+            productionExecuted: false,
+          };
+          const canonical = JSON.stringify(body, Object.keys(body).sort());
+          const handoffHash = `sha256:${createHash('sha256').update(canonical).digest('hex')}`;
+          await writeFile('.dsg-release/promotion-handoff.json', `${JSON.stringify({ ...body, handoffHash }, null, 2)}\n`);
+          NODE
 
-      - name: Upload release proof
+      - name: Upload verified promotion handoff
         uses: actions/upload-artifact@v4
         with:
-          name: dsg-release-proof-${{ github.run_id }}
-          path: .dsg-release/
-          include-hidden-files: true
+          name: dsg-promotion-handoff-${{ github.run_id }}
+          path: .dsg-release/promotion-handoff.json
           if-no-files-found: error
           retention-days: 90
 
-      - name: Release summary
+      - name: Release handoff summary
         run: |
-          echo '## DSG Verified Release' >> "$GITHUB_STEP_SUMMARY"
+          echo '## DSG Verified Release Handoff' >> "$GITHUB_STEP_SUMMARY"
           echo '- Software evidence: READY_FOR_DSG_GATE' >> "$GITHUB_STEP_SUMMARY"
           echo '- Required release benchmark: PASS' >> "$GITHUB_STEP_SUMMARY"
           echo '- DSG production gate: PASS' >> "$GITHUB_STEP_SUMMARY"
-          echo '- Human release: workflow dispatch + production environment' >> "$GITHUB_STEP_SUMMARY"
-          echo '- Controlled deploy: completed' >> "$GITHUB_STEP_SUMMARY"
-          echo '- Observed readiness: ready=true' >> "$GITHUB_STEP_SUMMARY"
-          echo "- Deployment: ${{ steps.deploy.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "- DSG proof hash: ${{ needs.dsg-production-gate.outputs.proof_hash }}" >> "$GITHUB_STEP_SUMMARY"
+          echo '- Production mutation: NOT EXECUTED by this workflow' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Next: request an audited promotion for this exact current main commit and run the sole governed production deployment workflow.' >> "$GITHUB_STEP_SUMMARY"
