@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import SystemStatus from './SystemStatus';
-import AnalyticsDashboard from './AnalyticsDashboard';
 
 const productFlow = [
   ['Create AI System', 'Register owner, model, impact level, environment, and allowed action boundary.'],
@@ -61,7 +60,14 @@ export default function ProofGatePage() {
         </div>
       </section>
 
-      <AnalyticsDashboard />
+      <section className="mx-auto max-w-7xl px-6 pt-10">
+        <div className="rounded-2xl border border-amber-300/20 bg-amber-300/5 px-5 py-4">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-amber-200">Analytics truth boundary</p>
+          <p className="mt-2 text-sm text-slate-300">
+            Governance analytics are not shown until a live decision-metrics source is connected and verified. No sample metrics are substituted.
+          </p>
+        </div>
+      </section>
 
       <section className="mx-auto max-w-7xl px-6 py-14">
         <p className="dsg-chip">Seven-step product flow</p>
