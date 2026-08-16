@@ -1,6 +1,6 @@
 /**
  * Anthropic Claude Provider for DSG Control Plane
- * Adds Claude Sonnet 4.5 / Claude Opus 4 as failover for planning + reasoning intents.
+ * Adds Claude Sonnet / Opus as failover for planning + reasoning intents.
  */
 
 export type AnthropicProviderRequest = {
@@ -14,6 +14,26 @@ export type AnthropicProviderResult = {
   modelUsed: string;
   provider: 'anthropic';
   stopReason: string;
+};
+
+export type AnthropicStructuredToolRequest = {
+  message: string;
+  system: string;
+  toolName: string;
+  toolDescription: string;
+  inputSchema: Record<string, unknown>;
+  model?: string;
+  maxTokens?: number;
+  temperature?: number;
+};
+
+export type AnthropicStructuredToolResult = {
+  provider: 'anthropic';
+  modelUsed: string;
+  responseId?: string;
+  stopReason: string;
+  input: unknown;
+  usage?: unknown;
 };
 
 const MODEL_BY_INTENT: Record<string, { model: string; maxTokens: number }> = {
@@ -74,6 +94,72 @@ export async function callAnthropicProvider(request: AnthropicProviderRequest): 
     console.error('[anthropic] request failed:', err);
     return null;
   }
+}
+
+/**
+ * Call Claude with a forced client-tool schema and return only the tool input.
+ * The caller remains responsible for validating that input against real repo state.
+ */
+export async function callAnthropicStructuredTool(
+  request: AnthropicStructuredToolRequest,
+): Promise<AnthropicStructuredToolResult> {
+  const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
+  if (!apiKey) throw new Error('ANTHROPIC_API_KEY_MISSING');
+
+  const model = request.model?.trim() ||
+    process.env.ANTHROPIC_REPAIR_MODEL?.trim() ||
+    process.env.ANTHROPIC_MODEL_CODE?.trim() ||
+    process.env.ANTHROPIC_MODEL?.trim() ||
+    MODEL_BY_INTENT.code.model;
+  const maxTokens = Math.min(Math.max(request.maxTokens ?? 4096, 1), 8192);
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    signal: AbortSignal.timeout(45_000),
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: maxTokens,
+      system: request.system,
+      messages: [{ role: 'user', content: request.message }],
+      temperature: typeof request.temperature === 'number' ? request.temperature : 0,
+      tools: [{
+        name: request.toolName,
+        description: request.toolDescription,
+        input_schema: request.inputSchema,
+      }],
+      tool_choice: { type: 'tool', name: request.toolName },
+    }),
+  });
+
+  const payload = await response.json().catch(() => null) as Record<string, unknown> | null;
+  if (!response.ok) {
+    const error = payload?.error;
+    const message = error && typeof error === 'object' && typeof (error as Record<string, unknown>).message === 'string'
+      ? String((error as Record<string, unknown>).message)
+      : `ANTHROPIC_HTTP_${response.status}`;
+    throw new Error(message);
+  }
+
+  const content = Array.isArray(payload?.content) ? payload.content : [];
+  const toolUse = content.find((item) =>
+    item && typeof item === 'object' &&
+    (item as Record<string, unknown>).type === 'tool_use' &&
+    (item as Record<string, unknown>).name === request.toolName,
+  ) as Record<string, unknown> | undefined;
+  if (!toolUse || !('input' in toolUse)) throw new Error('ANTHROPIC_STRUCTURED_TOOL_OUTPUT_MISSING');
+
+  return {
+    provider: 'anthropic',
+    modelUsed: typeof payload?.model === 'string' ? payload.model : model,
+    responseId: typeof payload?.id === 'string' ? payload.id : undefined,
+    stopReason: typeof payload?.stop_reason === 'string' ? payload.stop_reason : 'unknown',
+    input: toolUse.input,
+    usage: payload?.usage,
+  };
 }
 
 function classifyIntent(message: string): string {
