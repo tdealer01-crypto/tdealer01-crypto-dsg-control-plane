@@ -1,9 +1,12 @@
+import { randomUUID } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient as createServiceClient } from '@supabase/supabase-js';
-import { handleApiError } from '@/lib/security/api-error';
 import { SuperteamAgentClient } from '@/lib/superteam/agent-client';
 import { TelegramSubmitter } from '@/lib/superteam/telegram-submitter';
-import { testMemoryStore } from '@/lib/superteam/test-store';
+import {
+  getSuperteamSupabase,
+  requireSuperteamAgentCredential,
+  superteamErrorStatus,
+} from '@/lib/superteam/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,262 +16,174 @@ interface SubmitContentRequest {
   bountyTitle: string;
   contentType: 'twitter-thread' | 'analysis' | 'deep-dive';
   content: string;
-  wordCount: number;
   reward?: number;
   rewardToken?: string;
   proofUrl?: string;
 }
 
+const CONTENT_TYPES = new Set(['twitter-thread', 'analysis', 'deep-dive']);
+
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as SubmitContentRequest;
-    const {
-      agentId,
-      bountyId,
-      bountyTitle,
-      contentType,
-      content,
-      wordCount,
-      reward,
-      rewardToken,
-      proofUrl,
-    } = body;
+    const agentId = body.agentId?.trim();
+    const bountyId = body.bountyId?.trim();
+    const bountyTitle = body.bountyTitle?.trim();
+    const content = body.content?.trim();
+    const proofUrl = body.proofUrl?.trim();
 
-    if (!agentId || !bountyId || !content) {
-      return NextResponse.json(
-        { error: 'Missing required fields: agentId, bountyId, content' },
-        { status: 400 }
-      );
+    if (!agentId || !bountyId || !bountyTitle || !content) {
+      return NextResponse.json({ error: 'agentId, bountyId, bountyTitle and content are required' }, { status: 400 });
     }
-
-    console.log(`[SUBMIT-CONTENT] Submitting ${contentType} for ${bountyTitle}`);
-
-    // Get agent from Supabase or memory store
-    let agent: any = null;
-
-    if (process.env.SUPERTEAM_API_KEY) {
-      agent = {
-        api_key: process.env.SUPERTEAM_API_KEY,
-        name: 'superteam-agent-live',
-        claim_code: `DSG-${agentId}`,
-      };
-      console.log('Using real Superteam API key for content submission');
-    } else {
-      try {
-        const supabase = createServiceClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.SUPABASE_SERVICE_ROLE_KEY!
-        );
-        const { data: dbAgent, error } = await supabase
-          .from('dsg_agents')
-          .select('api_key, name, claim_code')
-          .eq('id', agentId)
-          .single();
-
-        if (!error && dbAgent) {
-          agent = dbAgent;
-        }
-      } catch (e) {
-        console.warn(`Supabase unavailable: ${String(e).slice(0, 100)}`);
-      }
+    if (!CONTENT_TYPES.has(body.contentType)) {
+      return NextResponse.json({ error: 'invalid contentType' }, { status: 400 });
     }
-
-    if (!agent) {
-      const memAgent = testMemoryStore.getAgent(agentId);
-      if (memAgent) {
-        agent = {
-          api_key: memAgent.apiKey,
-          name: memAgent.name,
-          claim_code: memAgent.claimCode,
-        };
-      }
+    if (!proofUrl) {
+      return NextResponse.json({
+        error: 'proofUrl required',
+        reason: 'No verified content-hosting provider is wired; DSG will not fabricate a submission URL.',
+      }, { status: 400 });
     }
-
-    if (!agent) {
-      return NextResponse.json(
-        { error: 'Agent not found' },
-        { status: 404 }
-      );
-    }
-
-    // Format submission link (content-addressed)
-    const contentHash = Buffer.from(content)
-      .toString('base64')
-      .slice(0, 16);
-    const submissionLink = proofUrl ||
-      `https://tdealer01-crypto-dsg-control-plane.vercel.app/bounty/${bountyId}/submission/${contentHash}`;
-
-    // Format content info
-    const contentInfo = `Generated ${contentType}: ${wordCount} words | Quality: Ready`;
-
-    // Submit to Superteam API
-    let apiResult: any = { success: false };
-
     try {
-      const client = new SuperteamAgentClient(agent.api_key, agent.name);
-      apiResult = await client.submitListing({
-        listingId: bountyId,
-        link: submissionLink,
-        otherInfo: contentInfo,
-        ask: reward,
-      });
-
-      console.log(`✅ Superteam API submission result:`, apiResult);
-    } catch (apiError) {
-      console.error('Superteam API submission error:', apiError);
-      apiResult = {
-        success: false,
-        error: `API error: ${apiError instanceof Error ? apiError.message : String(apiError)}`,
-      };
+      const parsed = new URL(proofUrl);
+      if (parsed.protocol !== 'https:') throw new Error('HTTPS_REQUIRED');
+    } catch {
+      return NextResponse.json({ error: 'proofUrl must be a valid HTTPS URL' }, { status: 400 });
+    }
+    if (body.reward !== undefined && (!Number.isFinite(body.reward) || body.reward < 0)) {
+      return NextResponse.json({ error: 'reward must be a non-negative number' }, { status: 400 });
     }
 
-    // Send Telegram notification with content summary
-    let telegramResult: any = { success: false };
+    const actualWordCount = content.split(/\s+/).filter(Boolean).length;
+    const supabase = getSuperteamSupabase();
+    const { agent, apiKey } = await requireSuperteamAgentCredential(supabase, agentId);
+    const client = new SuperteamAgentClient(apiKey, agent.name);
+    const externalResult = await client.submitListing({
+      listingId: bountyId,
+      link: proofUrl,
+      otherInfo: `${body.contentType}; words=${actualWordCount}`,
+      ask: body.reward,
+    });
 
-    if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID) {
+    const submissionId = `content-${randomUUID()}`;
+    const submittedAt = new Date().toISOString();
+    const externalData = externalResult.data as Record<string, unknown> | undefined;
+    const claimCode = externalResult.success && externalData
+      ? String(externalData.claimCode ?? externalData.claim_code ?? '') || null
+      : null;
+
+    const { error: persistError } = await supabase.from('agent_submissions').insert({
+      id: submissionId,
+      agent_id: agentId,
+      listing_id: bountyId,
+      listing_title: bountyTitle,
+      link: proofUrl,
+      other_info: `${body.contentType}; words=${actualWordCount}`,
+      status: externalResult.success ? 'submitted' : 'failed',
+      superteam_response: externalResult,
+      ask: body.reward ?? null,
+      submitted_at: submittedAt,
+    });
+
+    if (persistError) {
+      return NextResponse.json({
+        success: false,
+        externalSubmitted: Boolean(externalResult.success),
+        error: 'SUPERTEAM_CONTENT_AUDIT_PERSIST_FAILED',
+        claimCode,
+      }, { status: 503 });
+    }
+
+    let telegramResult: unknown = null;
+    if (externalResult.success && process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID) {
       try {
         const telegramSubmitter = new TelegramSubmitter(
           process.env.TELEGRAM_BOT_TOKEN,
-          process.env.TELEGRAM_CHAT_ID
+          process.env.TELEGRAM_CHAT_ID,
         );
-
-        // Create content preview (first 100 chars)
-        const contentPreview = content.substring(0, 100).replace(/\n/g, ' ');
-
         telegramResult = await telegramSubmitter.submitBounty({
           listingId: bountyId,
           title: bountyTitle,
-          reward: reward || 0,
-          rewardToken: rewardToken || 'USDC',
-          link: submissionLink,
-          otherInfo: `${contentType} (${wordCount} words) | Preview: ${contentPreview}...`,
-          claimCode: agent.claim_code,
+          reward: body.reward ?? 0,
+          rewardToken: body.rewardToken || 'USDC',
+          link: proofUrl,
+          otherInfo: `${body.contentType} (${actualWordCount} words)`,
+          claimCode: claimCode ?? undefined,
         });
-
-        console.log(`✅ Telegram notification sent:`, telegramResult);
-      } catch (telegramError) {
-        console.error('Telegram notification error:', telegramError);
+      } catch (error) {
+        console.error('[superteam/submit-content] Telegram notification failed:', error);
       }
     }
 
-    // Log submission to memory store
-    const submissionId = `content-${agentId}-${bountyId}-${Date.now()}`;
-
-    try {
-      testMemoryStore.addSubmission({
-        id: submissionId,
-        agentId,
-        listingId: bountyId,
-        link: submissionLink,
-        otherInfo: contentInfo,
-        createdAt: Date.now(),
-      });
-    } catch (e) {
-      console.warn(`Memory store logging failed: ${String(e).slice(0, 100)}`);
+    if (!externalResult.success) {
+      return NextResponse.json({
+        success: false,
+        submissionId,
+        persisted: true,
+        status: 'failed',
+        error: externalResult.error ?? 'SUPERTEAM_API_SUBMISSION_FAILED',
+        telegramResult,
+      }, { status: 502 });
     }
 
-    // Calculate completion metrics
-    const completionMetrics = {
-      bountyId,
-      contentType,
-      wordCount,
-      reward,
-      rewardToken,
-      submission: {
-        id: submissionId,
-        link: submissionLink,
-        timestamp: new Date().toISOString(),
-      },
-      apiStatus: apiResult.success ? 'submitted' : 'failed',
-      telegramStatus: telegramResult.success ? 'notified' : 'skipped',
-    };
-
     return NextResponse.json({
-      success: apiResult.success || telegramResult.success,
+      success: true,
+      source: 'superteam_api',
+      persisted: true,
       submissionId,
-      contentType,
+      status: 'submitted',
       bountyId,
-      bountyTitle,
-      reward,
-      rewardToken,
-      metrics: completionMetrics,
-      apiResult,
+      contentType: body.contentType,
+      actualWordCount,
+      requestedReward: body.reward ?? null,
+      rewardToken: body.rewardToken ?? null,
+      proofUrl,
+      claimCode,
       telegramResult,
-      claimCode: agent.claim_code,
-      message: apiResult.success
-        ? `Content submitted to Superteam. Claim with code: ${agent.claim_code}`
-        : 'Content logged for submission. Telegram notification sent.',
-      timestamp: new Date().toISOString(),
+      submittedAt,
     });
   } catch (error) {
-    return handleApiError('api/superteam/agent/submit-content', error);
+    console.error('[superteam/submit-content] failed:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message.split(':')[0] : 'SUPERTEAM_CONTENT_SUBMISSION_FAILED' },
+      { status: superteamErrorStatus(error) },
+    );
   }
 }
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const agentId = searchParams.get('agentId');
-    const contentType = searchParams.get('contentType');
-
-    if (!agentId) {
-      return NextResponse.json(
-        { error: 'agentId required' },
-        { status: 400 }
-      );
+    const agentId = searchParams.get('agentId')?.trim();
+    const contentType = searchParams.get('contentType')?.trim();
+    if (!agentId) return NextResponse.json({ error: 'agentId required' }, { status: 400 });
+    if (contentType && !CONTENT_TYPES.has(contentType)) {
+      return NextResponse.json({ error: 'invalid contentType' }, { status: 400 });
     }
 
-    let submissions: any[] = [];
+    const supabase = getSuperteamSupabase();
+    let query = supabase
+      .from('agent_submissions')
+      .select('*')
+      .eq('agent_id', agentId);
+    if (contentType) query = query.ilike('other_info', `${contentType};%`);
 
-    // Try Supabase first
-    try {
-      const supabase = createServiceClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-      );
-      const query = supabase
-        .from('agent_submissions')
-        .select('*')
-        .eq('agent_id', agentId);
-
-      if (contentType) {
-        query.filter('other_info', 'ilike', `%${contentType}%`);
-      }
-
-      const { data, error } = await query.order('submitted_at', {
-        ascending: false,
-      });
-
-      if (!error && data) {
-        submissions = data;
-      }
-    } catch (e) {
-      console.warn(`Supabase fetch failed: ${String(e).slice(0, 100)}`);
-    }
-
-    // Fallback to memory store
-    if (submissions.length === 0) {
-      const memSubmissions = testMemoryStore.getSubmissions(agentId);
-      submissions = memSubmissions.map((s) => ({
-        id: s.id,
-        agent_id: s.agentId,
-        listing_id: s.listingId,
-        link: s.link,
-        other_info: s.otherInfo,
-        submitted_at: new Date(s.createdAt).toISOString(),
-      }));
-    }
+    const { data, error } = await query.order('submitted_at', { ascending: false });
+    if (error) throw new Error(`SUPERTEAM_CONTENT_FETCH_FAILED:${error.message}`);
 
     return NextResponse.json({
       success: true,
+      source: 'supabase',
       agentId,
       contentType: contentType || 'all',
-      submissions: submissions.filter((s) =>
-        !contentType ? true : s.other_info?.includes(contentType)
-      ),
-      count: submissions.length,
+      submissions: data ?? [],
+      count: data?.length ?? 0,
     });
   } catch (error) {
-    return handleApiError('api/superteam/agent/submit-content', error);
+    console.error('[superteam/submit-content:get] failed:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message.split(':')[0] : 'SUPERTEAM_CONTENT_FETCH_FAILED' },
+      { status: superteamErrorStatus(error) },
+    );
   }
 }
