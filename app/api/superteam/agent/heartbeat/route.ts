@@ -5,6 +5,7 @@ import {
   requireSuperteamAgentCredential,
   superteamErrorStatus,
 } from '@/lib/superteam/server';
+import { handleApiError } from '@/lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,11 +44,12 @@ export async function GET(request: NextRequest) {
       superteamHealth = health.data ?? null;
       if (!health.success) {
         status = 'degraded';
-        externalError = health.error ?? 'SUPERTEAM_HEALTH_CHECK_FAILED';
+        externalError = 'SUPERTEAM_HEALTH_CHECK_FAILED';
       }
     } catch (error) {
       status = 'degraded';
-      externalError = error instanceof Error ? error.message : 'SUPERTEAM_HEALTH_CHECK_FAILED';
+      externalError = 'SUPERTEAM_HEALTH_CHECK_FAILED';
+      console.error('[superteam/heartbeat] external health check failed:', error);
     }
 
     return NextResponse.json({
@@ -64,10 +66,6 @@ export async function GET(request: NextRequest) {
       },
     }, { status: status === 'ok' ? 200 : 503 });
   } catch (error) {
-    console.error('[superteam/heartbeat] failed:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message.split(':')[0] : 'SUPERTEAM_HEARTBEAT_FAILED' },
-      { status: superteamErrorStatus(error) },
-    );
+    return handleApiError('superteam/heartbeat', error, { status: superteamErrorStatus(error) });
   }
 }
