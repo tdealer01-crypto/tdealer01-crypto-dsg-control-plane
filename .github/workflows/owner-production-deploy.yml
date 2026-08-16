@@ -1,0 +1,88 @@
+name: Owner Production Deploy Command
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: owner-production-deploy-command
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    name: Validate Owner Command and Dispatch Promotion
+    if: >-
+      github.event.issue.pull_request == null &&
+      github.actor == 'tdealer01-crypto' &&
+      github.event.comment.author_association == 'OWNER' &&
+      startsWith(github.event.comment.body, '/dsg deploy production ')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Validate exact promotion command
+        id: command
+        shell: bash
+        env:
+          COMMAND: ${{ github.event.comment.body }}
+        run: |
+          set -euo pipefail
+          read -r PREFIX ACTION ENVIRONMENT PROMOTION_ID COMMIT_SHA EXTRA <<< "$COMMAND"
+          test "$PREFIX" = "/dsg" || { echo "Invalid command prefix"; exit 1; }
+          test "$ACTION" = "deploy" || { echo "Invalid command action"; exit 1; }
+          test "$ENVIRONMENT" = "production" || { echo "Invalid deployment environment"; exit 1; }
+          [[ "$PROMOTION_ID" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]] || { echo "Invalid promotion UUID"; exit 1; }
+          [[ "$COMMIT_SHA" =~ ^[0-9a-fA-F]{40}$ ]] || { echo "Commit SHA must be the full 40-character SHA"; exit 1; }
+          test -z "${EXTRA:-}" || { echo "Unexpected extra command input"; exit 1; }
+
+          git fetch origin main --depth=1
+          MAIN_HEAD=$(git rev-parse origin/main)
+          test "${MAIN_HEAD,,}" = "${COMMIT_SHA,,}" || { echo "Requested commit is not current main head"; exit 1; }
+
+          echo "promotion_id=$PROMOTION_ID" >> "$GITHUB_OUTPUT"
+          echo "commit_sha=$COMMIT_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Dispatch protected production promotion workflow
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PROMOTION_ID: ${{ steps.command.outputs.promotion_id }}
+          COMMIT_SHA: ${{ steps.command.outputs.commit_sha }}
+        run: |
+          set -euo pipefail
+          PAYLOAD=$(jq -n \
+            --arg ref "main" \
+            --arg promotion_id "$PROMOTION_ID" \
+            --arg commit_sha "$COMMIT_SHA" \
+            '{ref:$ref,inputs:{promotion_id:$promotion_id,commit_sha:$commit_sha,workspace_key:"dsg-agent-dev"}}')
+
+          curl --fail --silent --show-error \
+            -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/promoted-production-deploy.yml/dispatches" \
+            -d "$PAYLOAD"
+
+      - name: Record authorization evidence
+        env:
+          PROMOTION_ID: ${{ steps.command.outputs.promotion_id }}
+          COMMIT_SHA: ${{ steps.command.outputs.commit_sha }}
+        run: |
+          {
+            echo "## Owner-authorized production deployment"
+            echo ""
+            echo "- Actor: $GITHUB_ACTOR"
+            echo "- Owner association: ${{ github.event.comment.author_association }}"
+            echo "- Promotion ID: $PROMOTION_ID"
+            echo "- Exact current main commit: $COMMIT_SHA"
+            echo "- Source comment: ${{ github.event.comment.html_url }}"
+            echo "- Execution path: protected Promoted Production Deployment workflow"
+          } >> "$GITHUB_STEP_SUMMARY"
