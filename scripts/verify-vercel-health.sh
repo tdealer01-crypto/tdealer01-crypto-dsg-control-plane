@@ -3,10 +3,16 @@ set -euo pipefail
 
 DEPLOYMENT_URL="${1:-}"
 HEALTH_PATH="${2:-/api/health}"
+VERIFY_MODE="${3:-health}"
 VERCEL_CLI_VERSION="${VERCEL_CLI_VERSION:-58.0.0}"
 
 if [[ -z "$DEPLOYMENT_URL" ]]; then
-  echo "Usage: scripts/verify-vercel-health.sh <deployment-url> [health-path]" >&2
+  echo "Usage: scripts/verify-vercel-health.sh <deployment-url> [health-path] [health|access]" >&2
+  exit 2
+fi
+
+if [[ "$VERIFY_MODE" != "health" && "$VERIFY_MODE" != "access" ]]; then
+  echo "Invalid verification mode: $VERIFY_MODE (expected health or access)" >&2
   exit 2
 fi
 
@@ -35,6 +41,33 @@ cmd=(
 cmd+=(--silent --show-error --output "$BODY_FILE" --write-out '%{http_code}')
 
 HTTP_STATUS="$("${cmd[@]}")"
+
+if [[ "$VERIFY_MODE" == "access" ]]; then
+  # Preview deployments can be READY while their preview-only runtime env is
+  # intentionally incomplete. For this preflight we prove only that Vercel
+  # Authentication was bypassed and the request reached DSG itself; production
+  # health remains strict below. An SSO redirect/body cannot satisfy this JSON
+  # identity check.
+  node - "$BODY_FILE" "$HTTP_STATUS" <<'NODE'
+const fs = require('fs');
+const path = process.argv[2];
+const status = process.argv[3];
+let payload;
+try {
+  payload = JSON.parse(fs.readFileSync(path, 'utf8'));
+} catch {
+  console.error(`Vercel access verification failed closed: app JSON not reached (HTTP ${status})`);
+  process.exit(1);
+}
+if (payload?.service !== 'dsg-control-plane') {
+  console.error(`Vercel access verification failed closed: unexpected app identity (HTTP ${status})`);
+  process.exit(1);
+}
+console.log(`Vercel access verified: protection bypassed and DSG app reached (HTTP ${status})`);
+NODE
+  exit 0
+fi
+
 if [[ "$HTTP_STATUS" != "200" ]]; then
   echo "Vercel health verification failed closed: expected HTTP 200, got ${HTTP_STATUS}" >&2
   exit 1
