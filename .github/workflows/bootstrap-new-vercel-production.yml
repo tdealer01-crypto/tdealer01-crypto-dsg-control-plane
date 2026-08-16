@@ -6,6 +6,7 @@ on:
     paths:
       - .github/workflows/bootstrap-new-vercel-production.yml
       - scripts/verify-vercel-health.sh
+      - vercel.json
   workflow_dispatch:
 
 concurrency:
