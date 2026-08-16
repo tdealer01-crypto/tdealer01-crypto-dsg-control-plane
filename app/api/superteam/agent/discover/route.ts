@@ -1,138 +1,79 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { SuperteamAgentClient } from '@/lib/superteam/agent-client';
-import { testMemoryStore } from '@/lib/superteam/test-store';
+import {
+  getSuperteamSupabase,
+  requireSuperteamAgentCredential,
+  superteamErrorStatus,
+} from '@/lib/superteam/server';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const agentId = searchParams.get('agentId');
-    const take = parseInt(searchParams.get('take') || '20');
-    const type = searchParams.get('type') as
-      | 'bounty'
-      | 'project'
-      | 'hackathon'
-      | undefined;
+    const agentId = searchParams.get('agentId')?.trim();
+    const rawTake = Number(searchParams.get('take') ?? 20);
+    const type = searchParams.get('type') as 'bounty' | 'project' | 'hackathon' | null;
 
-    if (!agentId) {
-      return NextResponse.json(
-        { error: 'agentId required' },
-        { status: 400 }
-      );
+    if (!agentId) return NextResponse.json({ error: 'agentId required' }, { status: 400 });
+    if (!Number.isInteger(rawTake) || rawTake < 1 || rawTake > 100) {
+      return NextResponse.json({ error: 'take must be an integer from 1 to 100' }, { status: 400 });
+    }
+    if (type && !['bounty', 'project', 'hackathon'].includes(type)) {
+      return NextResponse.json({ error: 'invalid listing type' }, { status: 400 });
     }
 
-    let apiKey: string | null = null;
-    let agentName = 'test-agent';
+    const supabase = getSuperteamSupabase();
+    const { agent, apiKey } = await requireSuperteamAgentCredential(supabase, agentId);
+    const client = new SuperteamAgentClient(apiKey, agent.name);
+    const listings = await client.getListings({ take: rawTake, type: type ?? undefined });
 
-    // Prefer real SUPERTEAM_API_KEY if available
-    if (process.env.SUPERTEAM_API_KEY) {
-      apiKey = process.env.SUPERTEAM_API_KEY;
-      agentName = 'superteam-agent-live';
-      console.log('Using real Superteam API key from environment');
-    } else {
-      // Try to get from Supabase
-      try {
-        const supabase = createServiceClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.SUPABASE_SERVICE_ROLE_KEY!
-        );
-
-        const { data: agent, error } = await supabase
-          .from('dsg_agents')
-          .select('api_key, name')
-          .eq('id', agentId)
-          .single();
-
-        if (error) {
-          console.warn(`Agent lookup error: ${error.message}`);
-        } else if (agent) {
-          apiKey = agent.api_key;
-          agentName = agent.name;
-        }
-      } catch (e) {
-        console.warn(`Supabase unavailable, checking memory store: ${String(e).slice(0, 100)}`);
-      }
-    }
-
-    // Fallback to memory store
-    if (!apiKey) {
-      const memAgent = testMemoryStore.getAgent(agentId);
-      if (memAgent) {
-        apiKey = memAgent.apiKey;
-        agentName = memAgent.name;
-      }
-    }
-
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: 'Agent not found', agentId },
-        { status: 404 }
-      );
-    }
-
-    // Create client with stored API key
-    const client = new SuperteamAgentClient(apiKey, agentName);
-
-    // Fetch agent-eligible listings from Superteam
-    const listings = await client.getListings({
-      take,
-      type,
-    });
-
-    // Try to store discovery log (with fallback)
-    try {
-      const supabase = createServiceClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-      );
-
-      const discoverLog = listings.map((listing) => ({
-        id: `discovery-${agentId}-${listing.id}-${Date.now()}`,
+    let auditPersisted = false;
+    if (listings.length > 0) {
+      const discoveredAt = new Date().toISOString();
+      const rows = listings.map((listing) => ({
+        id: `discovery-${agentId}-${listing.id}-${crypto.randomUUID()}`,
         agent_id: agentId,
         listing_id: listing.id,
         listing_title: listing.title,
         listing_type: listing.type,
         reward: listing.reward,
-        discovered_at: new Date().toISOString(),
+        discovered_at: discoveredAt,
       }));
-
-      const { error } = await supabase.from('agent_discovery_log').insert(discoverLog);
-
+      const { error } = await supabase.from('agent_discovery_log').insert(rows);
       if (error) {
-        console.warn(`Discovery log insert error: ${error.message}`);
+        console.error('[superteam/discover] audit persistence failed:', error.message);
       } else {
-        console.log(`✅ Discovery log stored for agent ${agentId}`);
+        auditPersisted = true;
       }
-    } catch (e) {
-      console.warn(`Could not log discovery to DB: ${String(e).slice(0, 100)}`);
+    } else {
+      auditPersisted = true;
     }
 
     return NextResponse.json({
       success: true,
+      source: 'superteam_api',
+      agentId,
       count: listings.length,
-      listings: listings.map((l) => ({
-        id: l.id,
-        slug: l.slug,
-        title: l.title,
-        description: l.description,
-        type: l.type,
-        reward: l.reward,
-        rewardToken: l.rewardToken,
-        deadline: l.deadline,
-        skills: l.skills,
-        agentAccess: l.agentAccess,
+      auditPersisted,
+      listings: listings.map((listing) => ({
+        id: listing.id,
+        slug: listing.slug,
+        title: listing.title,
+        description: listing.description,
+        type: listing.type,
+        reward: listing.reward,
+        rewardToken: listing.rewardToken,
+        deadline: listing.deadline,
+        skills: listing.skills,
+        agentAccess: listing.agentAccess,
       })),
     });
   } catch (error) {
-    console.error('Discovery error:', error);
+    console.error('[superteam/discover] failed:', error);
     return NextResponse.json(
-      {
-        error: 'Failed to discover listings',
-        details: String(error),
-      },
-      { status: 500 }
+      { error: error instanceof Error ? error.message.split(':')[0] : 'SUPERTEAM_DISCOVERY_FAILED' },
+      { status: superteamErrorStatus(error) },
     );
   }
 }
