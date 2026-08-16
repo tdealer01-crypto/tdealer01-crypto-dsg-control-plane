@@ -9,38 +9,35 @@ type ScoreBucket = {
   percentage: number;
 };
 
+const EMPTY_BUCKETS: ScoreBucket[] = [
+  { range: '0-20', count: 0, percentage: 0 },
+  { range: '21-40', count: 0, percentage: 0 },
+  { range: '41-60', count: 0, percentage: 0 },
+  { range: '61-80', count: 0, percentage: 0 },
+  { range: '81-100', count: 0, percentage: 0 },
+];
+
 export function ICPScoreDistribution() {
-  const [data, setData] = useState<ScoreBucket[]>([
-    { range: '0-20', count: 0, percentage: 0 },
-    { range: '21-40', count: 0, percentage: 0 },
-    { range: '41-60', count: 0, percentage: 0 },
-    { range: '61-80', count: 0, percentage: 0 },
-    { range: '81-100', count: 0, percentage: 0 },
-  ]);
+  const [data, setData] = useState<ScoreBucket[]>(EMPTY_BUCKETS);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchICPDistribution();
+    void fetchICPDistribution();
   }, []);
 
   async function fetchICPDistribution() {
     try {
-      const response = await fetch('/api/leads/metrics');
-      if (!response.ok) throw new Error('Failed to fetch');
-
-      // In a real implementation, this would come from the API
-      // For now, we'll use mock data - this should be expanded in the API
-      const mockData = [
-        { range: '0-20', count: 12, percentage: 8 },
-        { range: '21-40', count: 28, percentage: 18 },
-        { range: '41-60', count: 42, percentage: 28 },
-        { range: '61-80', count: 52, percentage: 34 },
-        { range: '81-100', count: 16, percentage: 12 },
-      ];
-
-      setData(mockData);
+      const response = await fetch('/api/leads/metrics', { cache: 'no-store' });
+      if (!response.ok) throw new Error(`HTTP_${response.status}`);
+      const payload = await response.json();
+      if (!Array.isArray(payload.icp_distribution)) {
+        throw new Error('ICP_DISTRIBUTION_MISSING');
+      }
+      setData(payload.icp_distribution);
     } catch (err) {
       console.error('Error fetching ICP distribution:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load live ICP distribution');
     } finally {
       setLoading(false);
     }
@@ -49,7 +46,15 @@ export function ICPScoreDistribution() {
   const colors = ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e'];
 
   if (loading) {
-    return <div className="h-64 flex items-center justify-center text-slate-500">Loading...</div>;
+    return <div className="h-64 flex items-center justify-center text-slate-500">Loading live data...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="h-64 flex items-center justify-center text-sm text-red-300">
+        Live ICP data unavailable: {error}
+      </div>
+    );
   }
 
   return (
@@ -72,18 +77,17 @@ export function ICPScoreDistribution() {
         </BarChart>
       </ResponsiveContainer>
 
-      {/* Distribution Legend */}
       <div className="grid grid-cols-2 gap-2 pt-4 border-t border-slate-700 text-xs">
         <div>
           <div className="text-slate-400">Low Priority</div>
           <div className="text-sm font-semibold text-slate-200">
-            {data.slice(0, 2).reduce((sum, d) => sum + d.count, 0)} leads
+            {data.slice(0, 2).reduce((sum, item) => sum + item.count, 0)} leads
           </div>
         </div>
         <div>
           <div className="text-slate-400">High Priority</div>
           <div className="text-sm font-semibold text-emerald-400">
-            {data.slice(3).reduce((sum, d) => sum + d.count, 0)} leads
+            {data.slice(3).reduce((sum, item) => sum + item.count, 0)} leads
           </div>
         </div>
       </div>
