@@ -60,7 +60,7 @@ describe('Phase 2: deterministic local optimizer + Z3 verification', () => {
     expect(isingResult.solverVersion).toBe('dsg-anneal-v1');
     expect(verifyResult.isSAT).toBe('sat');
     expect(verifyResult.isValid).toBe(true);
-    expect(verifyResult.proofHash).toMatch(/^sha256:/);
+    expect(verifyResult.proofHash).toMatch(/^[a-f0-9]{64}$/);
   });
 
   it('does not silently accept an intentionally infeasible assignment', async () => {
@@ -101,7 +101,7 @@ describe('Phase 2: deterministic local optimizer + Z3 verification', () => {
 
     expect(buildResult.qubo.problemHash).toBe(isingResult.proofData.quboHash);
     expect(isingResult.proofData.solutionHash).toMatch(/^[a-f0-9]{64}$/);
-    expect(verifyResult.proofHash).toMatch(/^sha256:/);
+    expect(verifyResult.proofHash).toMatch(/^[a-f0-9]{64}$/);
 
     const hashes = new Set([
       buildResult.qubo.problemHash,
