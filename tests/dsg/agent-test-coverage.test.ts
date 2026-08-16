@@ -1,51 +1,61 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { runTestCoverage } from '../../skills/test-coverage/skill';
 
-vi.mock('../../lib/dsg/agent-runtime/external-context-tools', () => ({
-  loadExternalAgentContext: vi.fn().mockResolvedValue({ items: [], promptText: '' }),
-}));
-
-vi.mock('../../lib/dsg/logic/z3-agent-gate', () => ({
-  runZ3AgentGate: vi.fn(async (input: { gateAllow: boolean }) => ({
-    status: input.gateAllow ? 'PASS' : 'BLOCK',
-    pass: input.gateAllow,
-    z3ProofHash: `sha256:mock-coverage-${input.gateAllow}`,
-    violations: input.gateAllow ? [] : [{ code: 'COVERAGE_DECREASED', message: 'decreased' }],
-  })),
-}));
-
-describe('Test Coverage Agent — Monotonic Invariant', () => {
-  it('PASS when coverage increases', async () => {
-    const r = await runTestCoverage({ jobId: 'j1', workspaceId: 'ws1', previousCoveragePct: 60, currentCoveragePct: 65 });
-    expect(r.ok).toBe(true);
+/**
+ * Test-coverage agent truth-boundary tests.
+ *
+ * The current seed engine has no verified fetcher for test_coverage, so caller-
+ * supplied percentages cannot self-certify a PASS. The monotonic arithmetic is
+ * still reported, but the overall action must BLOCK until verified coverage
+ * evidence is wired to a real source.
+ */
+describe('Test Coverage Agent — evidence-first invariant', () => {
+  it('reports arithmetic increase but does not PASS without verified coverage evidence', async () => {
+    const r = await runTestCoverage({
+      jobId: 'j1', workspaceId: 'ws1', previousCoveragePct: 60, currentCoveragePct: 65,
+    });
     expect(r.coverageIncreased).toBe(true);
-    expect(r.blockedReasons).toHaveLength(0);
-  });
-
-  it('PASS when coverage stays the same', async () => {
-    const r = await runTestCoverage({ jobId: 'j2', workspaceId: 'ws1', previousCoveragePct: 70, currentCoveragePct: 70 });
-    expect(r.coverageIncreased).toBe(true);
-  });
-
-  it('BLOCK when coverage decreases', async () => {
-    const r = await runTestCoverage({ jobId: 'j3', workspaceId: 'ws1', previousCoveragePct: 80, currentCoveragePct: 75 });
     expect(r.ok).toBe(false);
+    expect(r.blockedReasons).toContain('NO_VERIFIED_FETCHER_FOR_TEST_COVERAGE:CALLER_CONTEXT_REJECTED');
+  });
+
+  it('reports equal coverage as non-decreasing but remains evidence-blocked', async () => {
+    const r = await runTestCoverage({
+      jobId: 'j2', workspaceId: 'ws1', previousCoveragePct: 70, currentCoveragePct: 70,
+    });
+    expect(r.coverageIncreased).toBe(true);
+    expect(r.ok).toBe(false);
+  });
+
+  it('blocks a measured decrease independently of evidence availability', async () => {
+    const r = await runTestCoverage({
+      jobId: 'j3', workspaceId: 'ws1', previousCoveragePct: 80, currentCoveragePct: 75,
+    });
     expect(r.coverageIncreased).toBe(false);
-    expect(r.blockedReasons).toContain('COVERAGE_DECREASED');
+    expect(r.ok).toBe(false);
   });
 
-  it('reports needsMoreTests when below threshold', async () => {
-    const r = await runTestCoverage({ jobId: 'j4', workspaceId: 'ws1', previousCoveragePct: 50, currentCoveragePct: 55, threshold: 80 });
+  it('reports needsMoreTests below threshold without converting it into verified evidence', async () => {
+    const r = await runTestCoverage({
+      jobId: 'j4', workspaceId: 'ws1', previousCoveragePct: 50, currentCoveragePct: 55, threshold: 80,
+    });
     expect(r.needsMoreTests).toBe(true);
+    expect(r.ok).toBe(false);
   });
 
-  it('does not needMoreTests when at or above threshold', async () => {
-    const r = await runTestCoverage({ jobId: 'j5', workspaceId: 'ws1', previousCoveragePct: 80, currentCoveragePct: 85, threshold: 80 });
+  it('reports threshold arithmetic independently from the evidence gate', async () => {
+    const r = await runTestCoverage({
+      jobId: 'j5', workspaceId: 'ws1', previousCoveragePct: 80, currentCoveragePct: 85, threshold: 80,
+    });
     expect(r.needsMoreTests).toBe(false);
+    expect(r.ok).toBe(false);
   });
 
-  it('always returns z3ProofHash', async () => {
-    const r = await runTestCoverage({ jobId: 'j6', workspaceId: 'ws1', previousCoveragePct: 50, currentCoveragePct: 55 });
+  it('returns a real Z3 gate proof marker or explicit unavailable marker, never a mocked hash', async () => {
+    const r = await runTestCoverage({
+      jobId: 'j6', workspaceId: 'ws1', previousCoveragePct: 50, currentCoveragePct: 55,
+    });
     expect(r.z3ProofHash).toMatch(/^sha256:/);
+    expect(r.z3ProofHash).not.toContain('mock');
   });
 });
