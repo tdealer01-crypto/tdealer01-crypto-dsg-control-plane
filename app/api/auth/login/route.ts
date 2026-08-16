@@ -14,20 +14,19 @@ export async function POST(request: Request) {
       });
     }
 
-    // Lazy-load Supabase config at runtime, not at build time
+    // Authentication is a production trust boundary. Missing configuration must
+    // never produce a synthetic identity or token; fail closed instead.
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
     if (!supabaseUrl || !supabaseServiceKey) {
-      // Fallback: if Supabase not configured, return mock auth
-      console.warn('Supabase not configured, using mock auth');
-      return NextResponse.json({
-        token: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${Math.random()}.mock_token`,
-        user: { email, id: `user-${Date.now()}` },
-      });
+      console.error('[auth/login] Supabase authentication is not configured');
+      return NextResponse.json(
+        { error: 'authentication_service_unavailable' },
+        { status: 503 }
+      );
     }
 
-    // Create Supabase admin client
     const supabase = createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
         autoRefreshToken: false,
@@ -35,7 +34,6 @@ export async function POST(request: Request) {
       },
     });
 
-    // Sign in with Supabase
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -53,7 +51,6 @@ export async function POST(request: Request) {
       });
     }
 
-    // Return JWT token and user info
     return NextResponse.json({
       token: data.session.access_token,
       user: {
