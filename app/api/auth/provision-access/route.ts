@@ -14,10 +14,23 @@ function getBearerToken(headers: Headers): string | undefined {
 
 async function resolveUserFromBearer(bearerToken: string): Promise<ProvisionUser | null> {
   try {
-    const admin = getSupabaseAdmin();
-    const { data, error } = await (admin as any).auth.getUser(bearerToken);
-    if (error || !data?.user?.id || !data.user.email) return null;
-    return { id: data.user.id, email: data.user.email };
+    const anonKey =
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!anonKey || !url) return null;
+    // Verify the Supabase-issued JWT against the Auth API using the anon key.
+    // Supabase does not accept service_role keys on the Auth REST API, so we
+    // validate the JWT with the anon key instead of admin.auth.getUser.
+    const userResponse = await fetch(`${url}/auth/v1/user`, {
+      headers: { apikey: anonKey, Authorization: `Bearer ${bearerToken}` },
+      cache: 'no-store',
+    });
+    if (!userResponse.ok) return null;
+    const user = (await userResponse.json()) as { id?: string; sub?: string; email?: string };
+    const id = user.id || user.sub;
+    if (!id || !user.email) return null;
+    return { id, email: user.email };
   } catch {
     return null;
   }
