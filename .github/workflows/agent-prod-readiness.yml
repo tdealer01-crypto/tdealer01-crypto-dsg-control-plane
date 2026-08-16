@@ -1,4 +1,4 @@
-name: Agent — Production Readiness
+name: Agent — Production Readiness Baseline
 
 on:
   workflow_run:
@@ -16,9 +16,8 @@ permissions:
 
 jobs:
   prod-readiness-agent:
-    if: github.event.workflow_run.conclusion == 'failure' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    name: Production Readiness Check
+    name: Production Readiness Baseline
     timeout-minutes: 25
 
     steps:
@@ -46,48 +45,40 @@ jobs:
         id: config
         continue-on-error: true
         run: |
-          echo "Checking Vercel configuration..."
-          test -f vercel.json && echo "VERCEL_JSON=present" >> $GITHUB_OUTPUT || echo "VERCEL_JSON=missing" >> $GITHUB_OUTPUT
-          echo "Checking environment variable documentation..."
-          test -f .env.example && echo "ENV_DOCS=present" >> $GITHUB_OUTPUT || echo "ENV_DOCS=missing" >> $GITHUB_OUTPUT
+          test -f vercel.json && echo "VERCEL_JSON=present" >> "$GITHUB_OUTPUT" || echo "VERCEL_JSON=missing" >> "$GITHUB_OUTPUT"
+          test -f .env.example && echo "ENV_DOCS=present" >> "$GITHUB_OUTPUT" || echo "ENV_DOCS=missing" >> "$GITHUB_OUTPUT"
 
-      - name: Report Production Readiness
+      - name: Report Baseline Readiness
         if: always()
         uses: actions/github-script@v7
         with:
           script: |
-            const buildStatus = '${{ steps.build.outcome }}' === 'success' ? '✅' : '❌';
-            const typeStatus = '${{ steps.typecheck.outcome }}' === 'success' ? '✅' : '❌';
-            const configStatus = '${{ steps.config.outputs.VERCEL_JSON }}' === 'present' ? '✅' : '❌';
+            const buildPassed = '${{ steps.build.outcome }}' === 'success';
+            const typePassed = '${{ steps.typecheck.outcome }}' === 'success';
+            const configPresent = '${{ steps.config.outputs.VERCEL_JSON }}' === 'present';
 
-            let message = '## 🚀 Production Readiness Agent Report\n\n';
-            message += '### Build Status\n';
-            message += `- Next.js Build: ${buildStatus}\n`;
-            message += `- TypeScript Check: ${typeStatus}\n`;
-            message += `- Vercel Config: ${configStatus}\n`;
-            message += '\n### Production Criteria\n';
+            let message = '## Production Readiness Baseline\n\n';
+            message += `- Next.js build: ${buildPassed ? 'PASS' : 'FAIL'}\n`;
+            message += `- TypeScript: ${typePassed ? 'PASS' : 'FAIL'}\n`;
+            message += `- Deployment config: ${configPresent ? 'PRESENT' : 'MISSING'}\n\n`;
 
-            const allReady = '${{ steps.build.outcome }}' === 'success' &&
-                           '${{ steps.typecheck.outcome }}' === 'success' &&
-                           '${{ steps.config.outputs.VERCEL_JSON }}' === 'present';
-
-            if (allReady) {
-              message += '✅ **READY FOR PRODUCTION**\n';
-              message += '- All builds passing\n';
-              message += '- TypeScript types verified\n';
-              message += '- Deployment config present\n';
+            if (buildPassed && typePassed && configPresent) {
+              message += '**BASELINE CHECKS PASSED — NOT A PRODUCTION-READY CLAIM**\n\n';
+              message += 'These checks do not prove security, correctness, benchmark capacity, DSG authorization, deployment success, observed postconditions, or replay evidence.\n';
+              message += 'Use the `Verified Software E2E` workflow for the release evidence chain.\n';
             } else {
-              message += '❌ **NOT READY FOR PRODUCTION**\n';
-              message += '- Fix build errors before deployment\n';
-              message += '- Resolve type errors\n';
-              message += '- Verify deployment configuration\n';
+              message += '**BASELINE BLOCKED**\n\n';
+              message += 'Fix the failed baseline checks before running the full verified release flow.\n';
             }
 
             if (context.payload.pull_request) {
-              github.rest.issues.createComment({
+              await github.rest.issues.createComment({
                 issue_number: context.issue.number,
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                body: message
+                body: message,
               });
+            } else {
+              core.summary.addRaw(message);
+              await core.summary.write();
             }
