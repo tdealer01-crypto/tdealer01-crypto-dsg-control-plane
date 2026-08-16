@@ -160,7 +160,7 @@ export type GatewayExecutionMode = 'monitor' | 'gateway' | 'critical';
 
 export type GatewayDecision = 'allow' | 'block' | 'review' | 'ask_more_info';
 
-export type GatewayToolProvider = 'zapier' | 'mock' | 'custom_http';
+export type GatewayToolProvider = 'zapier' | 'custom_http';
 
 export type GatewayToolRegistryEntry = {
   name: string;
