@@ -1,189 +1,76 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient as createServiceClient } from '@supabase/supabase-js';
-import { handleApiError } from '@/lib/security/api-error';
-import { SuperteamAgentClient } from '@/lib/superteam/agent-client';
-import { testMemoryStore } from '@/lib/superteam/test-store';
+import {
+  getSuperteamSupabase,
+  loadSuperteamAgent,
+  superteamErrorStatus,
+} from '@/lib/superteam/server';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * Revenue Dashboard
- * Shows all submissions, earnings, and claim codes
- * Real-time tracking of agent revenue generation
- */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const agentId = searchParams.get('agentId') || 'agent_1784384630740_e7ac817';
-    const period = searchParams.get('period') || 'all'; // all, week, month, today
+    const agentId = searchParams.get('agentId')?.trim();
+    if (!agentId) return NextResponse.json({ error: 'agentId required' }, { status: 400 });
 
-    console.log(`[REVENUE-DASHBOARD] Fetching data for ${agentId}`);
+    const supabase = getSuperteamSupabase();
+    const agent = await loadSuperteamAgent(supabase, agentId);
+    if (!agent) return NextResponse.json({ error: 'SUPERTEAM_AGENT_NOT_FOUND' }, { status: 404 });
 
-    // Get agent info
-    let agent: any = null;
-    if (process.env.SUPERTEAM_API_KEY) {
-      agent = {
-        name: 'superteam-agent-live',
-        api_key: process.env.SUPERTEAM_API_KEY,
-        status: 'active',
-      };
-    }
+    const { data: submissions, error } = await supabase
+      .from('agent_submissions')
+      .select('*')
+      .eq('agent_id', agentId)
+      .order('submitted_at', { ascending: false })
+      .limit(100);
+    if (error) throw new Error(`SUPERTEAM_REVENUE_SOURCE_FAILED:${error.message}`);
 
-    // Fetch submissions from multiple sources
-    let dbSubmissions: any[] = [];
-    let memSubmissions: any[] = [];
-
-    // Try Supabase
-    try {
-      const supabase = createServiceClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-      );
-
-      const { data, error } = await supabase
-        .from('agent_submissions')
-        .select('*')
-        .eq('agent_id', agentId)
-        .order('submitted_at', { ascending: false })
-        .limit(100);
-
-      if (!error && data) {
-        dbSubmissions = data;
-      }
-    } catch (e) {
-      console.warn('Supabase unavailable');
-    }
-
-    // Get memory store submissions
-    memSubmissions = testMemoryStore
-      .getSubmissions(agentId)
-      .map((s) => ({
-        id: s.id,
-        agent_id: s.agentId,
-        listing_id: s.listingId,
-        link: s.link,
-        other_info: s.otherInfo,
-        submitted_at: new Date(s.createdAt).toISOString(),
-        status: 'logged',
-      }));
-
-    // Combine all submissions
-    const allSubmissions = [
-      ...dbSubmissions,
-      ...memSubmissions.filter(
-        (m) => !dbSubmissions.find((d) => d.id === m.id)
-      ),
-    ];
-
-    // Calculate metrics from submissions
-    const metrics = {
-      total_submissions: allSubmissions.length,
-      content_submissions: allSubmissions.filter(
-        (s) =>
-          s.other_info?.includes('twitter') ||
-          s.other_info?.includes('analysis') ||
-          s.other_info?.includes('deep-dive')
-      ).length,
-      auto_submissions: allSubmissions.filter(
-        (s) => s.other_info?.includes('Auto-submit')
-      ).length,
-    };
-
-    // Extract revenue from submissions
-    const submissions_with_revenue = allSubmissions.map((s: any) => {
-      // Try to parse reward from other_info or superteam_response
-      let reward = 0;
-      let token = 'USDC';
-
-      // Check if this is content submission
-      if (s.other_info?.includes('Generated') || s.other_info?.includes('words')) {
-        // Extract word count
-        const wordMatch = s.other_info?.match(/(\d+)\s+words/);
-        reward = wordMatch ? Math.ceil(parseInt(wordMatch[1]) / 50) * 50 : 300;
-        token = 'USDC';
-      }
-
-      return {
-        id: s.id,
-        listing_id: s.listing_id,
-        link: s.link,
-        type: s.other_info?.includes('twitter')
-          ? 'twitter-thread'
-          : s.other_info?.includes('deep-dive')
-            ? 'deep-dive'
-            : s.other_info?.includes('analysis')
-              ? 'analysis'
-              : 'auto-submit',
-        status: s.status || 'submitted',
-        reward,
-        token,
-        submitted_at: s.submitted_at,
-        info: s.other_info?.slice(0, 80),
-      };
-    });
-
-    // Calculate totals
-    const totalReward = submissions_with_revenue.reduce(
-      (sum: number, s: any) => sum + (s.reward || 0),
-      0
-    );
-
-    const revenueByType = submissions_with_revenue.reduce(
-      (acc: any, s: any) => {
-        if (!acc[s.type]) {
-          acc[s.type] = { count: 0, reward: 0 };
-        }
-        acc[s.type].count++;
-        acc[s.type].reward += s.reward || 0;
-        return acc;
-      },
-      {}
-    );
-
-    // Revenue projection
-    const daysActive = Math.max(
-      1,
-      Math.floor(
-        (Date.now() -
-          new Date(allSubmissions[allSubmissions.length - 1]?.submitted_at || Date.now()).getTime()) /
-          (1000 * 60 * 60 * 24)
-      ) || 1
-    );
-
-    const dailyAverage = totalReward / Math.max(1, daysActive);
-    const weeklyProjection = dailyAverage * 7;
-    const monthlyProjection = dailyAverage * 30;
+    const rows = submissions ?? [];
+    const requestedAskTotal = rows.reduce((sum: number, row: any) => {
+      const ask = typeof row.ask === 'number' && Number.isFinite(row.ask) ? row.ask : 0;
+      return sum + ask;
+    }, 0);
+    const statusCounts = rows.reduce<Record<string, number>>((counts, row: any) => {
+      const status = typeof row.status === 'string' && row.status ? row.status : 'unknown';
+      counts[status] = (counts[status] ?? 0) + 1;
+      return counts;
+    }, {});
 
     return NextResponse.json({
       success: true,
+      source: 'supabase:agent_submissions',
       agent: {
-        id: agentId,
-        name: agent?.name,
-        status: agent?.status || 'configured',
+        id: agent.id,
+        name: agent.name,
+        status: agent.status ?? null,
       },
       timestamp: new Date().toISOString(),
-      summary: {
-        total_submissions: metrics.total_submissions,
-        content_submissions: metrics.content_submissions,
-        auto_submissions: metrics.auto_submissions,
-        total_reward_identified: totalReward,
-        token_mix: 'USDC/USDG',
+      submissions: {
+        total: rows.length,
+        byStatus: statusCounts,
+        requestedAskTotal,
+        requestedAskNote: 'Requested ask is not earned revenue.',
       },
       revenue: {
-        total_earned: totalReward,
-        by_type: revenueByType,
-        daily_average: Math.round(dailyAverage),
-        weekly_projection: Math.round(weeklyProjection),
-        monthly_projection: Math.round(monthlyProjection),
+        totalEarned: null,
+        currency: null,
+        verified: false,
+        reason: 'No verified payout/settlement source is wired to this endpoint.',
       },
-      activity: {
-        days_active: daysActive,
-        submissions_per_day: (metrics.total_submissions / Math.max(1, daysActive)).toFixed(1),
-      },
-      recent_submissions: submissions_with_revenue.slice(0, 20),
-      note: 'Revenue tracking for all agent submissions. Shows completed work ready for claim.',
+      recentSubmissions: rows.slice(0, 20).map((row: any) => ({
+        id: row.id,
+        listingId: row.listing_id,
+        link: row.link,
+        status: row.status,
+        requestedAsk: typeof row.ask === 'number' ? row.ask : null,
+        submittedAt: row.submitted_at,
+      })),
     });
   } catch (error) {
-    return handleApiError('api/superteam/agent/revenue-dashboard', error);
+    console.error('[superteam/revenue-dashboard] failed:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message.split(':')[0] : 'SUPERTEAM_REVENUE_FETCH_FAILED' },
+      { status: superteamErrorStatus(error) },
+    );
   }
 }
