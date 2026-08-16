@@ -16,15 +16,22 @@ BODY_FILE="$(mktemp)"
 cleanup() { rm -f "$BODY_FILE"; }
 trap cleanup EXIT
 
+# --token and --scope are Vercel CLI global options. They must appear before
+# the `curl` subcommand; when placed after it, Vercel forwards them to the
+# underlying curl process and curl fails with "option --token: is unknown".
 cmd=(
-  npx --yes "vercel@${VERCEL_CLI_VERSION}" curl "$HEALTH_PATH"
-  --deployment "$DEPLOYMENT_URL"
+  npx --yes "vercel@${VERCEL_CLI_VERSION}"
   --token "$VERCEL_TOKEN"
 )
 
 if [[ -n "${VERCEL_SCOPE:-}" ]]; then
   cmd+=(--scope "$VERCEL_SCOPE")
 fi
+
+cmd+=(
+  curl "$HEALTH_PATH"
+  --deployment "$DEPLOYMENT_URL"
+)
 
 # vercel curl automatically handles Vercel Deployment Protection for the
 # authenticated project. curl's output is separated so HTTP status and JSON
