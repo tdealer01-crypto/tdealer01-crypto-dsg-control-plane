@@ -102,6 +102,13 @@ export async function buildHealthReport() {
   // behind the limiter while health reports as operational.
   const strictReadiness = readBoolean(process.env.READINESS_STRICT,
     process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL));
+
+  // Debug: log which env vars are actually injected (names only, no values).
+  if (!strictReadiness && process.env.LOG_ENV_ON_HEALTH === 'true') {
+    console.log('[health] injected env names:', Object.keys(process.env)
+      .filter((k) => /^(SUPABASE|NEXTAUTH|NEXT_PUBLIC|DSG_|READINESS|STRIPE|NODE_ENV|PORT)$/.test(k))
+      .sort().join(','));
+  }
   // In non-strict mode (self-hosted / Railway commercial deploys) the
   // readiness gate already covers credentials and the environment; a
   // transient DB timeout must not take the whole service offline for
