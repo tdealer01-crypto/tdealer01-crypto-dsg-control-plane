@@ -17,13 +17,14 @@ AI-generated change
 → release-only live benchmark
 → deterministic software evidence gate
 → canonical DSG production gate
-→ human release
-→ controlled production deploy
-→ observed health/readiness postconditions
-→ deterministic release receipt
+→ immutable promotion handoff
+→ audited promotion request for the exact current main commit
+→ sole governed production workflow
+→ environment approval + exact-commit checks + preview verification
+→ production deployment + health verification + rollback/finalization controls
 ```
 
-The software evidence gate is deliberately **not** a second production authorization engine. Its highest result is `READY_FOR_DSG_GATE`. Production execution remains controlled by the existing DSG production gate and release boundary.
+The software evidence gate is deliberately **not** a second production authorization engine. Its highest result is `READY_FOR_DSG_GATE`. Production mutation remains controlled by the repository's existing audited promotion boundary and sole production workflow.
 
 ## What the user sees
 
@@ -94,18 +95,20 @@ The disposable worktree is removed after verification. The base checkout is not 
 
 ## Release flow
 
-Production release is only reachable from a manual `workflow_dispatch` on `main` with `release=true`.
+Release verification is reachable from a manual `workflow_dispatch` on `main` with `release=true`, but that workflow does **not** mutate production.
 
 1. Scan/typecheck/unit/build/security evidence must pass.
-2. A release run must also provide a real live benchmark target and benchmark credentials; the benchmark must pass.
+2. A release-verification run must provide a real live benchmark target and benchmark credentials; the benchmark must pass.
 3. The workflow calls the real DSG production gate client with `DSG_API_KEY`.
-4. `REVIEW`, `BLOCK`, `UNSUPPORTED`, authentication failures, quota failures, malformed responses, or network failures stop the release.
-5. Only a real remote `PASS` may continue.
-6. The production deployment job uses the GitHub `production` environment as the release boundary.
-7. Vercel deploy runs only after the previous gates pass.
-8. `/api/health` and `/api/readiness` are observed on the returned deployment URL.
-9. `/api/readiness` must return `ready: true`.
-10. A deterministic receipt binds commit, software evidence hash, DSG proof hash, deployment URL, and observed postcondition hashes.
+4. `REVIEW`, `BLOCK`, `UNSUPPORTED`, authentication failures, quota failures, malformed responses, or network failures stop the release verification.
+5. Only a real remote `PASS` may produce `dsg.verified-release-handoff.v1` evidence.
+6. The handoff binds the exact commit, software evidence hash, DSG proof hash, and the repository's sole governed production workflow. It explicitly records `productionExecuted: false`.
+7. After merge, an audited promotion must be requested for the exact current `main` commit through the existing promotion API.
+8. `.github/workflows/promoted-production-deploy.yml` is then dispatched with the promotion id, exact commit SHA, and workspace key.
+9. That existing workflow owns the environment approval, exact-current-main check, preview verification, production deployment, production health verification, rollback, and promotion finalization.
+10. No second production path is added by this feature.
+
+The deployment runbook is authoritative for production promotion details: `docs/RUNBOOK_DEPLOY.md`.
 
 ## Required GitHub/runtime secrets
 
@@ -121,21 +124,17 @@ For the DSG production gate:
 
 For release benchmark evidence:
 
-- `BENCHMARK_BASE_URL`
+- benchmark base URL is provided as the workflow input
 - `BENCHMARK_API_KEY`
 - `BENCHMARK_AGENT_ID`
 
-For controlled Vercel deployment:
+Production deployment credentials remain owned by `.github/workflows/promoted-production-deploy.yml`; this verification workflow does not consume them.
 
-- `VERCEL_TOKEN`
-- `VERCEL_ORG_ID`
-- `VERCEL_PROJECT_ID`
-
-Missing required credentials fail closed. No mock fallback is permitted for production authorization or release evidence.
+Missing required verification credentials fail closed. No mock fallback is permitted for production authorization or release evidence.
 
 ## Human release boundary
 
-Configure the GitHub `production` environment with required reviewers if organizational policy requires a separate reviewer. Manual dispatch itself is an explicit human request, but it must not be represented as an independent reviewer approval unless the environment protection rule is actually configured.
+The verified-software workflow can prove readiness for promotion but cannot approve or execute a production mutation. The audited promotion record and the protected production workflow remain the human/release boundary. Do not represent manual verification dispatch as an independent production approval.
 
 ## Truth boundaries
 
@@ -147,9 +146,8 @@ Configure the GitHub `production` environment with required reviewers if organiz
 - `VERIFIED_IN_SIMULATION` does not mean a branch changed
 - `READY_FOR_DSG_GATE` is not `ALLOW`
 - DSG `PASS` authorizes only the exact action/context evaluated
-- deployment success alone is not completion
-- completion requires observed postconditions and release evidence
-- the release receipt proves the recorded evidence chain; it does not invent compliance or capacity claims
+- `dsg.verified-release-handoff.v1` is not a production deployment receipt
+- production completion remains governed by the existing promotion/deployment workflow and its observed health/finalization evidence
 
 ## Current implementation files
 
@@ -161,7 +159,7 @@ Configure the GitHub `production` environment with required reviewers if organiz
 - `scripts/autonomous-repair.ts`
 - `scripts/build-software-evidence.mjs`
 - `scripts/verified-software-gate.mjs`
-- `scripts/create-software-release-receipt.mjs`
+- `scripts/create-software-release-receipt.mjs` (utility/tested receipt builder; not invoked by the governed promotion path in this PR)
 - `tests/unit/dsg/repair-candidate-generator.test.ts`
 - `tests/unit/dsg/verified-software-gate.test.mjs`
 - `tests/unit/dsg/software-release-receipt.test.mjs`
