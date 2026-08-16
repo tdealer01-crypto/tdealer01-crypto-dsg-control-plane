@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSuperteamSupabase, superteamErrorStatus } from '@/lib/superteam/server';
+import { handleApiError } from '@/lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -94,11 +95,7 @@ export async function POST(request: NextRequest) {
       discoveredAt,
     });
   } catch (error) {
-    console.error('[superteam/telegram-webhook] failed:', error);
-    return NextResponse.json(
-      { ok: false, error: error instanceof Error ? error.message.split(':')[0] : 'TELEGRAM_WEBHOOK_FAILED' },
-      { status: superteamErrorStatus(error) },
-    );
+    return handleApiError('superteam/telegram-webhook', error, { status: superteamErrorStatus(error) });
   }
 }
 
