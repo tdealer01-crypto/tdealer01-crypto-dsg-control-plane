@@ -2,10 +2,6 @@ import { createLogger } from '@/lib/logging/logger';
 
 const logger = createLogger('sim-use');
 
-/**
- * SIM Usage data from LINE sim-use.
- * Tracks mobile data, call minutes, and SMS usage.
- */
 export interface SIMUsageData {
   simId: string;
   phoneNumber?: string;
@@ -21,9 +17,6 @@ export interface SIMUsageData {
   status: 'active' | 'inactive' | 'suspended';
 }
 
-/**
- * Query result from sim-use.
- */
 export interface SIMUsageResult {
   ok: boolean;
   data?: SIMUsageData;
@@ -31,9 +24,6 @@ export interface SIMUsageResult {
   queryTime: number;
 }
 
-/**
- * Configuration for sim-use integration.
- */
 export interface SimUseConfig {
   apiEndpoint?: string;
   apiKey?: string;
@@ -42,56 +32,34 @@ export interface SimUseConfig {
   cacheTtlSeconds?: number;
 }
 
-/**
- * SIM Usage query cache entry.
- */
 interface CacheEntry {
   data: SIMUsageData;
   expiresAt: number;
 }
 
-/**
- * Adapter for LINE sim-use integration.
- *
- * Provides:
- * - Query SIM card usage (data, calls, SMS)
- * - Caching to reduce API calls
- * - Audit logging for compliance
- * - Rate limiting support
- */
 export class SimUseAdapter {
   private config: Required<SimUseConfig>;
   private cache: Map<string, CacheEntry>;
-  private queryCount: number = 0;
-  private lastQueryTime: number = 0;
+  private queryCount = 0;
+  private lastQueryTime = 0;
 
   constructor(config: SimUseConfig = {}) {
     const apiKey = config.apiKey || process.env.SIM_USE_API_KEY || '';
-    const isTestMode = !apiKey || apiKey.includes('placeholder') || apiKey.startsWith('sk_test_dev');
 
     this.config = {
       apiEndpoint: config.apiEndpoint || process.env.SIM_USE_API_ENDPOINT || 'https://sim-use.line.biz/api/v1',
       apiKey,
       timeout: config.timeout || 10_000,
       cacheEnabled: config.cacheEnabled ?? true,
-      cacheTtlSeconds: config.cacheTtlSeconds || 300, // 5 minutes default
+      cacheTtlSeconds: config.cacheTtlSeconds || 300,
     };
     this.cache = new Map();
 
-    if (isTestMode) {
-      logger.info('SIM_USE running in TEST MODE (no real API key)', { module: 'sim-use' });
-    } else if (!this.config.apiKey) {
-      logger.warn('SIM_USE_API_KEY not configured', { module: 'sim-use' });
+    if (!this.config.apiKey) {
+      logger.warn('SIM_USE_API_KEY not configured; integration will fail closed', { module: 'sim-use' });
     }
   }
 
-  /**
-   * Query SIM usage for a specific phone number or SIM ID.
-   *
-   * @param simId - SIM card identifier (phone number or device ID)
-   * @param options - Query options (agentId, userId, etc. for audit trail)
-   * @returns SIMUsageResult with usage data or error
-   */
   async queryUsage(
     simId: string,
     options?: {
@@ -104,7 +72,6 @@ export class SimUseAdapter {
     const startTime = Date.now();
 
     try {
-      // Check cache first
       if (this.config.cacheEnabled && !options?.forceRefresh) {
         const cached = this.getCached(simId);
         if (cached) {
@@ -114,45 +81,25 @@ export class SimUseAdapter {
             requestId: options?.requestId,
             frameId: simId,
           });
-          return {
-            ok: true,
-            data: cached,
-            queryTime: Date.now() - startTime,
-          };
+          return { ok: true, data: cached, queryTime: Date.now() - startTime };
         }
       }
 
-      // Query API
       this.queryCount++;
       this.lastQueryTime = Date.now();
 
-      logger.debug('Querying SIM usage from sim-use API', {
-        agentId: options?.agentId,
-        requestId: options?.requestId,
-        frameId: simId,
-      });
-
       const result = await this.fetchFromApi(simId);
-
-      if (!result.ok) {
+      if (!result.ok || !result.data) {
         logger.warn('SIM usage query failed', {
           agentId: options?.agentId,
           userId: options?.userId,
           requestId: options?.requestId,
           frameId: simId,
-        }, {
-          error: result.error,
-          simId,
-        });
-        return {
-          ok: false,
-          error: result.error,
-          queryTime: Date.now() - startTime,
-        };
+        }, { error: result.error, simId });
+        return { ok: false, error: result.error, queryTime: Date.now() - startTime };
       }
 
-      // Cache the result
-      if (this.config.cacheEnabled && result.data) {
+      if (this.config.cacheEnabled) {
         this.setCached(simId, result.data);
       }
 
@@ -167,11 +114,7 @@ export class SimUseAdapter {
         simId: result.data.simId,
       });
 
-      return {
-        ok: true,
-        data: result.data,
-        queryTime: Date.now() - startTime,
-      };
+      return { ok: true, data: result.data, queryTime: Date.now() - startTime };
     } catch (error) {
       logger.error(
         'Unexpected error in SIM usage query',
@@ -183,7 +126,6 @@ export class SimUseAdapter {
           frameId: simId,
         }
       );
-
       return {
         ok: false,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -192,19 +134,10 @@ export class SimUseAdapter {
     }
   }
 
-  /**
-   * Check if SIM usage has reached warning threshold.
-   */
-  isDataThresholdReached(
-    data: SIMUsageData,
-    threshold: number = 80
-  ): boolean {
+  isDataThresholdReached(data: SIMUsageData, threshold = 80): boolean {
     return data.dataPercentage >= threshold;
   }
 
-  /**
-   * Get query statistics for auditing.
-   */
   getStats() {
     return {
       totalQueries: this.queryCount,
@@ -214,24 +147,14 @@ export class SimUseAdapter {
     };
   }
 
-  /**
-   * Clear cache (for testing or maintenance).
-   */
   clearCache(): void {
     this.cache.clear();
     logger.info('SIM usage cache cleared');
   }
 
-  /**
-   * Fetch SIM usage from the API.
-   * Falls back to mock data in test/dev mode.
-   */
   private async fetchFromApi(simId: string): Promise<SIMUsageResult> {
-    const isTestMode = !this.config.apiKey || this.config.apiKey.includes('placeholder') || this.config.apiKey.startsWith('sk_test_dev');
-
-    // Test/dev mode: return mock data
-    if (isTestMode) {
-      return this.getMockSIMData(simId);
+    if (!this.config.apiKey) {
+      return { ok: false, error: 'SIM_USE_API_KEY_NOT_CONFIGURED', queryTime: 0 };
     }
 
     try {
@@ -239,7 +162,7 @@ export class SimUseAdapter {
       const response = await fetch(url, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${this.config.apiKey}`,
+          Authorization: `Bearer ${this.config.apiKey}`,
           'Content-Type': 'application/json',
         },
         signal: AbortSignal.timeout(this.config.timeout),
@@ -267,6 +190,10 @@ export class SimUseAdapter {
         status: 'active' | 'inactive' | 'suspended';
       };
 
+      if (!json.simId || !Number.isFinite(json.dataUsageBytes) || !Number.isFinite(json.dataLimitBytes) || json.dataLimitBytes <= 0) {
+        return { ok: false, error: 'SIM_USE_INVALID_RESPONSE', queryTime: 0 };
+      }
+
       const data: SIMUsageData = {
         simId: json.simId,
         phoneNumber: json.phoneNumber,
@@ -282,11 +209,7 @@ export class SimUseAdapter {
         status: json.status,
       };
 
-      return {
-        ok: true,
-        data,
-        queryTime: 0,
-      };
+      return { ok: true, data, queryTime: 0 };
     } catch (error) {
       return {
         ok: false,
@@ -294,32 +217,6 @@ export class SimUseAdapter {
         queryTime: 0,
       };
     }
-  }
-
-  /**
-   * Return mock SIM data for testing/development.
-   */
-  private getMockSIMData(simId: string): SIMUsageResult {
-    const mockData: SIMUsageData = {
-      simId,
-      phoneNumber: simId.includes('@') ? undefined : simId,
-      dataUsageBytes: 3_500_000_000, // 3.5 GB
-      dataLimitBytes: 5_000_000_000, // 5 GB
-      dataPercentage: 70,
-      callMinutesUsed: 245,
-      callMinutesLimit: 300,
-      smsUsed: 45,
-      smsLimit: 100,
-      lastUpdated: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
-      status: 'active',
-    };
-
-    return {
-      ok: true,
-      data: mockData,
-      queryTime: 50, // Mock response time
-    };
   }
 
   private getCached(simId: string): SIMUsageData | null {
@@ -340,7 +237,4 @@ export class SimUseAdapter {
   }
 }
 
-/**
- * Global sim-use adapter instance.
- */
 export const simUseAdapter = new SimUseAdapter();
