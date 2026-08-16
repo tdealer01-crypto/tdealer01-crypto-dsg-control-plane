@@ -1,3 +1,4 @@
+# Manual production bootstrap trigger: current main, 2026-08-16
 name: Bootstrap New Vercel Production
 
 on:
