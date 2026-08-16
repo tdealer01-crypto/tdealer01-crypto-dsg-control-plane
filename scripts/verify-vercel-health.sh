@@ -40,7 +40,24 @@ cmd=(
 # payload can be independently asserted.
 cmd+=(--silent --show-error --output "$BODY_FILE" --write-out '%{http_code}')
 
-HTTP_STATUS="$("${cmd[@]}")"
+# Retry loop: a freshly created deployment can still be BUILDING/QUEUED when
+# this verification runs, which surfaces as a 503 from Vercel's cold-start
+# rather than a real application failure. Keep probing until the deployment
+# settles or the wait budget is exhausted.
+VERIFY_ATTEMPTS="${VERIFY_ATTEMPTS:-20}"
+VERIFY_INTERVAL_SECONDS="${VERIFY_INTERVAL_SECONDS:-15}"
+HTTP_STATUS=""
+for _attempt in $(seq 1 "$VERIFY_ATTEMPTS"); do
+  set +e
+  HTTP_STATUS="$("${cmd[@]}")"
+  rc=$?
+  set -e
+  case "$HTTP_STATUS" in
+    200) break ;;
+    404|502|503|504) sleep "$VERIFY_INTERVAL_SECONDS" ;;
+    *) break ;;
+  esac
+done
 
 if [[ "$VERIFY_MODE" == "access" ]]; then
   # Preview deployments can be READY while their preview-only runtime env is
