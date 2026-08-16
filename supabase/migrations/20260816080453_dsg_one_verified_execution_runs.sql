@@ -15,6 +15,13 @@
 --
 -- This migration is additive and idempotent so it can be applied from the
 -- Supabase dashboard SQL editor during recovery.
+--
+-- The 20260816080453 version prefix is not arbitrary and must not be renamed:
+-- it is the version recorded in supabase_migrations.schema_migrations when this
+-- migration was applied to the project. `supabase db push` fails closed with
+-- "Remote migration versions not found in local migrations directory" if a
+-- remote version has no matching local file, so the filename has to keep
+-- tracking the applied version rather than the other way round.
 
 BEGIN;
 
