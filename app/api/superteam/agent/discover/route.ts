@@ -5,6 +5,7 @@ import {
   requireSuperteamAgentCredential,
   superteamErrorStatus,
 } from '@/lib/superteam/server';
+import { handleApiError } from '@/lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -70,10 +71,6 @@ export async function GET(request: NextRequest) {
       })),
     });
   } catch (error) {
-    console.error('[superteam/discover] failed:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message.split(':')[0] : 'SUPERTEAM_DISCOVERY_FAILED' },
-      { status: superteamErrorStatus(error) },
-    );
+    return handleApiError('superteam/discover', error, { status: superteamErrorStatus(error) });
   }
 }
