@@ -1,62 +1,31 @@
 /**
- * Day 1 Validation Tests: QUBO Builder + Mock Ising Optimizer
+ * Day 1 validation: QUBO builder + deterministic local Ising/QUBO solver.
  *
- * Tests verify that:
- * 1. QUBO builder generates deterministic matrices
- * 2. Mock Ising optimizer returns valid solutions
- * 3. Solutions satisfy task assignment constraints
- * 4. Determinism: same input → same output
+ * The runtime no longer has a synthetic/mock solver path. These tests exercise
+ * the real in-process solver used when solverMode is local (the default).
  */
 
 import { describe, it, expect } from 'vitest';
-import { buildQUBOMatrix, extractAssignmentFromQUBO } from '@/lib/dsg-one/qubo-builder';
+import { buildQUBOMatrix, extractAssignmentFromQUBO, calculateQUBOEnergy } from '@/lib/dsg-one/qubo-builder';
 import { optimizeWithIsing } from '@/lib/dsg-one/ising-optimizer';
 import type { Task, AgentCapacity } from '@/lib/dsg/multi-agent/types';
 
-describe('Day 1: QUBO Builder + Mock Ising', () => {
-  // Small test problem
+describe('Day 1: QUBO Builder + deterministic local solver', () => {
   const tasks: Task[] = [
     {
-      id: 'task-1',
-      name: 'Payment',
-      domain: 'financial',
-      operation: 'transfer',
-      target: 'acct-1',
-      dataSensitivity: 'high',
-      externalEffect: true,
-      reversibility: 'reversible',
-      userAuthorized: true,
-      planAllowed: true,
-      hasFreshEvidence: true,
-      hasRollback: true,
+      id: 'task-1', name: 'Payment', domain: 'financial', operation: 'transfer', target: 'acct-1',
+      dataSensitivity: 'high', externalEffect: true, reversibility: 'reversible',
+      userAuthorized: true, planAllowed: true, hasFreshEvidence: true, hasRollback: true,
     },
     {
-      id: 'task-2',
-      name: 'Audit',
-      domain: 'compliance',
-      operation: 'write',
-      target: 'log',
-      dataSensitivity: 'medium',
-      externalEffect: false,
-      reversibility: 'irreversible',
-      userAuthorized: true,
-      planAllowed: true,
-      hasFreshEvidence: true,
-      hasRollback: false,
+      id: 'task-2', name: 'Audit', domain: 'compliance', operation: 'write', target: 'log',
+      dataSensitivity: 'medium', externalEffect: false, reversibility: 'irreversible',
+      userAuthorized: true, planAllowed: true, hasFreshEvidence: true, hasRollback: false,
     },
     {
-      id: 'task-3',
-      name: 'Policy',
-      domain: 'policy',
-      operation: 'update',
-      target: 'policy-engine',
-      dataSensitivity: 'high',
-      externalEffect: true,
-      reversibility: 'reversible',
-      userAuthorized: true,
-      planAllowed: true,
-      hasFreshEvidence: true,
-      hasRollback: true,
+      id: 'task-3', name: 'Policy', domain: 'policy', operation: 'update', target: 'policy-engine',
+      dataSensitivity: 'high', externalEffect: true, reversibility: 'reversible',
+      userAuthorized: true, planAllowed: true, hasFreshEvidence: true, hasRollback: true,
     },
   ];
 
@@ -66,180 +35,104 @@ describe('Day 1: QUBO Builder + Mock Ising', () => {
   ];
 
   describe('QUBO Builder', () => {
-    it('should build QUBO matrix with correct dimensions', async () => {
+    it('builds the expected matrix dimensions', async () => {
       const result = await buildQUBOMatrix({ tasks, agentCapacities: agents });
-
-      expect(result.qubo.Q.length).toBe(6); // 3 tasks × 2 agents
+      expect(result.qubo.Q.length).toBe(6);
       expect(result.qubo.Q[0].length).toBe(6);
       expect(result.qubo.variables.length).toBe(6);
     });
 
-    it('should generate deterministic problem hash', async () => {
-      const result1 = await buildQUBOMatrix({ tasks, agentCapacities: agents });
-      const result2 = await buildQUBOMatrix({ tasks, agentCapacities: agents });
-
-      expect(result1.qubo.problemHash).toBe(result2.qubo.problemHash);
+    it('generates a deterministic problem hash', async () => {
+      const first = await buildQUBOMatrix({ tasks, agentCapacities: agents });
+      const second = await buildQUBOMatrix({ tasks, agentCapacities: agents });
+      expect(second.qubo.problemHash).toBe(first.qubo.problemHash);
     });
 
-    it('should create symmetric QUBO matrix', async () => {
-      const result = await buildQUBOMatrix({ tasks, agentCapacities: agents });
-      const Q = result.qubo.Q;
-
-      for (let i = 0; i < Q.length; i++) {
-        for (let j = 0; j < Q.length; j++) {
-          expect(Q[i][j]).toBe(Q[j][i]);
-        }
+    it('creates a symmetric QUBO matrix', async () => {
+      const { qubo } = await buildQUBOMatrix({ tasks, agentCapacities: agents });
+      for (let i = 0; i < qubo.Q.length; i += 1) {
+        for (let j = 0; j < qubo.Q.length; j += 1) expect(qubo.Q[i][j]).toBe(qubo.Q[j][i]);
       }
     });
 
-    it('should count constraints correctly', async () => {
+    it('counts task and capacity constraints', async () => {
       const result = await buildQUBOMatrix({ tasks, agentCapacities: agents });
-
-      // Should have: task assignment constraints + agent capacity constraints
-      expect(result.constraintCount).toBe(tasks.length + agents.length); // 3 + 2 = 5
+      expect(result.constraintCount).toBe(tasks.length + agents.length);
     });
   });
 
-  describe('Mock Ising Optimizer', () => {
-    it('should return valid solution for QUBO', async () => {
-      const buildResult = await buildQUBOMatrix({ tasks, agentCapacities: agents });
-
-      const isingResult = await optimizeWithIsing({
+  describe('Deterministic local solver', () => {
+    it('returns a complete binary solution with recomputed energy', async () => {
+      const { qubo } = await buildQUBOMatrix({ tasks, agentCapacities: agents });
+      const result = await optimizeWithIsing({
         problemId: 'test-1',
-        quboMatrix: buildResult.qubo,
-        useMock: true,
+        quboMatrix: qubo,
+        solverMode: 'local',
       });
 
-      expect(isingResult.solution).toBeDefined();
-      expect(Object.keys(isingResult.solution).length).toBe(6);
-      expect(isingResult.energy).toBeDefined();
-      expect(isingResult.confidence).toBeGreaterThan(0);
-      expect(isingResult.confidence).toBeLessThanOrEqual(1);
+      expect(result.mode).toBe('local');
+      expect(result.solverVersion).toBe('dsg-anneal-v1');
+      expect(Object.keys(result.solution)).toHaveLength(6);
+      for (const value of Object.values(result.solution)) expect([0, 1]).toContain(value);
+      expect(result.energy).toBe(calculateQUBOEnergy(qubo, result.solution));
+      expect(result.confidence).toBeUndefined();
     });
 
-    it('should be deterministic (same seed → same solution)', async () => {
-      const buildResult = await buildQUBOMatrix({ tasks, agentCapacities: agents });
-
-      const result1 = await optimizeWithIsing({
-        problemId: 'test-1',
-        quboMatrix: buildResult.qubo,
-        useMock: true,
-        seed: 42,
+    it('is deterministic for the same seed', async () => {
+      const { qubo } = await buildQUBOMatrix({ tasks, agentCapacities: agents });
+      const first = await optimizeWithIsing({
+        problemId: 'test-1', quboMatrix: qubo, solverMode: 'local', seed: 42,
+      });
+      const second = await optimizeWithIsing({
+        problemId: 'test-1', quboMatrix: qubo, solverMode: 'local', seed: 42,
       });
 
-      const result2 = await optimizeWithIsing({
-        problemId: 'test-1',
-        quboMatrix: buildResult.qubo,
-        useMock: true,
-        seed: 42,
-      });
-
-      expect(result1.proofData.solutionHash).toBe(result2.proofData.solutionHash);
-      expect(result1.energy).toBe(result2.energy);
+      expect(second.solution).toEqual(first.solution);
+      expect(second.proofData.solutionHash).toBe(first.proofData.solutionHash);
+      expect(second.energy).toBe(first.energy);
     });
 
-    it('should return binary solution (all 0 or 1)', async () => {
-      const buildResult = await buildQUBOMatrix({ tasks, agentCapacities: agents });
-
-      const isingResult = await optimizeWithIsing({
-        problemId: 'test-1',
-        quboMatrix: buildResult.qubo,
-        useMock: true,
+    it('extracts a valid assignment from the solver output', async () => {
+      const { qubo } = await buildQUBOMatrix({ tasks, agentCapacities: agents });
+      const result = await optimizeWithIsing({
+        problemId: 'assignment-test', quboMatrix: qubo, solverMode: 'local', seed: 7,
       });
+      const assignment = extractAssignmentFromQUBO(qubo, result.solution);
 
-      for (const [_, value] of Object.entries(isingResult.solution)) {
-        expect([0, 1]).toContain(value);
-      }
-    });
-
-    it('should extract assignment from QUBO solution', async () => {
-      const buildResult = await buildQUBOMatrix({ tasks, agentCapacities: agents });
-
-      const isingResult = await optimizeWithIsing({
-        problemId: 'test-1',
-        quboMatrix: buildResult.qubo,
-        useMock: true,
-      });
-
-      const assignment = extractAssignmentFromQUBO(buildResult.qubo, isingResult.solution);
-
-      // Should have at least some tasks assigned
-      expect(Object.keys(assignment).length).toBeGreaterThan(0);
-
-      // All assigned agent IDs should be valid
-      for (const agentId of Object.values(assignment)) {
-        expect([1, 2]).toContain(agentId);
-      }
+      expect(Object.keys(assignment).sort()).toEqual(tasks.map((task) => task.id).sort());
+      for (const agentId of Object.values(assignment)) expect([1, 2]).toContain(agentId);
     });
   });
 
-  describe('Integration: QUBO + Ising', () => {
-    it('should complete full pipeline: build → solve → extract', async () => {
+  describe('Integration: QUBO → local solve → assignment', () => {
+    it('completes the pipeline and records proof metadata', async () => {
       const buildResult = await buildQUBOMatrix({ tasks, agentCapacities: agents });
-      const isingResult = await optimizeWithIsing({
+      const result = await optimizeWithIsing({
         problemId: 'pipeline-test',
         quboMatrix: buildResult.qubo,
-        useMock: true,
-      });
-      const assignment = extractAssignmentFromQUBO(buildResult.qubo, isingResult.solution);
-
-      expect(assignment).toBeDefined();
-      expect(isingResult.solveTimeMs).toBeGreaterThanOrEqual(0);
-      expect(isingResult.solverVersion).toContain('mock');
-    });
-
-    it('should track proof metadata for determinism verification', async () => {
-      const buildResult = await buildQUBOMatrix({ tasks, agentCapacities: agents });
-      const isingResult = await optimizeWithIsing({
-        problemId: 'proof-test',
-        quboMatrix: buildResult.qubo,
-        useMock: true,
+        solverMode: 'local',
         seed: 123,
       });
+      const assignment = extractAssignmentFromQUBO(buildResult.qubo, result.solution);
 
-      expect(isingResult.proofData.quboHash).toBe(buildResult.qubo.problemHash);
-      expect(isingResult.proofData.solutionHash).toBeDefined();
-      expect(isingResult.proofData.seed).toBe(123);
-    });
-  });
-
-  describe('Day 1 Success Metrics', () => {
-    it('should complete small case in < 100ms combined', async () => {
-      const startTime = Date.now();
-
-      const buildResult = await buildQUBOMatrix({ tasks, agentCapacities: agents });
-      const isingResult = await optimizeWithIsing({
-        problemId: 'perf-test',
-        quboMatrix: buildResult.qubo,
-        useMock: true,
-      });
-
-      const totalTimeMs = Date.now() - startTime;
-
-      expect(totalTimeMs).toBeLessThan(100);
-      expect(buildResult.buildTimeMs).toBeGreaterThanOrEqual(0);
-      expect(isingResult.solveTimeMs).toBeGreaterThanOrEqual(0);
+      expect(assignment).toBeDefined();
+      expect(result.solveTimeMs).toBeGreaterThanOrEqual(0);
+      expect(result.solverVersion).toBe('dsg-anneal-v1');
+      expect(result.proofData.quboHash).toBe(buildResult.qubo.problemHash);
+      expect(result.proofData.solutionHash).toMatch(/^[a-f0-9]{64}$/);
+      expect(result.proofData.seed).toBe(123);
     });
 
-    it('should maintain determinism over 10 runs with same seed', async () => {
-      const buildResult = await buildQUBOMatrix({ tasks, agentCapacities: agents });
-
-      const results = [];
-      for (let i = 0; i < 10; i++) {
+    it('maintains deterministic proof hashes over repeated runs', async () => {
+      const { qubo } = await buildQUBOMatrix({ tasks, agentCapacities: agents });
+      const hashes: string[] = [];
+      for (let i = 0; i < 10; i += 1) {
         const result = await optimizeWithIsing({
-          problemId: 'determinism-test',
-          quboMatrix: buildResult.qubo,
-          useMock: true,
-          seed: 999,
+          problemId: 'determinism-test', quboMatrix: qubo, solverMode: 'local', seed: 999,
         });
-        results.push(result.proofData.solutionHash);
+        hashes.push(result.proofData.solutionHash);
       }
-
-      // All hashes should be identical
-      const firstHash = results[0];
-      for (const hash of results) {
-        expect(hash).toBe(firstHash);
-      }
+      expect(new Set(hashes).size).toBe(1);
     });
   });
 });
