@@ -7,6 +7,7 @@ import {
   requireSuperteamAgentCredential,
   superteamErrorStatus,
 } from '@/lib/superteam/server';
+import { handleApiError } from '@/lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -122,11 +123,7 @@ export async function POST(request: NextRequest) {
       telegramResult,
     });
   } catch (error) {
-    console.error('[superteam/submit] failed:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message.split(':')[0] : 'SUPERTEAM_SUBMISSION_FAILED' },
-      { status: superteamErrorStatus(error) },
-    );
+    return handleApiError('superteam/submit', error, { status: superteamErrorStatus(error) });
   }
 }
 
@@ -145,10 +142,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ success: true, source: 'supabase', submissions: data ?? [] });
   } catch (error) {
-    console.error('[superteam/submit:get] failed:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message.split(':')[0] : 'SUPERTEAM_SUBMISSIONS_FETCH_FAILED' },
-      { status: superteamErrorStatus(error) },
-    );
+    return handleApiError('superteam/submit:get', error, { status: superteamErrorStatus(error) });
   }
 }
