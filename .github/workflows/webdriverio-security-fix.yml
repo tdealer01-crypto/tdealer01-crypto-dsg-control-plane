@@ -40,26 +40,18 @@ jobs:
         run: npm audit --audit-level=high
       - name: Verify overridden dependency tree
         run: npm ls webdriverio @wdio/config @wdio/utils @puppeteer/browsers extract-zip modern-tar
-      - name: Verify WebDriverIO/Puppeteer browser API compatibility
+      - name: Verify WebDriverIO/Puppeteer browser runtime compatibility
         shell: bash
         run: |
           node --input-type=module <<'NODE'
-          const browsers = await import('@puppeteer/browsers')
-          const required = [
-            'install',
-            'canDownload',
-            'resolveBuildId',
-            'detectBrowserPlatform',
-            'Browser',
-            'ChromeReleaseChannel',
-            'computeExecutablePath'
-          ]
-          for (const name of required) {
-            if (!(name in browsers)) throw new Error(`Missing @puppeteer/browsers export: ${name}`)
+          const wdioUtils = await import('@wdio/utils/node')
+          const requiredUtils = ['setupPuppeteerBrowser', 'setupChromedriver', 'getCacheDir']
+          for (const name of requiredUtils) {
+            if (typeof wdioUtils[name] !== 'function') throw new Error(`Missing @wdio/utils/node export: ${name}`)
           }
           const wdio = await import('webdriverio')
           if (typeof wdio.remote !== 'function') throw new Error('webdriverio.remote is unavailable')
-          console.log('WebDriverIO/Puppeteer browser API compatibility: PASS')
+          console.log('WebDriverIO/Puppeteer browser runtime compatibility: PASS')
           NODE
       - name: Commit generated dependency files if changed
         shell: bash
