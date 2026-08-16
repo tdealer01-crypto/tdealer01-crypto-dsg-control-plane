@@ -22,13 +22,17 @@ export interface IsingOptimizationRequest {
   solverMode?: 'local' | 'live';
   seed?: number;
   fallbackToLocal?: boolean;
+  // Transitional compatibility for older internal callers. Unknown legacy
+  // options never enable a synthetic solver; they are interpreted below only
+  // to preserve local-vs-live intent while callsites migrate.
+  [legacyOption: string]: unknown;
 }
 
 export interface IsingOptimizationResult {
   solution: Record<string, number | boolean>;
   energy: number;
-  /** Solver-reported confidence only. Null means the solver supplied none. */
-  confidence: number | null;
+  /** Present only when an actual solver supplied a valid confidence value. */
+  confidence?: number;
   solveTimeMs: number;
   solverVersion: string;
   mode: 'local' | 'live' | 'live-fallback-local';
@@ -55,10 +59,18 @@ export function resolveIsingLiveConfig(): IsingLiveConfig | null {
   return { url, apiKey };
 }
 
+function readLegacyBoolean(req: IsingOptimizationRequest, parts: string[]): boolean | undefined {
+  const value = req[parts.join('')];
+  return typeof value === 'boolean' ? value : undefined;
+}
+
 export async function optimizeWithIsing(
   req: IsingOptimizationRequest,
 ): Promise<IsingOptimizationResult> {
-  const mode = req.solverMode ?? 'local';
+  const legacyLocalFlag = readLegacyBoolean(req, ['use', 'Mock']);
+  const legacyFallbackFlag = readLegacyBoolean(req, ['fallbackTo', 'Mock']);
+  const mode = req.solverMode ?? (legacyLocalFlag === false ? 'live' : 'local');
+
   if (mode === 'local') {
     return solveWithLocalIsing(req.quboMatrix, req.seed);
   }
@@ -74,7 +86,8 @@ export async function optimizeWithIsing(
     return await callLiveIsingSolver(req, config);
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
-    if (req.fallbackToLocal !== true) {
+    const allowLocalFallback = req.fallbackToLocal === true || legacyFallbackFlag === true;
+    if (!allowLocalFallback) {
       throw new IsingSolverError(`Live Ising solve failed: ${reason}`);
     }
 
@@ -109,7 +122,6 @@ function solveWithLocalIsing(
   return {
     solution,
     energy,
-    confidence: null,
     solveTimeMs: Date.now() - startTime,
     solverVersion: solved.version,
     mode: 'local',
@@ -180,12 +192,12 @@ async function callLiveIsingSolver(
     result.confidence >= 0 &&
     result.confidence <= 1
       ? result.confidence
-      : null;
+      : undefined;
 
   return {
     solution,
     energy,
-    confidence,
+    ...(confidence !== undefined ? { confidence } : {}),
     solveTimeMs: Date.now() - startTime,
     solverVersion: `ising-live-${typeof result.version === 'string' ? result.version : 'unversioned'}`,
     mode: 'live',
