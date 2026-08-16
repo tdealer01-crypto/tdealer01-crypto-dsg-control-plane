@@ -16,19 +16,15 @@ BODY_FILE="$(mktemp)"
 cleanup() { rm -f "$BODY_FILE"; }
 trap cleanup EXIT
 
-# --token and --scope are Vercel CLI global options. They must appear before
-# the `curl` subcommand; when placed after it, Vercel forwards them to the
-# underlying curl process and curl fails with "option --token: is unknown".
+# Vercel CLI officially supports VERCEL_TOKEN as an environment variable.
+# Do not pass --token (or other Vercel-global flags) on this `vercel curl`
+# command: in CLI 58.0.0 the beta curl command can forward those flags to the
+# underlying system curl process, which then fails with
+# "curl: option --token: is unknown". The linked .vercel/project.json plus
+# VERCEL_ORG_ID / VERCEL_PROJECT_ID keep this request bound to the destination
+# project while VERCEL_TOKEN authenticates the CLI itself.
 cmd=(
   npx --yes "vercel@${VERCEL_CLI_VERSION}"
-  --token "$VERCEL_TOKEN"
-)
-
-if [[ -n "${VERCEL_SCOPE:-}" ]]; then
-  cmd+=(--scope "$VERCEL_SCOPE")
-fi
-
-cmd+=(
   curl "$HEALTH_PATH"
   --deployment "$DEPLOYMENT_URL"
 )
