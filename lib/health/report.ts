@@ -102,9 +102,18 @@ export async function buildHealthReport() {
   // behind the limiter while health reports as operational.
   const strictReadiness = readBoolean(process.env.READINESS_STRICT,
     process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL));
+  // In non-strict mode the readiness gate already covers credentials and
+  // the environment; a transient DB timeout must not take the whole
+  // service offline for monitoring purposes (readiness.ok treats the
+  // live Supabase probe as informational and defers to
+  // /api/finance-governance/readiness for authoritative DB health).
   const allOk = strictReadiness
     ? core.ok && dbOk && readiness.ok && rateLimiterConfigured
-    : readiness.ok && dbOk;
+    : readiness.ok;
+
+  // DB connectivity remains visible in the payload even when it does not
+  // gate health in non-strict mode.
+  const dbGating = strictReadiness && !dbOk;
 
   const payload = {
     ok: allOk,
@@ -113,7 +122,7 @@ export async function buildHealthReport() {
     core_ok: core.ok,
     db_ok: dbOk,
     error: allOk ? null : (
-      !dbOk ? 'db_unreachable' :
+      dbGating ? 'db_unreachable' :
       (coreDetails.error ?? 'release_not_ready')
     ),
     rateLimiter: {
