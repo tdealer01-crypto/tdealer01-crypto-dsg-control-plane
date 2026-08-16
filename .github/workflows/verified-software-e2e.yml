@@ -10,6 +10,11 @@ on:
         required: true
         default: false
         type: boolean
+      benchmark_base_url:
+        description: "Staging/public DSG URL used for the required release benchmark"
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: read
@@ -79,13 +84,26 @@ jobs:
           set -o pipefail
           npm audit --omit=dev --audit-level=high --json 2>&1 | tee .dsg-evidence/security.log
 
-      - name: Benchmark
+      - name: Credentialed release benchmark
         id: benchmark
+        if: github.event_name == 'workflow_dispatch' && inputs.release == true
         continue-on-error: true
         shell: bash
+        env:
+          BENCHMARK_BASE_URL: ${{ inputs.benchmark_base_url }}
+          BENCHMARK_API_KEY: ${{ secrets.BENCHMARK_API_KEY }}
+          BENCHMARK_AGENT_ID: ${{ secrets.BENCHMARK_AGENT_ID }}
+          BENCHMARK_ACTION: scan
+          BENCHMARK_CASES_FILE: benchmarks/cases/gate-cases.json
+          BENCHMARK_OUT_DIR: artifacts/benchmark
         run: |
           set -o pipefail
+          test -n "$BENCHMARK_BASE_URL" || { echo 'BENCHMARK_BASE_URL missing' | tee .dsg-evidence/benchmark.log; exit 1; }
+          test -n "$BENCHMARK_API_KEY" || { echo 'BENCHMARK_API_KEY missing' | tee .dsg-evidence/benchmark.log; exit 1; }
+          test -n "$BENCHMARK_AGENT_ID" || { echo 'BENCHMARK_AGENT_ID missing' | tee .dsg-evidence/benchmark.log; exit 1; }
           npm run benchmark 2>&1 | tee .dsg-evidence/benchmark.log
+          cp artifacts/benchmark/benchmark-result.json .dsg-evidence/benchmark-result.json
+          cp artifacts/benchmark/benchmark-summary.md .dsg-evidence/benchmark-summary.md
 
       - name: Build hashed evidence bundle
         if: always()
@@ -97,6 +115,7 @@ jobs:
           BUILD_OUTCOME: ${{ steps.build.outcome }}
           SECURITY_OUTCOME: ${{ steps.security.outcome }}
           BENCHMARK_OUTCOME: ${{ steps.benchmark.outcome }}
+          BENCHMARK_REQUIRED: ${{ github.event_name == 'workflow_dispatch' && inputs.release == true }}
         run: node scripts/build-software-evidence.mjs
 
       - name: Evaluate deterministic software evidence gate
@@ -326,6 +345,7 @@ jobs:
         run: |
           echo '## DSG Verified Release' >> "$GITHUB_STEP_SUMMARY"
           echo '- Software evidence: READY_FOR_DSG_GATE' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Required release benchmark: PASS' >> "$GITHUB_STEP_SUMMARY"
           echo '- DSG production gate: PASS' >> "$GITHUB_STEP_SUMMARY"
           echo '- Human release: workflow dispatch + production environment' >> "$GITHUB_STEP_SUMMARY"
           echo '- Controlled deploy: completed' >> "$GITHUB_STEP_SUMMARY"
