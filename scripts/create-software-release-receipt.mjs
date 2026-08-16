@@ -16,6 +16,7 @@ function stable(value) {
 }
 
 const hash = (value) => `sha256:${createHash('sha256').update(value).digest('hex')}`;
+const validHash = (value) => /^(?:sha256:)?[a-f0-9]{64}$/i.test(value ?? '');
 const commit = process.env.COMMIT_SHA || process.env.GITHUB_SHA;
 const deploymentUrl = process.env.DEPLOY_URL;
 const softwareEvidenceBundleHash = process.env.SOFTWARE_EVIDENCE_HASH;
@@ -24,8 +25,8 @@ const dir = process.env.DSG_RELEASE_DIR || '.dsg-release';
 
 if (!commit || !/^[a-f0-9]{7,64}$/i.test(commit)) throw new Error('COMMIT_SHA_REQUIRED');
 if (!deploymentUrl?.startsWith('https://')) throw new Error('HTTPS_DEPLOY_URL_REQUIRED');
-if (!/^sha256:[a-f0-9]{64}$/.test(softwareEvidenceBundleHash ?? '')) throw new Error('SOFTWARE_EVIDENCE_HASH_REQUIRED');
-if (dsgProofHash && !/^sha256:[a-f0-9]{64}$/.test(dsgProofHash)) throw new Error('DSG_PROOF_HASH_INVALID');
+if (!/^sha256:[a-f0-9]{64}$/i.test(softwareEvidenceBundleHash ?? '')) throw new Error('SOFTWARE_EVIDENCE_HASH_REQUIRED');
+if (dsgProofHash && !validHash(dsgProofHash)) throw new Error('DSG_PROOF_HASH_INVALID');
 
 const health = await readFile(`${dir}/health.json`, 'utf8');
 const readiness = await readFile(`${dir}/readiness.json`, 'utf8');
