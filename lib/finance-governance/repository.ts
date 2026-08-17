@@ -9,7 +9,7 @@ import type {
   FinanceGovernanceApprovalItem,
   FinanceGovernanceCaseDetail,
   FinanceGovernanceWorkspaceSummary,
-} from './mock-data';
+} from './types';
 import { getSupabaseAdmin } from '../supabase-server';
 
 export class FinanceGovernanceRepository {
