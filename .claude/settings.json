@@ -1,6 +1,14 @@
 {
   "language": "thai",
   "mcpServers": {
+    "railway": {
+      "type": "command",
+      "command": "railway",
+      "args": ["mcp"],
+      "env": {
+        "RAILWAY_TOKEN": "${RAILWAY_TOKEN}"
+      }
+    },
     "dsg-one-v1": {
       "type": "http",
       "url": "https://dsg-one-v1.vercel.app/api/mcp-server",
