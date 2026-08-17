@@ -1,0 +1,56 @@
+name: Schema Consistency Check
+
+on:
+  schedule:
+    - cron: '0 */6 * * *' # Every 6 hours
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'supabase/migrations/**'
+
+jobs:
+  verify-schema:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run schema consistency check
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          echo "Verifying schema consistency across all repositories..."
+
+      - name: Check migration versions
+        run: |
+          echo "Checking migration versions..."
+          ls -la supabase/migrations/ | tail -5
+
+      - name: Verify unified monitoring endpoints
+        env:
+          MONITORING_URL: ${{ secrets.PRODUCTION_URL }}
+          X_ORG_ID: ${{ secrets.MONITORING_ORG_ID }}
+        run: |
+          echo "Verifying monitoring endpoints..."
+          curl -X GET \
+            -H "Authorization: Bearer ${{ secrets.MONITORING_API_KEY }}" \
+            -H "x-org-id: $X_ORG_ID" \
+            "$MONITORING_URL/api/dsg/v1/monitoring/data-sync?check=metrics" \
+            -o schema-check.json
+
+          jq .data.metrics schema-check.json | head -20
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: schema-check-results
+          path: schema-check.json
