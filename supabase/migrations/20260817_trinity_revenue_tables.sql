@@ -51,19 +51,19 @@ CREATE TABLE IF NOT EXISTS trinity_revenue_sync_state (
 );
 
 -- Indexes for performance
-CREATE INDEX idx_trinity_revenue_records_org_period
+CREATE INDEX IF NOT EXISTS idx_trinity_revenue_records_org_period
   ON trinity_revenue_records(organization_id, period_start DESC, period_end DESC);
 
-CREATE INDEX idx_trinity_revenue_records_status
+CREATE INDEX IF NOT EXISTS idx_trinity_revenue_records_status
   ON trinity_revenue_records(status);
 
-CREATE INDEX idx_trinity_revenue_records_created
+CREATE INDEX IF NOT EXISTS idx_trinity_revenue_records_created
   ON trinity_revenue_records(created_at DESC);
 
-CREATE INDEX idx_trinity_revenue_agents_record
+CREATE INDEX IF NOT EXISTS idx_trinity_revenue_agents_record
   ON trinity_revenue_agents(trinity_revenue_record_id);
 
-CREATE INDEX idx_trinity_revenue_agents_agent
+CREATE INDEX IF NOT EXISTS idx_trinity_revenue_agents_agent
   ON trinity_revenue_agents(agent_name);
 
 -- RLS Policies (optional - adjust based on your auth model)
@@ -72,6 +72,7 @@ ALTER TABLE trinity_revenue_agents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE trinity_revenue_sync_state ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Service role can manage all revenue records
+DROP POLICY IF EXISTS trinity_revenue_service_role ON trinity_revenue_records;
 CREATE POLICY trinity_revenue_service_role
   ON trinity_revenue_records
   FOR ALL
@@ -79,6 +80,7 @@ CREATE POLICY trinity_revenue_service_role
   USING (true)
   WITH CHECK (true);
 
+DROP POLICY IF EXISTS trinity_revenue_agents_service_role ON trinity_revenue_agents;
 CREATE POLICY trinity_revenue_agents_service_role
   ON trinity_revenue_agents
   FOR ALL
@@ -86,6 +88,7 @@ CREATE POLICY trinity_revenue_agents_service_role
   USING (true)
   WITH CHECK (true);
 
+DROP POLICY IF EXISTS trinity_sync_state_service_role ON trinity_revenue_sync_state;
 CREATE POLICY trinity_sync_state_service_role
   ON trinity_revenue_sync_state
   FOR ALL
