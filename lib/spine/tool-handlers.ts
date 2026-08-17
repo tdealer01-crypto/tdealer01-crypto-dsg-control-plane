@@ -45,17 +45,15 @@ export function generateDeterministicProof(input: Record<string, unknown>): {
 } {
   const timestamp = new Date().toISOString();
 
-  // Canonical form: sorted keys, no whitespace
-  const canonical = JSON.stringify(
-    {
-      agent_id: input.agent_id,
-      action: input.action,
-      result: input.result || null,
-      plan_hash: input.plan_hash || "",
-      timestamp,
-    },
-    Object.keys(input).sort()
-  );
+  // Canonical form: sorted keys, no whitespace, deterministic ordering
+  const obj = {
+    agent_id: input.agent_id as string,
+    action: input.action as string,
+    plan_hash: (input.plan_hash as string) || "",
+    result: input.result || null,
+    timestamp,
+  };
+  const canonical = JSON.stringify(obj);
 
   // In production, use actual SHA256. For now, use a deterministic hash.
   // NOTE: This is a placeholder. Real implementation would use crypto.createHash.
