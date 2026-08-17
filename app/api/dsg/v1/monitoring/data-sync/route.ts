@@ -8,11 +8,11 @@ export const dynamic = 'force-dynamic';
  * GET /api/dsg/v1/monitoring/data-sync
  *
  * Monitor data sync health across unified Supabase instance
- * Requires: read:monitoring permission
+ * Requires: job:read permission
  */
 export async function GET(req: NextRequest) {
   try {
-    const actor = await requireVerifiedDsgActor(req.headers, 'read:monitoring');
+    const actor = await requireVerifiedDsgActor(req.headers, 'job:read');
 
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
       return NextResponse.json(
@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
     const monitor = new DataSyncMonitor(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY,
-      actor.org_id
+      actor.workspaceId
     );
 
     const query = req.nextUrl.searchParams.get('check');
@@ -40,8 +40,8 @@ export async function GET(req: NextRequest) {
           sync_report: report,
           cross_repo_consistency: consistency,
           actor: {
-            actor_id: actor.actor_id,
-            org_id: actor.org_id,
+            actorId: actor.actorId,
+            workspaceId: actor.workspaceId,
           },
         },
         timestamp: new Date().toISOString(),
@@ -87,11 +87,11 @@ export async function GET(req: NextRequest) {
  * POST /api/dsg/v1/monitoring/data-sync
  *
  * Trigger data reconciliation and sync repair
- * Requires: admin:data-sync permission
+ * Requires: approval:write permission
  */
 export async function POST(req: NextRequest) {
   try {
-    const actor = await requireVerifiedDsgActor(req.headers, 'admin:data-sync');
+    const actor = await requireVerifiedDsgActor(req.headers, 'approval:write');
 
     const body = await req.json();
     const action = body.action;
@@ -113,7 +113,7 @@ export async function POST(req: NextRequest) {
     const monitor = new DataSyncMonitor(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY,
-      actor.org_id
+      actor.workspaceId
     );
 
     if (action === 'report') {
@@ -122,8 +122,8 @@ export async function POST(req: NextRequest) {
         ok: true,
         data: report,
         actor: {
-          actor_id: actor.actor_id,
-          org_id: actor.org_id,
+          actorId: actor.actorId,
+          workspaceId: actor.workspaceId,
         },
       });
     }
@@ -142,7 +142,7 @@ export async function POST(req: NextRequest) {
       }
 
       // Log reconciliation attempt
-      console.log(`[DATA-SYNC] Reconciliation triggered for org ${actor.org_id}`);
+      console.log(`[DATA-SYNC] Reconciliation triggered for workspace ${actor.workspaceId}`);
       console.log(`[DATA-SYNC] Found ${divergences.length} divergences:`, divergences);
 
       return NextResponse.json({
