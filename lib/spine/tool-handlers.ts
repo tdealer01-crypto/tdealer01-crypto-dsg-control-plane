@@ -47,9 +47,9 @@ export function generateDeterministicProof(input: Record<string, unknown>): {
 
   // Canonical form: sorted keys, no whitespace, deterministic ordering
   const obj = {
-    agent_id: input.agent_id as string,
-    action: input.action as string,
-    plan_hash: (input.plan_hash as string) || "",
+    agent_id: String(input.agent_id || ""),
+    action: String(input.action || ""),
+    plan_hash: String(input.plan_hash || ""),
     result: input.result || null,
     timestamp,
   };
