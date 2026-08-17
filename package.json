@@ -105,7 +105,14 @@
     "load:dev": "bash scripts/load-test.sh dev",
     "load:staging": "bash scripts/load-test.sh staging",
     "load:production": "bash scripts/load-test.sh production",
-    "load:production:go": "bash scripts/load-test.sh production-go"
+    "load:production:go": "bash scripts/load-test.sh production-go",
+    "deploy:aws": "bash scripts/deploy-aws-setup.sh && bash scripts/deploy-multi-cloud.sh aws",
+    "deploy:gcloud": "bash scripts/deploy-multi-cloud.sh gcloud",
+    "deploy:docker": "bash scripts/deploy-multi-cloud.sh docker staging",
+    "deploy:production": "bash scripts/deploy-multi-cloud.sh docker production",
+    "revenue:dashboard": "node scripts/revenue-dashboard.mjs",
+    "revenue:forecast": "node scripts/revenue/forecast-model.mjs",
+    "revenue:watch": "nodemon --exec 'npm run revenue:dashboard' --watch scripts/revenue"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.3",
