@@ -6,8 +6,10 @@
  * - constraint_evaluate
  * - execution_proof_request
  * - evidence_retrieve
+ *
+ * Phase 2 scaffold: Tool handlers use deterministic responses and mock data.
+ * Real Supabase integration deferred to Phase 3 with policy engine.
  */
-
 
 export interface DsgToolRequest {
   agent_id: string;
