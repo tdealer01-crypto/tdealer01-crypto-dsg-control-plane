@@ -2,7 +2,7 @@
 ###############################################################################
 # DSG ONE END-TO-END DEPLOYMENT RUNNER
 # Automates: Environment setup → Deployment → Revenue activation → Monitoring
-# Usage: bash DEPLOY_NOW.sh [docker|aws|gcloud|digitalocean|self-hosted]
+# Usage: bash DEPLOY_NOW.sh [docker|aws|gcloud|railway|digitalocean|self-hosted]
 ###############################################################################
 
 set -e
@@ -92,6 +92,9 @@ phase_2_deploy() {
     gcloud)
       deploy_gcloud
       ;;
+    railway)
+      deploy_railway
+      ;;
     digitalocean)
       deploy_digitalocean
       ;;
@@ -171,6 +174,20 @@ deploy_gcloud() {
   echo ""
 }
 
+deploy_railway() {
+  progress "Railway Deployment"
+  warning "Railway deployment is the fastest:"
+  warning "  1. Free tier ($5/month credit, then pay-as-you-go)"
+  warning "  2. GitHub integration (auto-deploys on push)"
+  warning "  3. ~10 minutes setup, live in 5 minutes"
+  echo ""
+  echo "Run this to set up Railway:"
+  echo "  bash DEPLOY_RAILWAY_AUTO.sh"
+  echo ""
+  echo "Or visit: https://railway.app/?referralCode=koQJVj"
+  echo ""
+}
+
 deploy_digitalocean() {
   progress "DigitalOcean Deployment"
   warning "DigitalOcean deployment requires:"
@@ -244,6 +261,14 @@ phase_4_verify() {
       echo "  1. Access dashboard: http://localhost:3000"
       echo "  2. View logs: docker compose logs -f app"
       echo "  3. Stop services: docker compose down"
+      echo ""
+      ;;
+    railway)
+      echo "📊 Next Steps for Railway:"
+      echo "  1. Follow DEPLOY_RAILWAY_AUTO.sh instructions"
+      echo "  2. Connect GitHub repo to Railway"
+      echo "  3. Add environment variables in Railway dashboard"
+      echo "  4. Push to main → auto-deploy live"
       echo ""
       ;;
     aws|gcloud|digitalocean|self-hosted)
