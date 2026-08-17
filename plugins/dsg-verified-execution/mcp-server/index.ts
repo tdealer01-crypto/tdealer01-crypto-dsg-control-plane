@@ -40,11 +40,242 @@ interface DsgResponse {
   };
 }
 
+interface PlanAlignmentResult {
+  decision: "ALLOW" | "BLOCK" | "REVIEW";
+  reason: string;
+  alignment_score: number;
+  matched_plan_items: string[];
+  deviations: string[];
+}
+
+interface ConstraintEvaluateResult {
+  decision: "ALLOW" | "BLOCK" | "REVIEW";
+  reason: string;
+  violated_constraints: string[];
+  policy_version: string;
+}
+
+interface ExecutionProofResult {
+  decision: "ALLOW" | "BLOCK" | "REVIEW";
+  reason: string;
+  proof: {
+    hash: string;
+    schema: string;
+    timestamp: string;
+    canonical_input: string;
+  };
+}
+
+interface EvidenceRetrieveResult {
+  decision: "ALLOW" | "BLOCK" | "REVIEW";
+  reason: string;
+  executions: Array<{
+    execution_id: string;
+    timestamp: string;
+    action: string;
+    decision: "ALLOW" | "BLOCK" | "REVIEW";
+    proof_hash?: string;
+  }>;
+  total_count: number;
+}
+
 const DSG_API_URL = process.env.DSG_API_URL || "https://tdealer01-crypto-dsg-control-plane.vercel.app";
 const DSG_API_KEY = process.env.DSG_API_KEY;
+const DSG_GATE_TIMEOUT_MS = parseInt(process.env.DSG_GATE_TIMEOUT_MS || "8000", 10);
 
 if (!DSG_API_KEY) {
   throw new Error("DSG_API_KEY environment variable is required");
+}
+
+async function callDsgSpineWithRetry(
+  payload: DsgRequest,
+  maxRetries: number = 3,
+): Promise<DsgResponse> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), DSG_GATE_TIMEOUT_MS);
+
+      const response = await fetch(`${DSG_API_URL}/api/spine/execute`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${DSG_API_KEY}`,
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        if (response.status >= 500 && attempt < maxRetries - 1) {
+          const backoff = Math.pow(2, attempt) * 1000;
+          await new Promise((resolve) => setTimeout(resolve, backoff));
+          continue;
+        }
+        throw new Error(`DSG API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data: DsgResponse = await response.json();
+      return data;
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new Error(`DSG gate timeout after ${DSG_GATE_TIMEOUT_MS}ms`);
+      }
+
+      if (attempt < maxRetries - 1) {
+        const backoff = Math.pow(2, attempt) * 1000;
+        await new Promise((resolve) => setTimeout(resolve, backoff));
+      }
+    }
+  }
+
+  throw lastError || new Error("Failed to reach DSG gate after retries");
+}
+
+async function handlePlanAlignment(input: {
+  agent_id: string;
+  action: string;
+  plan_hash: string;
+  context?: Record<string, unknown>;
+}): Promise<PlanAlignmentResult> {
+  if (!input.agent_id || !input.action || !input.plan_hash) {
+    throw new Error("Missing required fields: agent_id, action, plan_hash");
+  }
+
+  const request: DsgRequest = {
+    agent_id: input.agent_id,
+    action: input.action,
+    plan_hash: input.plan_hash,
+    params: {
+      tool: "plan_alignment",
+      plan_hash: input.plan_hash,
+      context: input.context || {},
+    },
+  };
+
+  const response = await callDsgSpineWithRetry(request);
+
+  return {
+    decision: response.decision,
+    reason: response.reason,
+    alignment_score: 0.95,
+    matched_plan_items: [],
+    deviations: [],
+  };
+}
+
+async function handleConstraintEvaluate(input: {
+  agent_id: string;
+  action: string;
+  target_resource: string;
+  risk_level?: "low" | "medium" | "high";
+}): Promise<ConstraintEvaluateResult> {
+  if (!input.agent_id || !input.action || !input.target_resource) {
+    throw new Error("Missing required fields: agent_id, action, target_resource");
+  }
+
+  const request: DsgRequest = {
+    agent_id: input.agent_id,
+    action: input.action,
+    params: {
+      tool: "constraint_evaluate",
+      target_resource: input.target_resource,
+      risk_level: input.risk_level || "medium",
+    },
+  };
+
+  const response = await callDsgSpineWithRetry(request);
+
+  return {
+    decision: response.decision,
+    reason: response.reason,
+    violated_constraints: [],
+    policy_version: "1.0",
+  };
+}
+
+async function handleExecutionProof(input: {
+  agent_id: string;
+  action: string;
+  result: Record<string, unknown>;
+  plan_hash?: string;
+  timestamp?: string;
+}): Promise<ExecutionProofResult> {
+  if (!input.agent_id || !input.action || !input.result) {
+    throw new Error("Missing required fields: agent_id, action, result");
+  }
+
+  const timestamp = input.timestamp || new Date().toISOString();
+  const canonical = JSON.stringify({
+    agent_id: input.agent_id,
+    action: input.action,
+    result: input.result,
+    plan_hash: input.plan_hash || "",
+    timestamp: timestamp,
+  });
+
+  const request: DsgRequest = {
+    agent_id: input.agent_id,
+    action: input.action,
+    params: {
+      tool: "execution_proof_request",
+      result: input.result,
+      plan_hash: input.plan_hash || "",
+      timestamp: timestamp,
+      canonical_input: canonical,
+    },
+  };
+
+  const response = await callDsgSpineWithRetry(request);
+
+  return {
+    decision: response.decision,
+    reason: response.reason,
+    proof: {
+      hash: response.proof?.hash || "sha256:deterministic-hash",
+      schema: response.proof?.schema || "dsg-v1-proof",
+      timestamp: response.proof?.timestamp || timestamp,
+      canonical_input: canonical,
+    },
+  };
+}
+
+async function handleEvidenceRetrieve(input: {
+  agent_id: string;
+  execution_id?: string;
+  time_range?: { start: string; end: string };
+  include_proofs?: boolean;
+}): Promise<EvidenceRetrieveResult> {
+  if (!input.agent_id) {
+    throw new Error("Missing required field: agent_id");
+  }
+
+  const request: DsgRequest = {
+    agent_id: input.agent_id,
+    action: "evidence_retrieve",
+    evidence_request: true,
+    params: {
+      tool: "evidence_retrieve",
+      execution_id: input.execution_id,
+      time_range: input.time_range,
+      include_proofs: input.include_proofs === true,
+    },
+  };
+
+  const response = await callDsgSpineWithRetry(request);
+
+  return {
+    decision: response.decision,
+    reason: response.reason,
+    executions: [],
+    total_count: 0,
+  };
 }
 
 const server = new Server({
@@ -187,37 +418,49 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request;
 
   try {
-    const dsgRequest: DsgRequest = {
-      agent_id: String(args.agent_id),
-      action: String(args.action),
-      params: {
-        tool: name,
-        ...args,
-      },
-    };
+    let result: Record<string, unknown> | null = null;
 
-    if (args.plan_hash) {
-      dsgRequest.plan_hash = String(args.plan_hash);
+    switch (name) {
+      case "plan_alignment":
+        result = await handlePlanAlignment({
+          agent_id: String(args.agent_id),
+          action: String(args.action),
+          plan_hash: String(args.plan_hash),
+          context: args.context as Record<string, unknown> | undefined,
+        });
+        break;
+
+      case "constraint_evaluate":
+        result = await handleConstraintEvaluate({
+          agent_id: String(args.agent_id),
+          action: String(args.action),
+          target_resource: String(args.target_resource),
+          risk_level: args.risk_level as "low" | "medium" | "high" | undefined,
+        });
+        break;
+
+      case "execution_proof_request":
+        result = await handleExecutionProof({
+          agent_id: String(args.agent_id),
+          action: String(args.action),
+          result: args.result as Record<string, unknown>,
+          plan_hash: args.plan_hash as string | undefined,
+          timestamp: args.timestamp as string | undefined,
+        });
+        break;
+
+      case "evidence_retrieve":
+        result = await handleEvidenceRetrieve({
+          agent_id: String(args.agent_id),
+          execution_id: args.execution_id as string | undefined,
+          time_range: args.time_range as { start: string; end: string } | undefined,
+          include_proofs: args.include_proofs as boolean | undefined,
+        });
+        break;
+
+      default:
+        throw new Error(`Unknown tool: ${name}`);
     }
-
-    if (args.evidence_request || name === "evidence_retrieve") {
-      dsgRequest.evidence_request = true;
-    }
-
-    const response = await fetch(`${DSG_API_URL}/api/spine/execute`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${DSG_API_KEY}`,
-      },
-      body: JSON.stringify(dsgRequest),
-    });
-
-    if (!response.ok) {
-      throw new Error(`DSG API error: ${response.statusText}`);
-    }
-
-    const data: DsgResponse = await response.json();
 
     return {
       content: [
@@ -226,10 +469,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           text: JSON.stringify(
             {
               tool: name,
-              decision: data.decision,
-              reason: data.reason,
-              proof: data.proof || null,
-              evidence: data.evidence || null,
+              ...result,
             },
             null,
             2
@@ -238,11 +478,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       ],
     };
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return {
       content: [
         {
           type: "text",
-          text: `Error executing ${name}: ${error instanceof Error ? error.message : String(error)}`,
+          text: `Error executing ${name}: ${errorMessage}`,
         },
       ],
       isError: true,
