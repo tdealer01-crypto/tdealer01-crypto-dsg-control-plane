@@ -148,6 +148,35 @@ phase_enable_apis() {
 }
 
 # ============================================================================
+# PHASE 4b: CREATE ARTIFACT REGISTRY REPOSITORY
+# ============================================================================
+
+phase_create_registry() {
+  log "PHASE 4b: Creating Artifact Registry Repository..."
+  echo ""
+
+  REPO_EXISTS=$(gcloud artifacts repositories list \
+    --project="$PROJECT_ID" \
+    --location=us-central1 \
+    --format="value(name)" | grep -c "dsg-repo" || echo "0")
+
+  if [ "$REPO_EXISTS" -eq 0 ]; then
+    log "Creating dsg-repo repository..."
+    gcloud artifacts repositories create dsg-repo \
+      --repository-format=docker \
+      --location=us-central1 \
+      --project="$PROJECT_ID" \
+      >> "$LOG_FILE" 2>&1 || warning "Repository creation may take a moment"
+
+    success "Repository created"
+  else
+    success "Repository already exists"
+  fi
+
+  echo ""
+}
+
+# ============================================================================
 # PHASE 5: SETUP BILLING (CRITICAL)
 # ============================================================================
 
@@ -328,6 +357,7 @@ main() {
   phase_authenticate
   phase_project_setup
   phase_enable_apis
+  phase_create_registry
   phase_billing_setup
   phase_build_image
   phase_deploy
