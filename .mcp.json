@@ -51,6 +51,14 @@
     "gitbook-documentation": {
       "type": "http",
       "url": "https://gitbook.com/docs/~gitbook/mcp"
+    },
+    "dsg-monitoring": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["--loader", "ts-node/esm", "monitoring-mcp-server/src/index.ts"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      }
     }
   }
 }

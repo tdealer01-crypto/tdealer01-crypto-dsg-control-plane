@@ -1,0 +1,61 @@
+name: Daily Health Check
+
+on:
+  schedule:
+    - cron: '0 9 * * *' # 9 AM UTC daily
+  workflow_dispatch:
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run data sync monitoring
+        env:
+          MONITORING_URL: ${{ secrets.PRODUCTION_URL }}
+          X_ORG_ID: ${{ secrets.MONITORING_ORG_ID }}
+        run: |
+          echo "Checking data sync health..."
+          curl -X GET \
+            -H "Authorization: Bearer ${{ secrets.MONITORING_API_KEY }}" \
+            -H "x-org-id: $X_ORG_ID" \
+            "$MONITORING_URL/api/dsg/v1/monitoring/data-sync?check=full" \
+            -o health-report.json
+
+          cat health-report.json | jq .
+
+      - name: Parse health report
+        run: |
+          HEALTH_SCORE=$(jq '.data.sync_report.health_score' health-report.json)
+          DIVERGENCES=$(jq '.data.sync_report.divergences | length' health-report.json)
+
+          echo "Health Score: $HEALTH_SCORE"
+          echo "Divergences Found: $DIVERGENCES"
+
+          if (( HEALTH_SCORE < 80 )); then
+            echo "WARNING: Health score below threshold"
+            exit 1
+          fi
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: health-report
+          path: health-report.json
+
+      - name: Notify on failure
+        if: failure()
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          curl -X POST $SLACK_WEBHOOK \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "text": "🚨 Daily health check FAILED",
+              "attachments": [{
+                "color": "danger",
+                "text": "Health score below threshold or monitoring errors detected"
+              }]
+            }'
