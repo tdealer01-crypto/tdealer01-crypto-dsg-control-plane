@@ -7,9 +7,9 @@
 # Required secrets/env must be configured outside this file in Cloud Run/Secret Manager.
 
 substitutions:
-  _REGION: asia-southeast1
-  _SERVICE: cospindsg-control-plane
-  _REPOSITORY: cospindsg
+  _REGION: us-central1
+  _SERVICE: dsg-control-plane
+  _REPOSITORY: dsg-repo
 
 steps:
   - id: build-image
