@@ -170,10 +170,53 @@ jobs:
           test -n "$PREVIEW_URL"
           echo "preview_url=$PREVIEW_URL" >> "$GITHUB_OUTPUT"
       - name: Smoke preview health
+        shell: bash
         env:
           HEALTH_VERIFY_ATTEMPTS: '8'
           HEALTH_VERIFY_DELAY_MS: '5000'
-        run: node scripts/verify-health-url.mjs "${{ steps.preview.outputs.preview_url }}/api/health"
+        run: |
+          set -euo pipefail
+          PREVIEW_URL="${{ steps.preview.outputs.preview_url }}"
+          ATTEMPTS="${HEALTH_VERIFY_ATTEMPTS:-8}"
+          DELAY_SECONDS=$(( ${HEALTH_VERIFY_DELAY_MS:-5000} / 1000 ))
+
+          for ((attempt=1; attempt<=ATTEMPTS; attempt++)); do
+            set +e
+            HEALTH_BODY=$(npx --yes "vercel@$VERCEL_CLI_VERSION" curl /api/health \
+              --deployment "$PREVIEW_URL" \
+              --token="$VERCEL_TOKEN" 2>"$RUNNER_TEMP/vercel-health.err")
+            CURL_EXIT=$?
+            set -e
+
+            if [ "$CURL_EXIT" -eq 0 ]; then
+              printf '%s' "$HEALTH_BODY" > "$RUNNER_TEMP/vercel-health.json"
+              if node <<'NODE'
+          const fs = require('fs');
+          const path = `${process.env.RUNNER_TEMP}/vercel-health.json`;
+          try {
+            const payload = JSON.parse(fs.readFileSync(path, 'utf8'));
+            if (payload?.ok !== true) process.exit(1);
+          } catch {
+            process.exit(1);
+          }
+          NODE
+              then
+                echo "Health verified through authenticated Vercel CLI: JSON ok=true"
+                exit 0
+              fi
+            fi
+
+            echo "Health attempt $attempt/$ATTEMPTS failed"
+            if [ -s "$RUNNER_TEMP/vercel-health.err" ]; then
+              tail -n 20 "$RUNNER_TEMP/vercel-health.err"
+            fi
+            if [ "$attempt" -lt "$ATTEMPTS" ]; then
+              sleep "$DELAY_SECONDS"
+            fi
+          done
+
+          echo "Health verification failed closed after authenticated Vercel CLI retries"
+          exit 1
       - name: Comment PR with preview URL
         uses: actions/github-script@v7
         with:
