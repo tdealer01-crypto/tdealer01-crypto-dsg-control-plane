@@ -98,7 +98,7 @@ The following secrets must be configured in each repository:
 | `SLACK_WEBHOOK_URL` | Slack webhook for notifications | https://hooks.slack.com/... |
 | `DEPLOY_HOST` | Deployment server hostname | deploy.example.com |
 | `DEPLOY_USER` | Deployment SSH user | deploy |
-| `DEPLOY_KEY` | Deployment SSH private key | -----BEGIN PRIVATE KEY----- |
+| `DEPLOY_KEY` | Deployment SSH private key | (PEM-encoded SSH key content) |
 
 ## Setup Instructions
 
