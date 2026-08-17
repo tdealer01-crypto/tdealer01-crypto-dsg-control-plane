@@ -3,7 +3,8 @@
   "private": true,
   "workspaces": [
     ".",
-    "dsg-one-mcp-server"
+    "dsg-one-mcp-server",
+    "monitoring-mcp-server"
   ],
   "scripts": {
     "dev": "node scripts/next-dev-compatible.mjs",

@@ -1,0 +1,32 @@
+{
+  "name": "dsg-monitoring-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server for DSG unified monitoring - GitHub secrets management and workflow automation",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "ts-node src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "vitest"
+  },
+  "keywords": [
+    "mcp",
+    "monitoring",
+    "github",
+    "secrets",
+    "workflows"
+  ],
+  "author": "DSG Team",
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.24.0",
+    "octokit": "^3.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "ts-node": "^10.9.0",
+    "vitest": "^1.0.0"
+  }
+}
