@@ -1,27 +1,16 @@
 import { NextResponse } from 'next/server';
 import { syncTrinityRevenue, checkTrinityRevenueHealth } from '@/lib/trinity/revenue-sync';
+import { requireCronAuth } from '@/lib/security/cron-auth';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-function authorizeCron(request: Request): NextResponse | null {
-  const authHeader = request.headers.get('authorization');
-  const cronSecret = process.env.CRON_SECRET;
-
-  if (!cronSecret) {
-    return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
-  }
-
-  if (authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  return null;
-}
-
 export async function GET(request: Request) {
-  const authError = authorizeCron(request);
-  if (authError) return authError;
+  // Use the shared cron guard rather than comparing the header directly: it is
+  // timing-safe and also accepts CRON_SECRET_SHA256 and the per-job
+  // CRON_TRINITY_REVENUE_SYNC_SECRET forms that other cron routes support.
+  const cron = requireCronAuth(request, 'trinity-revenue-sync');
+  if (cron.ok !== true) return cron.response;
 
   const { searchParams } = new URL(request.url);
   const period = (searchParams.get('period') as '1h' | '24h' | '7d') || '24h';
