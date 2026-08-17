@@ -37,6 +37,7 @@ export type DueRevenueAutopilotJob = RevenueAutopilotJob & {
  * the pricing catalog.
  */
 export const REVENUE_AUTOPILOT_JOBS: readonly RevenueAutopilotJob[] = [
+  { name: 'trinity-revenue-sync', path: '/api/cron/trinity-revenue-sync', cadence: 'hourly' },
   { name: 'flush-meter-outbox', path: '/api/cron/flush-meter-outbox', cadence: 'ten-minute' },
   { name: 'send-pending-emails', path: '/api/cron/send-pending-emails', cadence: 'ten-minute' },
   { name: 'agent-health-check', path: '/api/cron/agent-health-check', cadence: 'thirty-minute' },

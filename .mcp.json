@@ -59,6 +59,15 @@
       "env": {
         "GITHUB_TOKEN": "${GITHUB_TOKEN}"
       }
+    },
+    "trinity-dsg-mcp": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["--loader", "ts-node/esm", "trinity-mcp-server/src/index.ts"],
+      "env": {
+        "TRINITY_API_URL": "${TRINITY_API_URL}",
+        "TRINITY_JWT_TOKEN": "${TRINITY_JWT_TOKEN}"
+      }
     }
   }
 }
