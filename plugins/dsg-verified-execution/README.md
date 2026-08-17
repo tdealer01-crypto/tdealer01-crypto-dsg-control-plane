@@ -44,7 +44,7 @@ Set environment variables:
 ```bash
 # Required
 DSG_API_URL="https://tdealer01-crypto-dsg-control-plane.vercel.app"
-DSG_API_KEY="sk_live_..."  # Bearer token with spine/execute permissions
+DSG_API_KEY="<your-dsg-api-key>"  # Bearer token with spine/execute permissions
 
 # Optional
 LOG_LEVEL="info"  # debug | info | warn | error

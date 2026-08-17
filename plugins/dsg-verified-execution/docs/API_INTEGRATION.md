@@ -393,7 +393,7 @@ Agent wants to perform an action but wants to know if it's allowed first:
 
 ```bash
 curl -X POST "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/spine/execute" \
-  -H "Authorization: Bearer sk_live_..." \
+  -H "Authorization: Bearer <your-dsg-api-key>" \
   -H "Content-Type: application/json" \
   -d '{
     "agent_id": "agent-copilot-dev-123",
@@ -420,7 +420,7 @@ Agent executes and wants full audit trail:
 
 ```bash
 curl -X POST "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/spine/execute" \
-  -H "Authorization: Bearer sk_live_..." \
+  -H "Authorization: Bearer <your-dsg-api-key>" \
   -H "Content-Type: application/json" \
   -d '{
     "agent_id": "agent-claude-prod-456",

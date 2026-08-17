@@ -256,7 +256,7 @@ Each plugin instance gets isolated env vars:
 ```bash
 # In Copilot settings:
 DSG_API_URL="https://tdealer01-crypto-dsg-control-plane.vercel.app"
-DSG_API_KEY="sk_live_user_specific_token"
+DSG_API_KEY="<user-dsg-api-key>"
 ```
 
 Prevents accidental secret leakage across users/orgs.
