@@ -95,7 +95,11 @@ Core framing:
 - Product: AI runtime governance/control plane.
 - Role: gate AI/agent actions before execution and record evidence/audit trails.
 - Package name: `dsg-platform`.
-- Primary production URL currently documented in repo: `https://tdealer01-crypto-dsg-control-plane.vercel.app`.
+- Primary production URL: `https://tdealer01-crypto-dsg-control-plane.onrender.com` (Render).
+- The former Vercel origin `https://tdealer01-crypto-dsg-control-plane.vercel.app`
+  returns `HTTP 402 x-vercel-error: DEPLOYMENT_DISABLED` (verified 2026-08-17).
+  Do not use it for health, readiness, go/no-go, or cron targets. Some older
+  docs and PR bodies still reference it; treat those as stale.
 
 Important: product marketing copy, README release notes, and past PR bodies are not enough for new production claims. Re-check the live system before claiming current production health.
 
@@ -907,10 +911,18 @@ In Vercel Dashboard → **Settings** → **Environment Variables**, verify prese
 ### Quick live identity check
 
 ```bash
-curl -fsSL "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/agent/status"
+curl -fsSL "https://tdealer01-crypto-dsg-control-plane.onrender.com/api/agent/status"
 ```
 
 Use this to confirm deployed commit, environment, and DB check. This is not enough by itself to claim full production readiness.
+
+Render free/starter instances spin down when idle, so the first request after a
+quiet period can take 30-60s or time out. Retry with a longer timeout before
+concluding the service is down.
+
+Note that this deployment currently reports `version` and `commit` as `local`,
+so `/api/agent/status` cannot be used to prove which commit is deployed. Verify
+deployed code another way until that metadata is populated.
 
 ### Full production readiness check
 

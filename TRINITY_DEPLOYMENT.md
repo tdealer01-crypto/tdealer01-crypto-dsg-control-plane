@@ -1,32 +1,79 @@
 # Trinity Revenue System Deployment Guide
 
-Complete setup for automatic revenue generation from Trinity agent costs.
+Setup for automatic revenue generation from Trinity agent costs.
 
-## Overview
+## Runtime boundary: Render, not Vercel
 
-- **Trinity API Service**: Node.js server providing cost metrics
-- **Trinity MCP Server**: Model Context Protocol bridge to Claude
-- **Revenue Sync**: Automated hourly sync to Supabase
-- **Cron Endpoint**: Secure scheduled sync via `/api/cron/trinity-revenue-sync`
+Production for the control plane runs on **Render**:
+
+```
+https://tdealer01-crypto-dsg-control-plane.onrender.com
+```
+
+Verified 2026-08-17 — `/api/health`, `/api/readiness`, and `/api/agent/status` all
+return HTTP 200 with `db_ok: true` and every readiness check passing.
+
+The Vercel origin still named in some older docs
+(`tdealer01-crypto-dsg-control-plane.vercel.app`) returns **HTTP 402
+`DEPLOYMENT_DISABLED`** and must not be used for verification or as a cron
+target.
+
+The scheduler is **not** a Vercel cron. `.github/workflows/revenue-autopilot.yml`
+runs every 10 minutes, authenticates to Render with a GitHub OIDC token, and
+calls `/api/cron/revenue-autopilot`, which then fans out to each due job —
+including `trinity-revenue-sync`. Moving off Vercel therefore does not affect
+scheduling.
+
+## Blocking issue: `CRON_SECRET` is not set on Render
+
+**The revenue autopilot has never executed a job.** Every scheduled run fails:
+
+```
+{"ok":false,"error":"cron_secret_required_for_internal_jobs"}
+##[error]Revenue autopilot returned HTTP 503
+```
+
+OIDC authentication succeeds. The route then aborts because it needs
+`CRON_SECRET` to call child jobs (`authorization: Bearer ${cronSecret}` in
+`app/api/cron/revenue-autopilot/route.ts`). An unauthenticated probe of the
+deployed route returns `{"error":"cron_secret_required"}`, which
+`lib/security/cron-auth.ts` emits only when no cron secret is configured at all
+— a wrong token would return 401 instead.
+
+Until `CRON_SECRET` is set in the Render service environment, no revenue sync
+will run regardless of the rest of this guide. Set it first:
+
+```
+Render dashboard -> tdealer01-crypto-dsg-control-plane -> Environment
+  CRON_SECRET = <output of: openssl rand -base64 32>
+```
+
+Then confirm the next scheduled run of `DSG Revenue Autopilot` returns 200.
+
+`/api/cron/trinity-revenue-sync` currently returns **404** on Render, because
+the branch adding it has not been merged to `main` yet. Merging is a
+prerequisite for the job to exist at all.
 
 ## Deployment Steps
 
-### 1. Deploy Trinity API Service
+### 1. Deploy Trinity API Service to Render
 
-Deploy to Render or similar platform:
+A blueprint is committed at `trinity-api-service/render.yaml`. Apply it from
+the Render dashboard: **New → Blueprint**, select this repo, and set the
+blueprint path to `trinity-api-service/render.yaml`.
 
-```bash
-# Repository: tdealer01-crypto-dsg-control-plane
-# Directory: trinity-api-service/
-# Start command: npm start
-# Port: 3001
-# Environment: NODE_ENV=production
-```
+It provisions only the Trinity service. The control-plane service is
+dashboard-managed and is deliberately not declared in that blueprint, so
+applying it cannot reconfigure production.
 
 After deployment, record the URL:
+
 ```
-TRINITY_API_URL=https://trinity-api-dsg.onrender.com
+TRINITY_API_URL=https://trinity-api-service.onrender.com
 ```
+
+Note the service binds Render's injected `PORT` (falling back to 3001 locally),
+and exposes `/health` for Render's health check.
 
 ### 2. Generate JWT Token
 
@@ -99,9 +146,9 @@ npm run typecheck
 ### 6. Verify Cron Endpoint
 
 ```bash
-# Test with authentication
+# Test with authentication against the Render origin
 curl -X GET \
-  "https://your-deployment.com/api/cron/trinity-revenue-sync?period=24h" \
+  "https://tdealer01-crypto-dsg-control-plane.onrender.com/api/cron/trinity-revenue-sync?period=24h" \
   -H "Authorization: Bearer $CRON_SECRET"
 
 # Expected response:
@@ -124,14 +171,14 @@ Revenue sync runs on schedule defined in:
 ### Manual Trigger
 
 ```bash
+BASE=https://tdealer01-crypto-dsg-control-plane.onrender.com
+
 # Trigger sync for last 24 hours
-curl -X GET \
-  "https://your-deployment.com/api/cron/trinity-revenue-sync?period=24h" \
+curl -X GET "$BASE/api/cron/trinity-revenue-sync?period=24h" \
   -H "Authorization: Bearer $CRON_SECRET"
 
 # Trigger sync for last hour
-curl -X GET \
-  "https://your-deployment.com/api/cron/trinity-revenue-sync?period=1h" \
+curl -X GET "$BASE/api/cron/trinity-revenue-sync?period=1h" \
   -H "Authorization: Bearer $CRON_SECRET"
 ```
 
@@ -163,7 +210,7 @@ SELECT * FROM trinity_revenue_sync_state;
 
 ### Trinity API Health
 ```bash
-curl -s https://trinity-api-dsg.onrender.com/health | jq .
+curl -s https://trinity-api-service.onrender.com/health | jq .
 ```
 
 ### Revenue Sync Health
@@ -206,15 +253,29 @@ Supabase Database (trinity_revenue_* tables)
 Revenue Records (for billing/analytics)
 ```
 
-## Next Steps
+## Status
 
-1. ✅ Deploy Trinity API Service
-2. ✅ Generate JWT credentials
-3. ✅ Set GitHub secrets
-4. ✅ Apply Supabase migration
-5. ⏳ Test revenue sync
-6. ⏳ Configure Stripe metering (optional, future)
-7. ⏳ Set up monitoring dashboard
+Verified:
+
+- Supabase migration applied to project `dsg-control-plane-dev`. Confirmed by
+  query: 3 tables, 5 custom indexes, RLS enabled with one `service_role` policy
+  each. A write/read/cascade-delete probe round-tripped and was removed.
+- Control plane live on Render — health, readiness, and agent status all 200.
+
+Not yet done:
+
+- [ ] Set `CRON_SECRET` on the Render service — **blocks everything below**
+- [ ] Merge the branch so `/api/cron/trinity-revenue-sync` stops returning 404
+- [ ] Deploy Trinity API Service to Render via the committed blueprint
+- [ ] Generate and set `TRINITY_API_URL` / `TRINITY_JWT_TOKEN`
+- [ ] Observe one successful autopilot run (HTTP 200, not 503)
+- [ ] Confirm rows land in `trinity_revenue_records`
+- [ ] Regenerate `lib/database.types.ts` (no `trinity_revenue_*` types yet)
+- [ ] Configure Stripe metering (optional, future)
+
+No end-to-end sync has run against a deployed Trinity backend. The contract
+between `lib/trinity/revenue-sync.ts` and the service was verified against a
+locally running instance only.
 
 ## Support
 

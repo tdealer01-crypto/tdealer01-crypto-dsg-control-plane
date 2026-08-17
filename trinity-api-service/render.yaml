@@ -1,0 +1,25 @@
+# Render blueprint for the Trinity API Service.
+#
+# Scope: this file provisions ONLY the Trinity cost-metrics service. The DSG
+# control plane already runs as a separate, dashboard-managed Render service at
+# tdealer01-crypto-dsg-control-plane.onrender.com — it is intentionally not
+# declared here, so applying this blueprint cannot reconfigure it.
+#
+# Apply from the Render dashboard: New -> Blueprint -> point at this repo and
+# select trinity-api-service/render.yaml as the blueprint path.
+services:
+  - type: web
+    name: trinity-api-service
+    runtime: node
+    plan: starter
+    rootDir: trinity-api-service
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: false
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Render injects PORT; server.js reads it and falls back to 3001 locally.
+      - key: PORT
+        value: "10000"
