@@ -9,7 +9,7 @@ describe('Trinity Revenue Sync Cron Route', () => {
   describe('Authorization', () => {
     it('should reject requests without CRON_SECRET', async () => {
       const originalSecret = process.env.CRON_SECRET;
-      process.env.CRON_SECRET = undefined;
+      delete process.env.CRON_SECRET;
 
       const request = new Request('http://localhost/api/cron/trinity-revenue-sync', {
         method: 'GET',
@@ -163,7 +163,7 @@ describe('Trinity Revenue Sync Cron Route', () => {
   describe('HTTP Status Codes', () => {
     it('should return 503 when CRON_SECRET is missing', async () => {
       const originalSecret = process.env.CRON_SECRET;
-      process.env.CRON_SECRET = undefined;
+      delete process.env.CRON_SECRET;
 
       const request = new Request('http://localhost/api/cron/trinity-revenue-sync', {
         method: 'GET',
