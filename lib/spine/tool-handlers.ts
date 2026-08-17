@@ -46,10 +46,14 @@ export function generateDeterministicProof(input: Record<string, unknown>): {
   const timestamp = new Date().toISOString();
 
   // Canonical form: sorted keys, no whitespace, deterministic ordering
+  const agentId = typeof input.agent_id === "string" ? input.agent_id : "";
+  const action = typeof input.action === "string" ? input.action : "";
+  const planHash = typeof input.plan_hash === "string" ? input.plan_hash : "";
+
   const obj = {
-    agent_id: String(input.agent_id || ""),
-    action: String(input.action || ""),
-    plan_hash: String(input.plan_hash || ""),
+    agent_id: agentId,
+    action,
+    plan_hash: planHash,
     result: input.result || null,
     timestamp,
   };
