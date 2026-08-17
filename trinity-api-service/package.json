@@ -1,0 +1,17 @@
+{
+  "name": "trinity-api-service",
+  "version": "1.0.0",
+  "description": "Trinity MCP API Server for DSG revenue metrics",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["trinity", "dsg", "revenue", "api"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  }
+}
