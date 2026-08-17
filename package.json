@@ -57,6 +57,7 @@
     "verify:deterministic": "node scripts/verify-deterministic-module.mjs",
     "ops:runtime-rpc-fix": "./scripts/apply-runtime-rpc-fix.sh",
     "verify:production-manifest": "node scripts/verify-production-manifest.mjs",
+    "verify:schema-consistency": "node --loader ts-node/esm scripts/verify-schema-consistency.ts",
     "ops:live-ui-check": "./scripts/live-ui-readiness-check.sh",
     "smoke:memory-api": "bash scripts/dsg-memory-api-smoke.sh",
     "smoke:agent-command-gate:live": "node scripts/smoke-agent-command-gate-live.mjs",
