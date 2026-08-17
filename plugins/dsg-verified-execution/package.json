@@ -1,0 +1,54 @@
+{
+  "name": "@dsg/verified-execution-plugin",
+  "version": "1.0.0",
+  "description": "DSG Verified Execution Plugin — AI agent governance for Agent Plugins 1.0",
+  "license": "Proprietary",
+  "private": true,
+  "author": {
+    "name": "DSG ONE / ProofGate",
+    "email": "t.dealer01@dsg.pics",
+    "url": "https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane.git",
+    "directory": "plugins/dsg-verified-execution"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "mcp:server": "node --loader ts-node/esm mcp-server/index.ts",
+    "mcp:server:dev": "NODE_ENV=development LOG_LEVEL=debug node --loader ts-node/esm mcp-server/index.ts",
+    "validate": "claude plugin validate .",
+    "build": "echo 'DSG Verified Execution is a TypeScript plugin with no build step'",
+    "type-check": "tsc --noEmit --skipLibCheck",
+    "test": "echo 'See root package.json for integration tests'",
+    "docs": "echo 'Documentation in docs/ directory'"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.2.0"
+  },
+  "keywords": [
+    "agent-plugins",
+    "mcp",
+    "governance",
+    "verification",
+    "proof-generation",
+    "audit-trail",
+    "dsg",
+    "proofgate"
+  ],
+  "files": [
+    "manifest.json",
+    "mcp-server/",
+    "skills/",
+    "docs/",
+    "README.md"
+  ]
+}

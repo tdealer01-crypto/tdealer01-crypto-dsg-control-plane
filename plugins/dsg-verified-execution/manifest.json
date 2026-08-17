@@ -1,0 +1,85 @@
+{
+  "$schema": "https://schemas.claude.ai/claude-plugin/manifest.json",
+  "schema_version": "2024-08",
+  "name": "dsg-verified-execution",
+  "display_name": "DSG Verified Execution",
+  "description": "AI agent execution governance plugin for DSG ONE. Aligns agent intentions with approved plans, evaluates constraints, captures execution evidence, and generates deterministic proofs.",
+  "version": "1.0.0",
+  "author": {
+    "name": "DSG ONE / ProofGate",
+    "url": "https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane"
+  },
+  "repository": {
+    "url": "https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane",
+    "directory": "plugins/dsg-verified-execution"
+  },
+  "capabilities": {
+    "mcp": {
+      "required": true,
+      "servers": [
+        {
+          "type": "stdio",
+          "name": "dsg-verified-execution-mcp",
+          "command": "node",
+          "args": ["--loader", "ts-node/esm", "mcp-server/index.ts"],
+          "env": {
+            "DSG_API_URL": "${DSG_API_URL}",
+            "DSG_API_KEY": "${DSG_API_KEY}"
+          }
+        }
+      ]
+    },
+    "skills": [
+      {
+        "name": "dsg-verified-execute",
+        "path": "./skills/dsg-verified-execute.json"
+      }
+    ]
+  },
+  "resources": {
+    "required_env": [
+      {
+        "name": "DSG_API_URL",
+        "description": "Base URL for DSG ONE control plane (e.g., https://tdealer01-crypto-dsg-control-plane.vercel.app)",
+        "optional": false
+      },
+      {
+        "name": "DSG_API_KEY",
+        "description": "Bearer token for DSG runtime spine execute endpoint",
+        "optional": false,
+        "sensitive": true
+      }
+    ],
+    "documentation": [
+      {
+        "name": "README.md",
+        "path": "./docs/README.md"
+      },
+      {
+        "name": "API Integration Guide",
+        "path": "./docs/API_INTEGRATION.md"
+      },
+      {
+        "name": "MCP Tools Reference",
+        "path": "./docs/MCP_TOOLS.md"
+      }
+    ]
+  },
+  "keywords": [
+    "governance",
+    "ai-execution",
+    "verification",
+    "proof-generation",
+    "deterministic-gate",
+    "audit-trail",
+    "dsg",
+    "proofgate",
+    "agent-plugins"
+  ],
+  "category": "governance",
+  "integrations": {
+    "copilot": true,
+    "vscode": true,
+    "claude-code": true
+  }
+}

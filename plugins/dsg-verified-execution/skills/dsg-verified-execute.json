@@ -1,0 +1,178 @@
+{
+  "$schema": "https://schemas.claude.ai/claude-plugin/skill.json",
+  "name": "dsg-verified-execute",
+  "display_name": "DSG Verified Execute",
+  "description": "Execute an AI agent action through DSG governance with full verification, proof, and audit trail. Workflow: align plan → evaluate constraints → execute → generate proof → collect evidence.",
+  "version": "1.0.0",
+  "type": "workflow",
+  "inputs": {
+    "agent_id": {
+      "type": "string",
+      "description": "Unique identifier for the executing agent (required)",
+      "required": true
+    },
+    "action": {
+      "type": "string",
+      "description": "The action to execute (required)",
+      "required": true
+    },
+    "plan_hash": {
+      "type": "string",
+      "description": "Hash of approved plan (optional but recommended for audit)",
+      "required": false
+    },
+    "target_resource": {
+      "type": "string",
+      "description": "Resource being targeted (database, API, file system)",
+      "required": false
+    },
+    "risk_level": {
+      "type": "string",
+      "enum": ["low", "medium", "high"],
+      "description": "Risk level of the action",
+      "required": false,
+      "default": "medium"
+    },
+    "context": {
+      "type": "object",
+      "description": "Execution context (parameters, environment)",
+      "required": false
+    },
+    "auto_approve_low_risk": {
+      "type": "boolean",
+      "description": "Skip review for low-risk actions",
+      "required": false,
+      "default": false
+    }
+  },
+  "outputs": {
+    "decision": {
+      "type": "string",
+      "enum": ["ALLOW", "BLOCK", "REVIEW"],
+      "description": "DSG decision on the action"
+    },
+    "reason": {
+      "type": "string",
+      "description": "Human-readable reason for the decision"
+    },
+    "proof": {
+      "type": "object",
+      "description": "Cryptographic proof of execution",
+      "properties": {
+        "hash": {
+          "type": "string",
+          "description": "Deterministic proof hash"
+        },
+        "schema": {
+          "type": "string",
+          "description": "Proof schema version"
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "ISO 8601 proof timestamp"
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "description": "Execution evidence and audit trail",
+      "properties": {
+        "execution_trace": {
+          "type": "object",
+          "description": "Detailed execution trace"
+        },
+        "lineage": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Audit lineage/sequence"
+        }
+      }
+    }
+  },
+  "workflow": {
+    "steps": [
+      {
+        "name": "validate_agent",
+        "description": "Confirm agent_id is valid and active",
+        "tool": "dsg_verify:validate_agent"
+      },
+      {
+        "name": "align_plan",
+        "description": "Check execution aligns with approved plan",
+        "tool": "plan_alignment",
+        "inputs": {
+          "agent_id": "$agent_id",
+          "action": "$action",
+          "plan_hash": "$plan_hash",
+          "context": "$context"
+        }
+      },
+      {
+        "name": "evaluate_constraints",
+        "description": "Evaluate DSG constraints",
+        "tool": "constraint_evaluate",
+        "inputs": {
+          "agent_id": "$agent_id",
+          "action": "$action",
+          "target_resource": "$target_resource",
+          "risk_level": "$risk_level"
+        },
+        "condition": "align_plan.decision !== 'BLOCK'"
+      },
+      {
+        "name": "request_approval_if_needed",
+        "description": "Request human approval for REVIEW decisions",
+        "tool": "manual_approval",
+        "condition": "evaluate_constraints.decision === 'REVIEW' && !$auto_approve_low_risk",
+        "fallback_action": "BLOCK"
+      },
+      {
+        "name": "execute_action",
+        "description": "Execute the approved action",
+        "tool": "execute_spine_action",
+        "inputs": {
+          "agent_id": "$agent_id",
+          "action": "$action",
+          "context": "$context",
+          "authorization": "previous_approval"
+        },
+        "condition": "evaluate_constraints.decision === 'ALLOW' || request_approval_if_needed.approved"
+      },
+      {
+        "name": "generate_proof",
+        "description": "Generate cryptographic proof of execution",
+        "tool": "execution_proof_request",
+        "inputs": {
+          "agent_id": "$agent_id",
+          "action": "$action",
+          "result": "$execute_action.result",
+          "plan_hash": "$plan_hash",
+          "timestamp": "now"
+        },
+        "condition": "execute_action.success"
+      },
+      {
+        "name": "collect_evidence",
+        "description": "Collect audit trail and evidence",
+        "tool": "evidence_retrieve",
+        "inputs": {
+          "agent_id": "$agent_id",
+          "execution_id": "$execute_action.execution_id",
+          "include_proofs": true
+        }
+      }
+    ],
+    "on_error": {
+      "action": "BLOCK",
+      "reason": "Execution halted due to error. Audit trail retained."
+    }
+  },
+  "permissions": [
+    "read:agent_state",
+    "read:policies",
+    "write:execution_log",
+    "read:audit_trail"
+  ]
+}

@@ -63,6 +63,15 @@
       "author": { "name": "DSG ONE / ProofGate" },
       "category": "compliance",
       "keywords": ["qubo", "ising", "z3", "smt", "compliance", "deterministic", "simulation", "audit"]
+    },
+    {
+      "name": "dsg-verified-execution",
+      "source": "./dsg-verified-execution",
+      "description": "AI agent execution governance plugin for DSG ONE. Aligns agent intentions with approved plans, evaluates deterministic constraints, generates cryptographic proofs, and captures audit trails. Agent Plugins 1.0 compatible, works across Copilot, VS Code, Claude Code, and GitHub CLI.",
+      "version": "1.0.0",
+      "author": { "name": "DSG ONE / ProofGate" },
+      "category": "governance",
+      "keywords": ["agent-plugins", "ai-governance", "verified-execution", "proof-generation", "audit-trail", "deterministic-gate", "plan-alignment", "constraint-evaluation"]
     }
   ]
 }

@@ -1,0 +1,13 @@
+node_modules/
+dist/
+build/
+*.tgz
+npm-debug.log*
+.env.local
+.env.*.local
+.DS_Store
+.vscode/
+*.swp
+*.swo
+*~
+.idea/
