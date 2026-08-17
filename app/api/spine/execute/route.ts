@@ -14,6 +14,7 @@ import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { verifySafeDomIntentOrPass } from '../../../../lib/spine/verify-safe-dom-intent';
 import { StopReason } from '../../../../lib/types/task';
 import { captureEvent } from '../../../../lib/telemetry/capture-event';
+import { routeToolRequest } from '../../../../lib/spine/tool-handlers';
 
 export const dynamic = 'force-dynamic';
 
@@ -157,6 +158,30 @@ export async function POST(request: Request) {
 
     const orgId = String(agent.org_id);
     const agentId = String(agent.id);
+
+    // Phase 2: Check if this is an MCP tool request (from Agent Plugins 1.0 plugin)
+    const requestPayload = payload as Record<string, unknown>;
+    const toolName = (requestPayload.params?.tool as string | undefined) ||
+                     (payload.context?.tool as string | undefined);
+
+    if (toolName && ['plan_alignment', 'constraint_evaluate', 'execution_proof_request', 'evidence_retrieve'].includes(toolName)) {
+      // Route to tool-specific handler
+      const toolResponse = await routeToolRequest(
+        {
+          agent_id: agentId,
+          action: String(requestPayload.action || payload.context.action || 'unknown'),
+          params: (requestPayload.params || payload.context || {}) as Record<string, unknown>,
+          plan_hash: String(requestPayload.plan_hash || payload.context.plan_hash || ''),
+        },
+        orgId,
+        agentId
+      );
+
+      return NextResponse.json(toolResponse, {
+        status: toolResponse.decision === 'BLOCK' ? 403 : 200,
+        headers: responseHeaders,
+      });
+    }
 
     // Check if this is first execution for agent (before quota check)
     const { count: agentExecutions } = await (async () => {
