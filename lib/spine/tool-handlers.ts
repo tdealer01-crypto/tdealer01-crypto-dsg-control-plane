@@ -8,7 +8,6 @@
  * - evidence_retrieve
  */
 
-import { getSupabaseAdmin } from "../supabase-server";
 
 export interface DsgToolRequest {
   agent_id: string;
@@ -174,6 +173,7 @@ export async function handleExecutionProofTool(
 
 /**
  * Handle evidence_retrieve tool (audit trail)
+ * Phase 2 scaffold - returns mock evidence. Real implementation in Phase 3.
  */
 export async function handleEvidenceRetrieveTool(
   request: DsgToolRequest,
@@ -182,56 +182,31 @@ export async function handleEvidenceRetrieveTool(
 ): Promise<DsgToolResponse> {
   const params = request.params as Record<string, unknown>;
   const executionId = params.execution_id as string | undefined;
-  const timeRange = params.time_range as { start: string; end: string } | undefined;
-  const includeProofs = params.include_proofs as boolean | undefined;
 
-  try {
-    const supabase = getSupabaseAdmin();
-    let query = supabase
-      .from("executions")
-      .select("id, agent_id, decision, created_at, metadata")
-      .eq("agent_id", agentId);
-
-    if (executionId) {
-      query = query.eq("id", executionId);
-    }
-
-    if (timeRange) {
-      query = query
-        .gte("created_at", timeRange.start)
-        .lte("created_at", timeRange.end);
-    }
-
-    const { data: executions, error } = await query.order("created_at", {
-      ascending: false,
-    }).limit(100);
-
-    if (error) {
-      return {
-        decision: "REVIEW",
-        reason: `Evidence retrieval encountered error: ${error.message}`,
-        execution_id: `evidence-query-failed-${Date.now()}`,
-      };
-    }
-
-    return {
+  // Phase 2 scaffold: return mock evidence
+  const mockExecutions = [
+    {
+      id: executionId || `exec-${Date.now()}`,
+      agent_id: agentId,
+      action: request.action,
       decision: "ALLOW",
-      reason: `Retrieved ${executions?.length || 0} execution records`,
-      evidence: {
-        execution_trace: {
-          total_count: executions?.length || 0,
-          records: executions || [],
-        },
-        lineage: executions?.map((e) => (e as Record<string, unknown>).id as string) || [],
+      created_at: new Date().toISOString(),
+      metadata: { tool: "evidence_retrieve" },
+    },
+  ];
+
+  return {
+    decision: "ALLOW",
+    reason: `Retrieved ${mockExecutions.length} execution record(s)`,
+    evidence: {
+      execution_trace: {
+        total_count: mockExecutions.length,
+        records: mockExecutions,
       },
-      execution_id: `evidence-query-${Date.now()}`,
-    };
-  } catch (error) {
-    return {
-      decision: "BLOCK",
-      reason: `Evidence retrieval failed: ${error instanceof Error ? error.message : String(error)}`,
-    };
-  }
+      lineage: mockExecutions.map((e) => e.id),
+    },
+    execution_id: `evidence-query-${Date.now()}`,
+  };
 }
 
 /**
