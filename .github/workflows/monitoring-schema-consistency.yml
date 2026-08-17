@@ -38,10 +38,21 @@ jobs:
         env:
           MONITORING_URL: ${{ secrets.PRODUCTION_URL }}
           X_ORG_ID: ${{ secrets.MONITORING_ORG_ID }}
+          MONITORING_API_KEY: ${{ secrets.MONITORING_API_KEY }}
         run: |
+          if [ -z "$MONITORING_URL" ] || [ -z "$MONITORING_API_KEY" ] || [ -z "$X_ORG_ID" ]; then
+            echo "## Monitoring endpoint verification"
+            echo "Status: SKIPPED — NOT CONFIGURED"
+            echo ""
+            echo "PRODUCTION_URL, MONITORING_API_KEY, and MONITORING_ORG_ID must all be"
+            echo "set for this check to run. No endpoint was contacted, so this run is"
+            echo "not evidence that monitoring endpoints are healthy."
+            exit 0
+          fi
+
           echo "Verifying monitoring endpoints..."
-          curl -X GET \
-            -H "Authorization: Bearer ${{ secrets.MONITORING_API_KEY }}" \
+          curl -fsS -X GET \
+            -H "Authorization: Bearer $MONITORING_API_KEY" \
             -H "x-org-id: $X_ORG_ID" \
             "$MONITORING_URL/api/dsg/v1/monitoring/data-sync?check=metrics" \
             -o schema-check.json
@@ -50,7 +61,8 @@ jobs:
 
       - name: Upload results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: schema-check-results
           path: schema-check.json
+          if-no-files-found: ignore
