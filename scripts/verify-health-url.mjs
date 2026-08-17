@@ -26,6 +26,33 @@ if (url.protocol !== 'https:') {
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 let lastFailure = 'unknown';
 
+// Vercel Deployment Protection guards preview deployments and answers
+// unauthenticated requests with 401 (or an SSO redirect). The supported way for
+// automation to reach a protected deployment is the bypass secret from
+// Project Settings -> Deployment Protection -> Protection Bypass for Automation.
+// Protection itself stays enabled; only this request is exempted.
+const bypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+
+const requestHeaders = { accept: 'application/json' };
+if (bypassSecret) {
+  requestHeaders['x-vercel-protection-bypass'] = bypassSecret;
+  // Do not have Vercel set a bypass cookie on the response.
+  requestHeaders['x-vercel-set-bypass-cookie'] = 'false';
+}
+
+/**
+ * Vercel's protection layer replies 401, or 302 to vercel.com/sso-api, before
+ * the deployment runs any application code. Naming that explicitly keeps it
+ * from being misread as an application or database failure.
+ */
+function describeProtectionBlock(status, location) {
+  const looksLikeSso = status === 401 || (location || '').includes('/sso-api');
+  if (!looksLikeSso) return null;
+  return bypassSecret
+    ? 'vercel_deployment_protection_bypass_rejected'
+    : 'vercel_deployment_protection_no_bypass_secret';
+}
+
 for (let attempt = 1; attempt <= attempts; attempt += 1) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -34,15 +61,21 @@ for (let attempt = 1; attempt <= attempts; attempt += 1) {
       redirect: 'manual',
       cache: 'no-store',
       signal: controller.signal,
-      headers: { accept: 'application/json' },
+      headers: requestHeaders,
     });
 
     if (response.status !== 200) {
       const location = response.headers.get('location');
-      lastFailure = location
-        ? `unexpected_http_${response.status}_redirect`
-        : `unexpected_http_${response.status}`;
+      const protectionBlock = describeProtectionBlock(response.status, location);
+      if (protectionBlock) {
+        lastFailure = protectionBlock;
+      } else {
+        lastFailure = location
+          ? `unexpected_http_${response.status}_redirect`
+          : `unexpected_http_${response.status}`;
+      }
       console.error(`Health attempt ${attempt}/${attempts}: ${lastFailure}`);
+      if (protectionBlock) break; // Retrying cannot resolve a protection block.
     } else {
       const contentType = response.headers.get('content-type') || '';
       if (!contentType.toLowerCase().includes('application/json')) {
@@ -70,4 +103,23 @@ for (let attempt = 1; attempt <= attempts; attempt += 1) {
 }
 
 console.error(`Health verification failed closed: ${lastFailure}`);
+
+if (lastFailure === 'vercel_deployment_protection_no_bypass_secret') {
+  console.error('');
+  console.error('The deployment is reachable but Vercel Deployment Protection rejected');
+  console.error('this unauthenticated request, so no application code ran. This is not');
+  console.error('evidence of an application, database, or health-route defect.');
+  console.error('');
+  console.error('To let CI verify protected preview deployments, generate a bypass');
+  console.error('secret in Vercel: Project Settings -> Deployment Protection ->');
+  console.error('Protection Bypass for Automation, then expose it to this job as the');
+  console.error('VERCEL_AUTOMATION_BYPASS_SECRET repository secret. Deployment');
+  console.error('Protection stays enabled; do not disable it to make this check pass.');
+} else if (lastFailure === 'vercel_deployment_protection_bypass_rejected') {
+  console.error('');
+  console.error('VERCEL_AUTOMATION_BYPASS_SECRET was sent but Vercel still rejected the');
+  console.error('request. The secret is likely stale or belongs to another project —');
+  console.error('regenerate it under Project Settings -> Deployment Protection.');
+}
+
 process.exit(1);

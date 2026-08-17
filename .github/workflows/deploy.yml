@@ -173,6 +173,9 @@ jobs:
         env:
           HEALTH_VERIFY_ATTEMPTS: '8'
           HEALTH_VERIFY_DELAY_MS: '5000'
+          # Lets CI reach a deployment guarded by Vercel Deployment Protection
+          # without disabling that protection. See scripts/verify-health-url.mjs.
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
         run: node scripts/verify-health-url.mjs "${{ steps.preview.outputs.preview_url }}/api/health"
       - name: Comment PR with preview URL
         uses: actions/github-script@v7
