@@ -161,7 +161,8 @@ export async function POST(request: Request) {
 
     // Phase 2: Check if this is an MCP tool request (from Agent Plugins 1.0 plugin)
     const requestPayload = payload as Record<string, unknown>;
-    const toolName = (requestPayload.params?.tool as string | undefined) ||
+    const params = requestPayload.params as Record<string, unknown> | undefined;
+    const toolName = (params?.tool as string | undefined) ||
                      (payload.context?.tool as string | undefined);
 
     if (toolName && ['plan_alignment', 'constraint_evaluate', 'execution_proof_request', 'evidence_retrieve'].includes(toolName)) {
