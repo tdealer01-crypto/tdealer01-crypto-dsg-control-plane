@@ -18,6 +18,12 @@ on:
     paths:
       - '.github/workflows/ens-formal-bug-scan.yml'
       - 'scripts/ens-formal-bug-scan.mjs'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/ens-formal-bug-scan.yml'
+      - 'scripts/ens-formal-bug-scan.mjs'
+      - '.github/ens-scan-trigger/**'
 
 permissions:
   contents: read
