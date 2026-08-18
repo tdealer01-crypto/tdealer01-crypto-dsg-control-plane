@@ -1,0 +1,4 @@
+ENS formal audit scan evidence trigger.
+Frozen target: immunefi-team/audit-comp-ens@cda79acaad59711b943fc68207ebb3f1d0ff8596
+Original audited source: ensdomains/apps-monorepo@63772fd872af472ced58b009499355f3430c2a86
+Purpose: trigger PR-visible GitHub Actions evidence only; no production execution.
