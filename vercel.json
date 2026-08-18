@@ -2,9 +2,7 @@
   "buildCommand": "next build",
   "outputDirectory": ".next",
   "git": {
-    "deploymentEnabled": {
-      "*": false
-    }
+    "deploymentEnabled": false
   },
   "github": {
     "autoAlias": false,
