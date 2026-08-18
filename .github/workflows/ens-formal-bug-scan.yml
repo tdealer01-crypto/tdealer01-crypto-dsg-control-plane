@@ -1,0 +1,129 @@
+name: ENS Formal Bug Scan — Ising Z3 SMT DSG
+
+on:
+  workflow_dispatch:
+    inputs:
+      budget:
+        description: Maximum review candidates
+        required: true
+        default: '60'
+        type: string
+      seed:
+        description: Deterministic Ising seed
+        required: true
+        default: '20260818'
+        type: string
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/ens-formal-bug-scan.yml'
+      - 'scripts/ens-formal-bug-scan.mjs'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: ens-formal-scan-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  ENS_REPOSITORY: immunefi-team/audit-comp-ens
+  ENS_FROZEN_SHA: cda79acaad59711b943fc68207ebb3f1d0ff8596
+  ENS_ORIGINAL_AUDITED_SHA: 63772fd872af472ced58b009499355f3430c2a86
+
+jobs:
+  formal-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout DSG scanner
+        uses: actions/checkout@v4
+        with:
+          path: dsg
+          persist-credentials: false
+
+      - name: Checkout frozen ENS competition source
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.ENS_REPOSITORY }}
+          ref: ${{ env.ENS_FROZEN_SHA }}
+          path: ens
+          persist-credentials: false
+
+      - name: Verify frozen source and provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git -C ens rev-parse HEAD)"
+          message="$(git -C ens show -s --format=%B HEAD)"
+          echo "repository=$ENS_REPOSITORY" | tee source-proof.txt
+          echo "expected_frozen_sha=$ENS_FROZEN_SHA" | tee -a source-proof.txt
+          echo "actual_frozen_sha=$actual" | tee -a source-proof.txt
+          echo "original_audited_sha=$ENS_ORIGINAL_AUDITED_SHA" | tee -a source-proof.txt
+          printf 'commit_message=%s\n' "$message" | tee -a source-proof.txt
+          test "$actual" = "$ENS_FROZEN_SHA"
+          grep -Fq "$ENS_ORIGINAL_AUDITED_SHA" <<<"$message"
+
+      - name: Resolve scan inputs
+        id: scan-inputs
+        shell: bash
+        env:
+          REQUESTED_BUDGET: ${{ github.event_name == 'workflow_dispatch' && inputs.budget || '60' }}
+          REQUESTED_SEED: ${{ github.event_name == 'workflow_dispatch' && inputs.seed || '20260818' }}
+        run: |
+          set -euo pipefail
+          case "$REQUESTED_BUDGET" in ''|*[!0-9]*) exit 2;; esac
+          case "$REQUESTED_SEED" in ''|*[!0-9]*) exit 2;; esac
+          if [ "$REQUESTED_BUDGET" -lt 1 ] || [ "$REQUESTED_BUDGET" -gt 200 ]; then exit 2; fi
+          echo "budget=$REQUESTED_BUDGET" >> "$GITHUB_OUTPUT"
+          echo "seed=$REQUESTED_SEED" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: dsg/package-lock.json
+
+      - name: Install DSG scanner dependencies
+        working-directory: dsg
+        run: npm ci
+
+      - name: Run deterministic ENS scan
+        working-directory: dsg
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ens-formal-bug-scan.mjs \
+            --target-root ../ens \
+            --expected-source "$ENS_REPOSITORY@$ENS_FROZEN_SHA (origin $ENS_ORIGINAL_AUDITED_SHA)" \
+            --budget "${{ steps.scan-inputs.outputs.budget }}" \
+            --seed "${{ steps.scan-inputs.outputs.seed }}" \
+            --out ../ens-formal-output
+
+      - name: Attach source proof to evidence
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p ens-formal-output
+          cp source-proof.txt ens-formal-output/source-proof.txt
+
+      - name: Add scan summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -f ens-formal-output/formal-scan.md ]; then
+            cat ens-formal-output/formal-scan.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "ENS scanner did not produce formal-scan.md" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload ENS formal evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ens-formal-scan-${{ github.run_id }}
+          path: ens-formal-output
+          if-no-files-found: error
+          retention-days: 14
