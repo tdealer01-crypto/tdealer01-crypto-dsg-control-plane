@@ -20,9 +20,12 @@ function candidate(overrides: Partial<ImprovementCandidateEnvelope> = {}): Impro
     buildPassed: true,
     evidence: [
       { kind: 'commit', uri: 'git://candidate', commitSha: 'b'.repeat(40) },
-      { kind: 'metric', uri: 'artifact://metric.json' },
-      { kind: 'test_output', uri: 'artifact://tests.txt' },
+      { kind: 'metric', uri: 'artifact://metric.json', commitSha: 'b'.repeat(40) },
+      { kind: 'test_output', uri: 'artifact://tests.txt', commitSha: 'b'.repeat(40) },
     ],
+    candidateAuthority: 'SIMULATION_ONLY',
+    promotionAuthority: 'DSG_CONTROL_PLANE',
+    selfPromotionAllowed: false,
     cinemaProof: {
       proofId: 'proof-1',
       proofHash: 'proof-hash',
@@ -69,5 +72,20 @@ describe('evaluatePromotionCandidate', () => {
     }));
     expect(result.verdict).toBe('BLOCK');
     expect(result.failures.map((failure) => failure.code)).toContain('EVIDENCE_INCOMPLETE');
+  });
+
+  it('blocks any candidate that claims promotion authority', () => {
+    const forged = candidate() as ImprovementCandidateEnvelope & {
+      candidateAuthority: string;
+      promotionAuthority: string;
+      selfPromotionAllowed: boolean;
+    };
+    forged.candidateAuthority = 'PROMOTION_AUTHORITY';
+    forged.promotionAuthority = 'SIMULATION';
+    forged.selfPromotionAllowed = true;
+
+    const result = evaluatePromotionCandidate(forged as ImprovementCandidateEnvelope);
+    expect(result.verdict).toBe('BLOCK');
+    expect(result.failures.map((failure) => failure.code)).toContain('SELF_PROMOTION_AUTHORITY_INVALID');
   });
 });
