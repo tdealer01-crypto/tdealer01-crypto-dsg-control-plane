@@ -1,0 +1,50 @@
+{
+  "schema_version": "dsg-agentic-wave-plan-v1",
+  "workstream_id": "agentic-org-e2e-2026-08-25",
+  "execution_model": "parallel_lanes_with_join_gates",
+  "rules": {
+    "read_context_before_lane_work": true,
+    "write_only_approved_scope": true,
+    "no_direct_main_or_master_mutation": true,
+    "no_production_promotion_without_join_gate": true,
+    "checkpoint_after_each_lane_commit": true,
+    "evidence_required_for_completion": true
+  },
+  "waves": [
+    {
+      "id": "W1",
+      "name": "Foundations in parallel",
+      "lanes": [
+        {"id":"W1-A","branch":"integration/unified-monitoring-e2e","repo":"tdealer01-crypto/dsg-unified-data-monitoring","outputs":["normalized Node project","fail-closed CI","real monitoring entrypoint","tests"]},
+        {"id":"W1-B","branch":"feat/agentic-org-orchestrator","repo":"tdealer01-crypto/tdealer01-crypto-dsg-control-plane","outputs":["canonical schemas","promotion policy","orchestrator workflow","repo registry"]},
+        {"id":"W1-C","branch":"feat/governed-improvement-runtime","repo":"tdealer01-crypto/dsg-one-v1","outputs":["approved-plan improvement runtime adapter","lane status model","handoff contract"]},
+        {"id":"W1-D","branch":"feat/governed-candidate-envelope","repo":"tdealer01-crypto/dsg-agi-simulation","outputs":["candidate envelope","fitness evidence binding","no-self-promotion guard"]},
+        {"id":"W1-E","branch":"feat/improvement-proof-adapter","repo":"tdealer01-crypto/DSG-Cinema-Proof-Agent","outputs":["improvement evidence verifier","candidate commit binding","proof verdict contract"]}
+      ],
+      "join_gate": [
+        "all lane contracts validate against canonical schema",
+        "all available secret-independent CI checks pass",
+        "candidate cannot authorize or promote itself",
+        "every observation/evidence object binds repository and commit SHA"
+      ]
+    },
+    {
+      "id":"W2",
+      "name":"Cross-repo integration",
+      "depends_on":"W1",
+      "outputs":["observe -> candidate -> approved plan -> implementation -> evidence -> Cinema proof integration test"]
+    },
+    {
+      "id":"W3",
+      "name":"Promotion and PR",
+      "depends_on":"W2",
+      "outputs":["positive promotion PR","negative candidate BLOCK proof","replay evidence"]
+    },
+    {
+      "id":"W4",
+      "name":"Verified live integration and delivery",
+      "depends_on":"W3",
+      "outputs":["verified environment check","post-deploy observation when authorized and environment-ready","final evidence pack and handoff"]
+    }
+  ]
+}
