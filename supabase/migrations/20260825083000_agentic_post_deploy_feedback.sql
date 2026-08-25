@@ -1,11 +1,28 @@
--- Durable, service-role-only post-deploy evidence and baseline state.
--- Monitoring observes; DSG Control Plane is the only authority that may commit
--- a measured next baseline or authorize a provider rollback.
+-- Durable, service-role-only promotion/post-deploy evidence and baseline state.
+-- Simulation and Monitoring never become authority. Canonical ALLOW receipts,
+-- baseline commits and rollback execution are Control Plane responsibilities.
+
+create table if not exists public.agentic_promotion_receipts (
+  promotion_id text primary key,
+  promotion_hash text not null unique check (promotion_hash ~ '^[0-9a-fA-F]{64}$'),
+  target_repository text not null,
+  candidate_id text not null,
+  goal_id text not null,
+  approved_plan_hash text not null,
+  baseline_commit text not null check (baseline_commit ~ '^[0-9a-fA-F]{40}$'),
+  candidate_commit text not null check (candidate_commit ~ '^[0-9a-fA-F]{40}$'),
+  cinema_proof_id text not null,
+  cinema_proof_hash text not null,
+  gate_evaluated_at timestamptz not null,
+  metric_delta double precision not null,
+  receipt_payload jsonb not null,
+  created_at timestamptz not null default now()
+);
 
 create table if not exists public.agentic_post_deploy_receipts (
   id uuid primary key default gen_random_uuid(),
   target_repository text not null,
-  promotion_id text not null,
+  promotion_id text not null references public.agentic_promotion_receipts(promotion_id),
   deployment_id text not null unique,
   baseline_commit text not null check (baseline_commit ~ '^[0-9a-fA-F]{40}$'),
   candidate_commit text not null check (candidate_commit ~ '^[0-9a-fA-F]{40}$'),
@@ -25,7 +42,7 @@ create table if not exists public.agentic_evolution_baselines (
   target_repository text primary key,
   baseline_commit text not null check (baseline_commit ~ '^[0-9a-fA-F]{40}$'),
   source_deployment_id text not null unique,
-  promotion_id text not null,
+  promotion_id text not null references public.agentic_promotion_receipts(promotion_id),
   monitoring_evidence_hash text not null check (monitoring_evidence_hash ~ '^[0-9a-fA-F]{64}$'),
   control_evidence_hash text not null check (control_evidence_hash ~ '^[0-9a-fA-F]{64}$'),
   promoted_at timestamptz not null default now()
@@ -33,7 +50,7 @@ create table if not exists public.agentic_evolution_baselines (
 
 create table if not exists public.agentic_rollback_evidence (
   deployment_id text primary key,
-  promotion_id text not null,
+  promotion_id text not null references public.agentic_promotion_receipts(promotion_id),
   target_repository text not null,
   candidate_commit text not null check (candidate_commit ~ '^[0-9a-fA-F]{40}$'),
   rollback_adapter text not null,
@@ -45,15 +62,18 @@ create table if not exists public.agentic_rollback_evidence (
   rolled_back_at timestamptz not null default now()
 );
 
+alter table public.agentic_promotion_receipts enable row level security;
 alter table public.agentic_post_deploy_receipts enable row level security;
 alter table public.agentic_evolution_baselines enable row level security;
 alter table public.agentic_rollback_evidence enable row level security;
 
 -- No anon/authenticated policies are intentionally created. These tables are
 -- governance state and are only mutated by the server-side service role.
+revoke all on table public.agentic_promotion_receipts from anon, authenticated;
 revoke all on table public.agentic_post_deploy_receipts from anon, authenticated;
 revoke all on table public.agentic_evolution_baselines from anon, authenticated;
 revoke all on table public.agentic_rollback_evidence from anon, authenticated;
+grant all on table public.agentic_promotion_receipts to service_role;
 grant all on table public.agentic_post_deploy_receipts to service_role;
 grant all on table public.agentic_evolution_baselines to service_role;
 grant all on table public.agentic_rollback_evidence to service_role;
