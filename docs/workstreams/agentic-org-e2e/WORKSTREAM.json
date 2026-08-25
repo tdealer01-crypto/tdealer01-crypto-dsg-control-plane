@@ -3,56 +3,44 @@
   "workstream_id": "agentic-org-e2e-2026-08-25",
   "title": "DSG ONE Operating & Governance Layer for Agentic Organizations",
   "created_at": "2026-08-25T07:53:00+07:00",
-  "updated_at": "2026-08-25T07:53:00+07:00",
-  "status": "CONTEXT_READY_IMPLEMENTATION_PENDING_APPROVAL",
+  "updated_at": "2026-08-25T08:02:00+07:00",
+  "status": "IMPLEMENTATION_APPROVED_PARALLEL_WAVES_STARTING",
   "canonical_repo": "tdealer01-crypto/tdealer01-crypto-dsg-control-plane",
   "context_branch": "workstream/agentic-org-e2e-context",
   "authorization": {
     "context_store_creation": "APPROVED_BY_USER",
-    "implementation_plan": "PENDING_USER_DECISION",
-    "production_deploy": "NOT_AUTHORIZED_BY_THIS_CONTEXT_STEP"
+    "implementation_plan": "APPROVED_BY_USER_2026-08-25",
+    "plan_authorized_actions": [
+      "create implementation branches",
+      "create and update files within approved workstream scope",
+      "run and repair CI",
+      "create tests and evidence artifacts",
+      "open and update pull requests",
+      "iterate until acceptance gates pass"
+    ],
+    "production_deploy": "REQUIRES_VERIFIED_ENVIRONMENT_AND_PROMOTION_GATE"
   },
   "goal": "User states one goal once; DSG ONE organizes agents, skills, tools, cron and workflows, executes only within an approved plan, measures outcomes, records evidence, evaluates improvements and safely promotes proven candidates through GitHub PRs.",
   "repositories": [
-    {
-      "name": "Control Plane",
-      "repo": "tdealer01-crypto/tdealer01-crypto-dsg-control-plane",
-      "branch": "main",
-      "baseline_sha": "05660b19303861ac6f6023e78b18eb3933562eb5",
-      "role": "canonical_authority"
-    },
-    {
-      "name": "DSG ONE v1",
-      "repo": "tdealer01-crypto/dsg-one-v1",
-      "branch": "main",
-      "baseline_sha": "27c4463262bff3712ce5956fb0ce8140ccb869a5",
-      "role": "runtime_orchestrator"
-    },
-    {
-      "name": "AGI Simulation",
-      "repo": "tdealer01-crypto/dsg-agi-simulation",
-      "branch": "master",
-      "baseline_sha": "ff969f9bda2d101a5f9c062a60535709a40cfb5a",
-      "role": "candidate_and_eval_engine"
-    },
-    {
-      "name": "Cinema Proof Agent",
-      "repo": "tdealer01-crypto/DSG-Cinema-Proof-Agent",
-      "branch": "main",
-      "baseline_sha": "aef371d8930e6ee72afc8fb06738f9fc4a4e12cc",
-      "role": "independent_verifier"
-    },
-    {
-      "name": "Unified Data Monitoring",
-      "repo": "tdealer01-crypto/dsg-unified-data-monitoring",
-      "branch": "main",
-      "baseline_sha": "73a443e13e1e0bcd72cc68a9059b06c9f5fb8324",
-      "source_branch": "master",
-      "source_sha": "cc06be7a37f05ae44a1ba968cc31fd6c85dc617b",
-      "history_relation": "NO_COMMON_ANCESTOR_MAIN_MASTER",
-      "role": "observe_metric_evidence_intake"
-    }
+    {"name":"Control Plane","repo":"tdealer01-crypto/tdealer01-crypto-dsg-control-plane","branch":"main","baseline_sha":"05660b19303861ac6f6023e78b18eb3933562eb5","refreshed_sha":"05660b19303861ac6f6023e78b18eb3933562eb5","drift":"NONE","role":"canonical_authority"},
+    {"name":"DSG ONE v1","repo":"tdealer01-crypto/dsg-one-v1","branch":"main","baseline_sha":"27c4463262bff3712ce5956fb0ce8140ccb869a5","refreshed_sha":"27c4463262bff3712ce5956fb0ce8140ccb869a5","drift":"NONE","role":"runtime_orchestrator"},
+    {"name":"AGI Simulation","repo":"tdealer01-crypto/dsg-agi-simulation","branch":"master","baseline_sha":"ff969f9bda2d101a5f9c062a60535709a40cfb5a","refreshed_sha":"ff969f9bda2d101a5f9c062a60535709a40cfb5a","drift":"NONE","role":"candidate_and_eval_engine"},
+    {"name":"Cinema Proof Agent","repo":"tdealer01-crypto/DSG-Cinema-Proof-Agent","branch":"main","baseline_sha":"aef371d8930e6ee72afc8fb06738f9fc4a4e12cc","refreshed_sha":"aef371d8930e6ee72afc8fb06738f9fc4a4e12cc","drift":"NONE","role":"independent_verifier"},
+    {"name":"Unified Data Monitoring","repo":"tdealer01-crypto/dsg-unified-data-monitoring","branch":"main","baseline_sha":"73a443e13e1e0bcd72cc68a9059b06c9f5fb8324","refreshed_sha":"73a443e13e1e0bcd72cc68a9059b06c9f5fb8324","source_branch":"master","source_sha":"cc06be7a37f05ae44a1ba968cc31fd6c85dc617b","source_refreshed_sha":"cc06be7a37f05ae44a1ba968cc31fd6c85dc617b","history_relation":"NO_COMMON_ANCESTOR_MAIN_MASTER","drift":"NONE","role":"observe_metric_evidence_intake"}
   ],
+  "parallel_waves": {
+    "W1": {
+      "status": "STARTING",
+      "lanes": [
+        {"id":"W1-A","repo":"dsg-unified-data-monitoring","purpose":"repair package/build/CI and real monitoring substrate"},
+        {"id":"W1-B","repo":"tdealer01-crypto-dsg-control-plane","purpose":"canonical contracts, workstream orchestrator and promotion policy"},
+        {"id":"W1-C","repo":"dsg-one-v1","purpose":"runtime orchestration adapter for approved improvement plans"},
+        {"id":"W1-D","repo":"dsg-agi-simulation","purpose":"candidate envelope and governed promotion handoff"},
+        {"id":"W1-E","repo":"DSG-Cinema-Proof-Agent","purpose":"independent improvement evidence verification adapter"}
+      ],
+      "join_gate": "contract schemas agree + lane CI/evidence available + no direct production promotion"
+    }
+  },
   "known_environment": {
     "github_connector_repo_write": "READY",
     "github_branch_file_pr_operations": "READY",
@@ -62,24 +50,23 @@
     "production_deploy_target": "VERIFY_BEFORE_USE"
   },
   "phases": [
-    {"id":"P0","name":"Context and baseline freeze","status":"IN_PROGRESS"},
-    {"id":"P1","name":"Repair and normalize Unified Monitoring","status":"NOT_STARTED"},
-    {"id":"P2","name":"Real observation and monitoring contracts","status":"NOT_STARTED"},
-    {"id":"P3","name":"Five-repo registry and evidence binding","status":"NOT_STARTED"},
-    {"id":"P4","name":"Metric and AGI evaluation loop","status":"NOT_STARTED"},
-    {"id":"P5","name":"Governed implementation runtime","status":"NOT_STARTED"},
-    {"id":"P6","name":"Cinema independent proof integration","status":"NOT_STARTED"},
+    {"id":"P0","name":"Context and baseline freeze","status":"COMPLETED"},
+    {"id":"P1","name":"Repair and normalize Unified Monitoring","status":"IN_PROGRESS"},
+    {"id":"P2","name":"Real observation and monitoring contracts","status":"IN_PROGRESS"},
+    {"id":"P3","name":"Five-repo registry and evidence binding","status":"IN_PROGRESS"},
+    {"id":"P4","name":"Metric and AGI evaluation loop","status":"IN_PROGRESS"},
+    {"id":"P5","name":"Governed implementation runtime","status":"IN_PROGRESS"},
+    {"id":"P6","name":"Cinema independent proof integration","status":"IN_PROGRESS"},
     {"id":"P7","name":"Promotion gate and PR flow","status":"NOT_STARTED"},
     {"id":"P8","name":"Post-deploy feedback loop","status":"NOT_STARTED"},
     {"id":"P9","name":"Positive and negative E2E delivery proof","status":"NOT_STARTED"}
   ],
   "current_blockers": [
-    "Implementation plan has not yet been approved for execution.",
-    "Unified Monitoring main and master have unrelated histories.",
+    "Unified Monitoring main and master have unrelated histories; source must be transplanted onto a main-derived branch.",
     "Unified Monitoring CI currently fails at npm ci because package-lock.json is absent.",
     "Unified Monitoring API contains placeholder results and is not valid production evidence.",
-    "Required production secrets and live Supabase access are not yet verified."
+    "Required production secrets and live Supabase access are not yet verified; CI and contract work must remain secret-independent until integration gate."
   ],
-  "next_action": "Wait for explicit user decision on implementation plan. On approval, refresh all five repository HEADs, record drift, then execute P1 on a new integration branch from Unified Monitoring main.",
-  "delivery_status": "NOT_DELIVERED"
+  "next_action": "Execute Wave 1 lanes in parallel branches, checkpoint evidence per lane, then join at canonical contract gate.",
+  "delivery_status": "IN_PROGRESS"
 }
