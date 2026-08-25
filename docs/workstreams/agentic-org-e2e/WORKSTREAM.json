@@ -3,8 +3,8 @@
   "workstream_id": "agentic-org-e2e-2026-08-25",
   "title": "DSG ONE Operating & Governance Layer for Agentic Organizations",
   "created_at": "2026-08-25T07:53:00+07:00",
-  "updated_at": "2026-08-25T10:19:43+07:00",
-  "status": "IMPLEMENTATION_APPROVED_PARALLEL_WAVES_ACTIVE",
+  "updated_at": "2026-08-25T10:25:08+07:00",
+  "status": "W1_IMPLEMENTATION_JOIN_PASS_W2_ACTIVE",
   "canonical_repo": "tdealer01-crypto/tdealer01-crypto-dsg-control-plane",
   "context_branch": "workstream/agentic-org-e2e-context",
   "authorization": {
@@ -31,20 +31,28 @@
   ],
   "parallel_waves": {
     "W1": {
-      "status": "JOIN_REVALIDATING",
+      "status": "IMPLEMENTATION_JOIN_PASS",
       "join_gate": "canonical contracts agree + public lane refs reachable + pinned successful private-lane CI checkpoint + no lane carries production authority",
+      "join_evidence": {
+        "public_refs_rechecked": ["W1-A","W1-B","W1-C","W1-E"],
+        "private_agi_checkpoint": "evidence/agentic-org/w1-d-agi-ci.json",
+        "private_agi_ci_run": 32803651839,
+        "control_plane_guard_run": 32804691229,
+        "control_plane_guard_result": "success",
+        "truth_boundary": "Implementation join proves lane code/evidence readiness only. It does not authorize merge, promotion, or deployment."
+      },
       "lanes": [
-        {"id":"W1-A","repo":"dsg-unified-data-monitoring","branch":"integration/unified-monitoring-e2e","status":"READY_TO_JOIN","pr":1,"head_sha":"1c7cece413423ed413bdaaa7108cb4cde6345aaa","ci_run":32802508064,"notes":"Draft PR is mergeable. Required fail-closed sequence passed: deterministic lockfile, npm ci, lint, typecheck, tests, build and Docker build. Live Supabase/RLS evidence remains a later environment proof, not an implementation-join requirement."},
-        {"id":"W1-B","repo":"tdealer01-crypto-dsg-control-plane","branch":"feat/agentic-org-orchestrator","status":"READY_TO_JOIN_PENDING_CURRENT_CI","pr":1151,"head_sha":"c46d315ce685ed8f1071b15dc8746a70bd0374b8","notes":"Canonical raw-evidence promotion contract, state-machine orchestrator, governed branch bootstrap, provider-neutral deployment state and private AGI implementation checkpoint are implemented. Current PR CI is revalidating the latest head."},
-        {"id":"W1-C","repo":"dsg-one-v1","branch":"feat/governed-improvement-runtime","status":"READY_TO_JOIN","pr":121,"notes":"Targeted governed runtime CI and repo verification passed; global CCVS coverage debt predates this work and is tracked separately."},
-        {"id":"W1-D","repo":"dsg-agi-simulation","branch":"feat/governed-candidate-envelope","status":"READY_TO_JOIN","pr":16,"head_sha":"a595bd2c425e25b09e41b758e381424c586f28b8","ci_run":32803651839,"notes":"Candidate-only authority, governed candidate PR workflow, digest-bound evidence and lane-local CI passed. Control Plane records a pinned GitHub API checkpoint for implementation join. Runtime promotion still requires Cinema OIDC/raw-evidence verification."},
-        {"id":"W1-E","repo":"DSG-Cinema-Proof-Agent","branch":"feat/improvement-proof-adapter","status":"READY_TO_JOIN","pr":114,"head_sha":"6e60802327e1d5b528133a672a97f9a3f63a5817","notes":"Structural proof + GitHub OIDC/raw-evidence verifier targeted CI passed. Azure staging deployment contention is infrastructure-only and is not treated as verifier correctness evidence."}
+        {"id":"W1-A","repo":"dsg-unified-data-monitoring","branch":"integration/unified-monitoring-e2e","status":"READY_FOR_REVIEW","pr":1,"head_sha":"1c7cece413423ed413bdaaa7108cb4cde6345aaa","ci_run":32802508064,"notes":"Required fail-closed sequence passed: deterministic lockfile, npm ci, lint, typecheck, tests, build and Docker build. PR is mergeable and no longer draft."},
+        {"id":"W1-B","repo":"tdealer01-crypto-dsg-control-plane","branch":"feat/agentic-org-orchestrator","status":"READY_FOR_REVIEW","pr":1151,"head_sha":"c46d315ce685ed8f1071b15dc8746a70bd0374b8","ci_run":32804691229,"notes":"Provider-neutral boundary, typecheck, workspace policy tests, migrations and unit suite passed. PR is mergeable and no longer draft."},
+        {"id":"W1-C","repo":"dsg-one-v1","branch":"feat/governed-improvement-runtime","status":"READY_FOR_REVIEW","pr":121,"head_sha":"74f12dc3750f452d315a63ce510b213ef3593dd0","notes":"Governed runtime handoff CI/repo verification passed. PR is mergeable and no longer draft."},
+        {"id":"W1-D","repo":"dsg-agi-simulation","branch":"feat/governed-candidate-envelope","status":"READY_FOR_REVIEW","pr":16,"head_sha":"a595bd2c425e25b09e41b758e381424c586f28b8","ci_run":32803651839,"notes":"Candidate-only authority, digest-bound evidence, governed candidate workflow and lane-local CI passed. PR is mergeable and no longer draft. Runtime promotion still requires Cinema OIDC/raw-evidence verification."},
+        {"id":"W1-E","repo":"DSG-Cinema-Proof-Agent","branch":"feat/improvement-proof-adapter","status":"READY_FOR_REVIEW","pr":114,"head_sha":"6e60802327e1d5b528133a672a97f9a3f63a5817","notes":"Structural + GitHub OIDC/raw-evidence verifier targeted CI and API/contract parity checks passed. PR is mergeable and no longer draft."}
       ]
     },
     "W2": {
-      "status": "STARTED_IN_PARALLEL",
+      "status": "ACTIVE",
       "flow": "observation -> candidate -> approved plan -> governed execution -> raw artifact hashes -> Cinema OIDC identity/raw evidence verification -> Control Plane promotion gate",
-      "notes": "Control Plane cannot ALLOW from structural binding alone. VERIFIED_RAW_EVIDENCE with rawEvidenceVerified=true and candidate commit binding is mandatory for promotion."
+      "notes": "Control Plane cannot ALLOW from structural binding alone. VERIFIED_RAW_EVIDENCE with rawEvidenceVerified=true and candidate commit binding is mandatory for promotion. Non-deploy positive/negative proof work can continue while production provider remains UNBOUND."
     }
   },
   "deployment": {
@@ -53,6 +61,7 @@
     "production_deploy_enabled": false,
     "vercel": "RETIRED_NOT_USED",
     "render": "RETIRED_NOT_USED",
+    "merge_policy": "DO_NOT_MERGE_WHILE_AUTO_DEPLOY_TARGET_IS_UNVERIFIED",
     "effect": "Build, test, evidence, Cinema verification and implementation join continue. Production mutation remains fail-closed until a real provider is explicitly bound with health and rollback/recovery evidence."
   },
   "known_environment": {
@@ -71,7 +80,7 @@
     {"id":"P0","name":"Context and baseline freeze","status":"COMPLETED"},
     {"id":"P1","name":"Repair and normalize Unified Monitoring","status":"IMPLEMENTED_CI_PASS"},
     {"id":"P2","name":"Real observation and monitoring contracts","status":"IMPLEMENTED_AWAITING_LIVE_EVIDENCE"},
-    {"id":"P3","name":"Five-repo registry and evidence binding","status":"IN_PROGRESS"},
+    {"id":"P3","name":"Five-repo registry and evidence binding","status":"IMPLEMENTATION_JOIN_PASS_FURTHER_RUNTIME_BINDING_PENDING"},
     {"id":"P4","name":"Metric and AGI evaluation loop","status":"IN_PROGRESS"},
     {"id":"P5","name":"Governed implementation runtime","status":"IN_PROGRESS"},
     {"id":"P6","name":"Cinema independent proof integration","status":"IN_PROGRESS_RAW_ATTESTATION_BINDING"},
@@ -85,15 +94,16 @@
     "Deterministic npm package-lock generated from the npm registry by GitHub Actions and committed.",
     "Placeholder monitoring API was not promoted; new implementation returns observed PASS/REVIEW/BLOCK states and explicitly refuses RLS/production-ready claims without evidence.",
     "W1 private AGI implementation join no longer depends on Control Plane Actions reading the private repository; a pinned successful lane-local CI checkpoint is used only for implementation join.",
-    "Stale Vercel production readiness and deployment automation was removed from W1 gating after user confirmed Vercel is not used.",
-    "Render was also confirmed not used and is not treated as a deployment target."
+    "Stale Vercel production readiness/deployment/migration automation was retired after user confirmed Vercel is not used.",
+    "Render was confirmed not used and is not treated as a deployment target.",
+    "Control Plane provider-neutral Agent Workspace Guard passed on the latest W1-B head.",
+    "Wave 1 implementation join passed with all five lanes ready for review."
   ],
   "current_blockers": [
-    "Latest Control Plane PR CI must finish on the provider-neutral/raw-evidence head before W1 implementation join can be recorded PASS.",
-    "Cinema OIDC/raw-evidence endpoint and AGI attestation destination are implemented but not yet bound to a live trusted endpoint, so runtime promotion attestation remains NOT_RUN.",
+    "Cinema OIDC/raw-evidence endpoint and AGI attestation destination are implemented but not yet bound to a verified live trusted endpoint, so runtime promotion attestation remains NOT_RUN.",
     "Live Supabase credentials and a non-service-role tenant identity are not yet verified, so live data proof and RLS/tenant-isolation proof remain NOT_RUN.",
-    "Production deployment provider is intentionally UNBOUND; post-deploy feedback and production proof remain BLOCKED until a real target is selected and bound."
+    "Production deployment provider is intentionally UNBOUND; merge is held because unknown external auto-deploy wiring must not be triggered accidentally, and post-deploy feedback/production proof remain BLOCKED."
   ],
-  "next_action": "Close latest Control Plane CI and Wave 1 implementation join; then complete non-deploy Wave 2 positive/negative proof and bind Cinema OIDC transport when a trusted live endpoint is available. Keep production mutation blocked until an explicit provider is selected.",
+  "next_action": "Continue Wave 2 non-deploy positive/negative proof and raw-evidence transport validation; identify and bind a trusted Cinema attestation endpoint when verified; keep all five implementation PRs ready but unmerged until auto-deploy/provider state is explicitly known.",
   "delivery_status": "IN_PROGRESS"
 }
