@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "dsg.production-target.v1",
+  "provider": "UNBOUND",
+  "status": "BLOCKED_UNTIL_BOUND",
+  "productionDeployEnabled": false,
+  "healthProbe": null,
+  "rollbackTarget": null,
+  "boundAt": null,
+  "notes": [
+    "Vercel is not an active DSG production target.",
+    "Render is not an active DSG production target.",
+    "Build, test, evidence, Cinema verification, and promotion evaluation may proceed while deployment remains unbound.",
+    "Production mutation must remain fail-closed until an approved provider adapter, health probe, rollback/recovery path, credential binding, and deployment evidence contract are configured."
+  ]
+}
