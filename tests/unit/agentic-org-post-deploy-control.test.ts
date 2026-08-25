@@ -73,7 +73,26 @@ function target(overrides: Partial<ProductionTargetSnapshot> = {}): ProductionTa
 }
 
 describe('evaluatePostDeployControl', () => {
-  it('commits an improved canary as the next baseline when bindings match', () => {
+  it('commits an improved canary as the next baseline when bindings match a bound production target', () => {
+    const result = evaluatePostDeployControl({
+      monitoring: monitoring(),
+      promotionReceipt: receipt(),
+      deployment: deployment({ provider: 'GCLOUD' }),
+      productionTarget: target({
+        provider: 'GCLOUD',
+        status: 'BOUND',
+        productionDeployEnabled: true,
+        deploymentAdapter: 'GCLOUD',
+        healthProbe: 'https://service.example.com/api/health',
+      }),
+    });
+
+    expect(result.action).toBe('COMMIT_NEXT_BASELINE');
+    expect(result.nextBaselineCommit).toBe(candidate);
+    expect(result.failures).toEqual([]);
+  });
+
+  it('blocks committing a next baseline while the canonical production target is unbound', () => {
     const result = evaluatePostDeployControl({
       monitoring: monitoring(),
       promotionReceipt: receipt(),
@@ -81,9 +100,9 @@ describe('evaluatePostDeployControl', () => {
       productionTarget: target(),
     });
 
-    expect(result.action).toBe('COMMIT_NEXT_BASELINE');
-    expect(result.nextBaselineCommit).toBe(candidate);
-    expect(result.failures).toEqual([]);
+    expect(result.action).toBe('BLOCK');
+    expect(result.nextBaselineCommit).toBeNull();
+    expect(result.failures.map((failure) => failure.code)).toContain('PRODUCTION_TARGET_UNBOUND');
   });
 
   it('holds neutral or insufficient evidence without production mutation', () => {
