@@ -46,6 +46,9 @@ export interface ImprovementCandidateEnvelope {
   buildPassed: boolean;
   evidence: EvidenceRef[];
   simulationHash?: string;
+  candidateAuthority: 'SIMULATION_ONLY';
+  promotionAuthority: 'DSG_CONTROL_PLANE';
+  selfPromotionAllowed: false;
   cinemaProof?: {
     proofId: string;
     proofHash: string;
@@ -70,6 +73,7 @@ export interface PromotionGateFailure {
     | 'BUILD_FAILED'
     | 'METRIC_REGRESSION'
     | 'EVIDENCE_INCOMPLETE'
+    | 'SELF_PROMOTION_AUTHORITY_INVALID'
     | 'CINEMA_PROOF_MISSING'
     | 'CINEMA_PROOF_INVALID'
     | 'CINEMA_COMMIT_MISMATCH';
