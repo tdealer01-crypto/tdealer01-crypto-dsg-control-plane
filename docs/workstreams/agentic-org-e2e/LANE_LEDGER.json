@@ -1,0 +1,10 @@
+{
+  "updated_at":"2026-08-25T08:05:00+07:00",
+  "lanes":{
+    "W1-A":{"status":"QUEUED","repo":"tdealer01-crypto/dsg-unified-data-monitoring","branch":"integration/unified-monitoring-e2e","last_commit":null,"evidence":[],"blockers":[]},
+    "W1-B":{"status":"QUEUED","repo":"tdealer01-crypto/tdealer01-crypto-dsg-control-plane","branch":"feat/agentic-org-orchestrator","last_commit":null,"evidence":[],"blockers":[]},
+    "W1-C":{"status":"QUEUED","repo":"tdealer01-crypto/dsg-one-v1","branch":"feat/governed-improvement-runtime","last_commit":null,"evidence":[],"blockers":[]},
+    "W1-D":{"status":"QUEUED","repo":"tdealer01-crypto/dsg-agi-simulation","branch":"feat/governed-candidate-envelope","last_commit":null,"evidence":[],"blockers":[]},
+    "W1-E":{"status":"QUEUED","repo":"tdealer01-crypto/DSG-Cinema-Proof-Agent","branch":"feat/improvement-proof-adapter","last_commit":null,"evidence":[],"blockers":[]}
+  }
+}
