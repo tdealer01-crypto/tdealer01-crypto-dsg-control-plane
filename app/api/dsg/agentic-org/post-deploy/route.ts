@@ -67,8 +67,40 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ status: 'BLOCK', reason: 'POST_DEPLOY_PAYLOAD_INVALID_JSON' }, { status: 400 });
   }
-  if (!isFeedbackBody(parsed)) {
+  if (!isFeedbackBody(parsed) || !parsed.promotionReceipt?.promotionId) {
     return NextResponse.json({ status: 'BLOCK', reason: 'POST_DEPLOY_PAYLOAD_INVALID' }, { status: 400 });
+  }
+
+  const supabase = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  const { data: canonicalRow, error: canonicalError } = await supabase
+    .from('agentic_promotion_receipts')
+    .select('promotion_id,promotion_hash,target_repository,baseline_commit,candidate_commit,receipt_payload')
+    .eq('promotion_id', parsed.promotionReceipt.promotionId)
+    .maybeSingle();
+
+  if (canonicalError) {
+    return NextResponse.json({ status: 'BLOCK', reason: 'CANONICAL_PROMOTION_RECEIPT_LOOKUP_FAILED' }, { status: 503 });
+  }
+  if (!canonicalRow) {
+    return NextResponse.json({ status: 'BLOCK', reason: 'CANONICAL_PROMOTION_RECEIPT_NOT_FOUND' }, { status: 409 });
+  }
+
+  const canonicalReceipt = canonicalRow.receipt_payload as PromotionReceipt;
+  const submittedReceiptMatches = parsed.promotionReceipt.promotionId === canonicalReceipt.promotionId &&
+    parsed.promotionReceipt.promotionHash === canonicalReceipt.promotionHash &&
+    parsed.promotionReceipt.targetRepository === canonicalReceipt.targetRepository &&
+    parsed.promotionReceipt.baselineCommit === canonicalReceipt.baselineCommit &&
+    parsed.promotionReceipt.candidateCommit === canonicalReceipt.candidateCommit &&
+    canonicalRow.promotion_hash === canonicalReceipt.promotionHash &&
+    canonicalRow.target_repository === canonicalReceipt.targetRepository &&
+    canonicalRow.baseline_commit === canonicalReceipt.baselineCommit &&
+    canonicalRow.candidate_commit === canonicalReceipt.candidateCommit;
+
+  if (!submittedReceiptMatches) {
+    return NextResponse.json({ status: 'BLOCK', reason: 'CANONICAL_PROMOTION_RECEIPT_MISMATCH' }, { status: 409 });
   }
 
   const productionTarget = productionTargetJson as ProductionTargetSnapshot;
@@ -76,17 +108,13 @@ export async function POST(request: NextRequest) {
   try {
     control = evaluatePostDeployControl({
       monitoring: parsed.monitoring,
-      promotionReceipt: parsed.promotionReceipt,
+      promotionReceipt: canonicalReceipt,
       deployment: parsed.deployment,
       productionTarget,
     });
   } catch {
     return NextResponse.json({ status: 'BLOCK', reason: 'POST_DEPLOY_EVALUATION_FAILED' }, { status: 400 });
   }
-
-  const supabase = createClient(supabaseUrl, serviceRoleKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
 
   const { data: existing, error: existingError } = await supabase
     .from('agentic_post_deploy_receipts')
@@ -110,7 +138,7 @@ export async function POST(request: NextRequest) {
     }
   } else {
     const { error: insertError } = await supabase.from('agentic_post_deploy_receipts').insert({
-      target_repository: parsed.promotionReceipt.targetRepository,
+      target_repository: canonicalReceipt.targetRepository,
       promotion_id: control.promotionId,
       deployment_id: control.deploymentId,
       baseline_commit: control.baselineCommit,
@@ -129,7 +157,7 @@ export async function POST(request: NextRequest) {
 
   if (control.action === 'COMMIT_NEXT_BASELINE') {
     const { data: commitStatus, error: baselineError } = await supabase.rpc('dsg_commit_evolution_baseline', {
-      p_target_repository: parsed.promotionReceipt.targetRepository,
+      p_target_repository: canonicalReceipt.targetRepository,
       p_expected_baseline: control.baselineCommit,
       p_next_baseline: control.nextBaselineCommit,
       p_source_deployment_id: control.deploymentId,
@@ -203,7 +231,7 @@ export async function POST(request: NextRequest) {
           schemaVersion: 'dsg-governed-rollback-v1',
           promotionId: control.promotionId,
           deploymentId: control.deploymentId,
-          targetRepository: parsed.promotionReceipt.targetRepository,
+          targetRepository: canonicalReceipt.targetRepository,
           candidateCommit: control.candidateCommit,
           adapter: control.rollbackAdapter,
           rollbackTarget: control.rollbackTarget,
@@ -222,7 +250,7 @@ export async function POST(request: NextRequest) {
     const { error: rollbackPersistError } = await supabase.from('agentic_rollback_evidence').insert({
       deployment_id: control.deploymentId,
       promotion_id: control.promotionId,
-      target_repository: parsed.promotionReceipt.targetRepository,
+      target_repository: canonicalReceipt.targetRepository,
       candidate_commit: control.candidateCommit,
       rollback_adapter: control.rollbackAdapter,
       rollback_target: control.rollbackTarget,
