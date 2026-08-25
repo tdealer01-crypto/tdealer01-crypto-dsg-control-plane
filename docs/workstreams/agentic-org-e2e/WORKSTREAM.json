@@ -1,0 +1,85 @@
+{
+  "schema_version": "dsg-workstream-context-v1",
+  "workstream_id": "agentic-org-e2e-2026-08-25",
+  "title": "DSG ONE Operating & Governance Layer for Agentic Organizations",
+  "created_at": "2026-08-25T07:53:00+07:00",
+  "updated_at": "2026-08-25T07:53:00+07:00",
+  "status": "CONTEXT_READY_IMPLEMENTATION_PENDING_APPROVAL",
+  "canonical_repo": "tdealer01-crypto/tdealer01-crypto-dsg-control-plane",
+  "context_branch": "workstream/agentic-org-e2e-context",
+  "authorization": {
+    "context_store_creation": "APPROVED_BY_USER",
+    "implementation_plan": "PENDING_USER_DECISION",
+    "production_deploy": "NOT_AUTHORIZED_BY_THIS_CONTEXT_STEP"
+  },
+  "goal": "User states one goal once; DSG ONE organizes agents, skills, tools, cron and workflows, executes only within an approved plan, measures outcomes, records evidence, evaluates improvements and safely promotes proven candidates through GitHub PRs.",
+  "repositories": [
+    {
+      "name": "Control Plane",
+      "repo": "tdealer01-crypto/tdealer01-crypto-dsg-control-plane",
+      "branch": "main",
+      "baseline_sha": "05660b19303861ac6f6023e78b18eb3933562eb5",
+      "role": "canonical_authority"
+    },
+    {
+      "name": "DSG ONE v1",
+      "repo": "tdealer01-crypto/dsg-one-v1",
+      "branch": "main",
+      "baseline_sha": "27c4463262bff3712ce5956fb0ce8140ccb869a5",
+      "role": "runtime_orchestrator"
+    },
+    {
+      "name": "AGI Simulation",
+      "repo": "tdealer01-crypto/dsg-agi-simulation",
+      "branch": "master",
+      "baseline_sha": "ff969f9bda2d101a5f9c062a60535709a40cfb5a",
+      "role": "candidate_and_eval_engine"
+    },
+    {
+      "name": "Cinema Proof Agent",
+      "repo": "tdealer01-crypto/DSG-Cinema-Proof-Agent",
+      "branch": "main",
+      "baseline_sha": "aef371d8930e6ee72afc8fb06738f9fc4a4e12cc",
+      "role": "independent_verifier"
+    },
+    {
+      "name": "Unified Data Monitoring",
+      "repo": "tdealer01-crypto/dsg-unified-data-monitoring",
+      "branch": "main",
+      "baseline_sha": "73a443e13e1e0bcd72cc68a9059b06c9f5fb8324",
+      "source_branch": "master",
+      "source_sha": "cc06be7a37f05ae44a1ba968cc31fd6c85dc617b",
+      "history_relation": "NO_COMMON_ANCESTOR_MAIN_MASTER",
+      "role": "observe_metric_evidence_intake"
+    }
+  ],
+  "known_environment": {
+    "github_connector_repo_write": "READY",
+    "github_branch_file_pr_operations": "READY",
+    "github_actions_logs_read": "READY",
+    "repository_secrets": "UNVERIFIED",
+    "supabase_credentials": "UNVERIFIED",
+    "production_deploy_target": "VERIFY_BEFORE_USE"
+  },
+  "phases": [
+    {"id":"P0","name":"Context and baseline freeze","status":"IN_PROGRESS"},
+    {"id":"P1","name":"Repair and normalize Unified Monitoring","status":"NOT_STARTED"},
+    {"id":"P2","name":"Real observation and monitoring contracts","status":"NOT_STARTED"},
+    {"id":"P3","name":"Five-repo registry and evidence binding","status":"NOT_STARTED"},
+    {"id":"P4","name":"Metric and AGI evaluation loop","status":"NOT_STARTED"},
+    {"id":"P5","name":"Governed implementation runtime","status":"NOT_STARTED"},
+    {"id":"P6","name":"Cinema independent proof integration","status":"NOT_STARTED"},
+    {"id":"P7","name":"Promotion gate and PR flow","status":"NOT_STARTED"},
+    {"id":"P8","name":"Post-deploy feedback loop","status":"NOT_STARTED"},
+    {"id":"P9","name":"Positive and negative E2E delivery proof","status":"NOT_STARTED"}
+  ],
+  "current_blockers": [
+    "Implementation plan has not yet been approved for execution.",
+    "Unified Monitoring main and master have unrelated histories.",
+    "Unified Monitoring CI currently fails at npm ci because package-lock.json is absent.",
+    "Unified Monitoring API contains placeholder results and is not valid production evidence.",
+    "Required production secrets and live Supabase access are not yet verified."
+  ],
+  "next_action": "Wait for explicit user decision on implementation plan. On approval, refresh all five repository HEADs, record drift, then execute P1 on a new integration branch from Unified Monitoring main.",
+  "delivery_status": "NOT_DELIVERED"
+}
