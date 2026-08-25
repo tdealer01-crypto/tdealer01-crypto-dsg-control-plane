@@ -1,0 +1,1 @@
+Parallel execution is approved and active. See `WAVES.json`, `ORCHESTRATOR_PROTOCOL.md`, `EXECUTION_AUTHORIZATION.md`, and `BRANCH_PLAN.md` before lane work. This file is a stable pointer for agent discovery.
