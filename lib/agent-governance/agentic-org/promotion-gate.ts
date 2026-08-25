@@ -55,6 +55,16 @@ export function evaluatePromotionCandidate(
   if (!hasRequiredEvidence(envelope)) {
     failures.push({ code: 'EVIDENCE_INCOMPLETE', message: 'Commit, metric and test evidence are required.' });
   }
+  if (
+    envelope.candidateAuthority !== 'SIMULATION_ONLY' ||
+    envelope.promotionAuthority !== 'DSG_CONTROL_PLANE' ||
+    envelope.selfPromotionAllowed !== false
+  ) {
+    failures.push({
+      code: 'SELF_PROMOTION_AUTHORITY_INVALID',
+      message: 'Simulation may generate/evaluate candidates but cannot authorize its own promotion.',
+    });
+  }
 
   if (!envelope.cinemaProof) {
     failures.push({ code: 'CINEMA_PROOF_MISSING', message: 'Independent Cinema proof is required.' });
