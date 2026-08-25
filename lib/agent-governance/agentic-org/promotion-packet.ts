@@ -1,5 +1,7 @@
 import type { ImprovementCandidateEnvelope, PromotionGateResult } from './contracts';
 import { evaluatePromotionCandidate } from './promotion-gate';
+import { issuePromotionReceipt } from './promotion-receipt';
+import type { PromotionReceipt } from './post-deploy-control';
 
 export interface CinemaEnvelopeBindingProof {
   proofId: string;
@@ -71,6 +73,7 @@ export interface PromotionPacketResult {
   structuralBinding: CinemaBindingResult;
   rawBinding: CinemaRawBindingResult | null;
   gate: PromotionGateResult | null;
+  receipt: PromotionReceipt | null;
   rawEvidenceVerified: boolean;
 }
 
@@ -173,6 +176,7 @@ export function evaluatePromotionPacket(
     structuralBinding,
     rawBinding: null,
     gate: null,
+    receipt: null,
     rawEvidenceVerified: false,
   };
 }
@@ -185,7 +189,7 @@ export function evaluateRawPromotionPacket(
 ): PromotionPacketResult {
   const structuralBinding = bindCinemaEnvelopeProof(envelope, structuralProof);
   if (!structuralBinding.ok) {
-    return { structuralBinding, rawBinding: null, gate: null, rawEvidenceVerified: false };
+    return { structuralBinding, rawBinding: null, gate: null, receipt: null, rawEvidenceVerified: false };
   }
 
   if (
@@ -201,18 +205,21 @@ export function evaluateRawPromotionPacket(
       verificationLevel: 'BLOCKED',
       rawEvidenceVerified: false,
     };
-    return { structuralBinding, rawBinding, gate: null, rawEvidenceVerified: false };
+    return { structuralBinding, rawBinding, gate: null, receipt: null, rawEvidenceVerified: false };
   }
 
   const rawBinding = bindCinemaRawEvidenceProof(envelope, rawProof);
   if (!rawBinding.ok) {
-    return { structuralBinding, rawBinding, gate: null, rawEvidenceVerified: false };
+    return { structuralBinding, rawBinding, gate: null, receipt: null, rawEvidenceVerified: false };
   }
 
+  const gate = evaluatePromotionCandidate(rawBinding.envelope, evaluatedAt);
+  const issued = issuePromotionReceipt(rawBinding.envelope, gate);
   return {
     structuralBinding,
     rawBinding,
-    gate: evaluatePromotionCandidate(rawBinding.envelope, evaluatedAt),
+    gate,
+    receipt: issued.ok ? issued.receipt : null,
     rawEvidenceVerified: true,
   };
 }
