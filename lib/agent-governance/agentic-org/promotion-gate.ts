@@ -12,7 +12,7 @@ function metricDelta(envelope: ImprovementCandidateEnvelope): number {
 
 function hasRequiredEvidence(envelope: ImprovementCandidateEnvelope): boolean {
   const kinds = new Set(envelope.evidence.map((item) => item.kind));
-  return kinds.has('commit') && kinds.has('metric') && kinds.has('test_output');
+  return kinds.has('commit') && kinds.has('metric') && kinds.has('test_output') && kinds.has('build_output');
 }
 
 export function evaluatePromotionCandidate(
@@ -53,7 +53,7 @@ export function evaluatePromotionCandidate(
     failures.push({ code: 'METRIC_REGRESSION', message: 'Candidate does not improve the declared objective metric.' });
   }
   if (!hasRequiredEvidence(envelope)) {
-    failures.push({ code: 'EVIDENCE_INCOMPLETE', message: 'Commit, metric and test evidence are required.' });
+    failures.push({ code: 'EVIDENCE_INCOMPLETE', message: 'Commit, metric, test and build evidence are required.' });
   }
   if (
     envelope.candidateAuthority !== 'SIMULATION_ONLY' ||
@@ -74,6 +74,15 @@ export function evaluatePromotionCandidate(
     }
     if (envelope.cinemaProof.boundCandidateCommit !== envelope.candidateCommit) {
       failures.push({ code: 'CINEMA_COMMIT_MISMATCH', message: 'Cinema proof is bound to a different candidate commit.' });
+    }
+    if (
+      envelope.cinemaProof.verification !== 'VERIFIED_RAW_EVIDENCE' ||
+      envelope.cinemaProof.rawEvidenceVerified !== true
+    ) {
+      failures.push({
+        code: 'CINEMA_RAW_EVIDENCE_REQUIRED',
+        message: 'Structural envelope binding is insufficient; Cinema must verify raw metric/test/build evidence.',
+      });
     }
   }
 
