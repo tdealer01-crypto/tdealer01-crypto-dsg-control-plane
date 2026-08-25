@@ -26,7 +26,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Run deterministic agentic organization tests
-        run: npx vitest run tests/unit/agentic-org-promotion-gate.test.ts tests/unit/agentic-org-orchestrator.test.ts tests/unit/agentic-org-github-branch-bootstrap.test.ts
+        run: npx vitest run tests/unit/agentic-org-promotion-gate.test.ts tests/unit/agentic-org-promotion-packet.test.ts tests/unit/agentic-org-orchestrator.test.ts tests/unit/agentic-org-github-branch-bootstrap.test.ts
       - name: Validate canonical JSON schema parses
         run: node -e "JSON.parse(require('fs').readFileSync('contracts/agentic-improvement/promotion-envelope.v1.schema.json','utf8')); console.log('schema-ok')"
 
@@ -105,5 +105,5 @@ jobs:
     needs: [canonical-gate, lane-ref-check]
     steps:
       - run: |
-          echo 'Wave 1 lane refs are reachable and the canonical contract/state-machine/bootstrap tests passed.'
-          echo 'This join does not authorize deployment; later evidence and Cinema proof gates remain required.'
+          echo 'Wave 1 lane refs are reachable and the canonical contract/state-machine/bootstrap/promotion-packet tests passed.'
+          echo 'This join does not authorize deployment; later raw-evidence and Cinema proof gates remain required.'
