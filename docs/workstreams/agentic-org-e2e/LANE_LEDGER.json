@@ -1,5 +1,5 @@
 {
-  "updated_at":"2026-08-25T08:09:00+07:00",
+  "updated_at":"2026-08-25T08:24:00+07:00",
   "lanes":{
     "W1-A":{
       "status":"BLOCKED",
@@ -7,44 +7,90 @@
       "branch":"integration/unified-monitoring-e2e",
       "last_commit":null,
       "pr":null,
-      "evidence":["orchestrator-run:32796223395/job:97647965654:http404"],
-      "blockers":["GitHub integration returns 403 when creating a new branch/ref in this repository; orchestrator confirms target ref does not exist (404). Direct writes to main/master are prohibited by the approved plan."]
+      "evidence":[
+        "connector:create_branch=403 Resource not accessible by integration",
+        "orchestrator-run:32796933026/job:97650048822=FAIL_REF_404",
+        "plugin-permission:GitHub=ALLOW_ALL_ACTIONS"
+      ],
+      "blockers":[
+        "Target integration branch does not exist and the connected GitHub integration cannot create a ref in this repository.",
+        "Existing Control Plane GitHub App credentials are not exposed in Actions: token-mint step was skipped in run 32796933026.",
+        "Direct writes to Monitoring main/master remain prohibited by the approved plan."
+      ]
     },
     "W1-B":{
-      "status":"RUNNING",
+      "status":"READY_TO_JOIN",
       "repo":"tdealer01-crypto/tdealer01-crypto-dsg-control-plane",
       "branch":"feat/agentic-org-orchestrator",
-      "last_commit":"3f118fa0096950bec370800a0294d458a3daf9c3",
+      "last_commit":"d178fa57a5c408d2aa155f664e8744c9202d90d1",
       "pr":1151,
-      "evidence":["orchestrator-run:32796223395:canonical-gate=SUCCESS","orchestrator-run:32796223395:lane-ref=SUCCESS"],
-      "blockers":["Wave 1 join is blocked until W1-A exists and W1-D cross-repo visibility/evidence is available."]
+      "evidence":[
+        "orchestrator-run:32796933026:canonical-contract-and-state-machine=SUCCESS",
+        "orchestrator-run:32796933026:W1-B-ref=SUCCESS",
+        "canonical-schema:contracts/agentic-improvement/promotion-envelope.v1.schema.json",
+        "promotion-gate-tests=SUCCESS",
+        "wave-state-machine-tests=SUCCESS"
+      ],
+      "blockers":[
+        "Wave-level join remains blocked by W1-A write access and central visibility of private W1-D."
+      ]
     },
     "W1-C":{
-      "status":"RUNNING",
+      "status":"READY_TO_JOIN",
       "repo":"tdealer01-crypto/dsg-one-v1",
       "branch":"feat/governed-improvement-runtime",
-      "last_commit":"4dc1853ecc8f7683707277d07aac6dab1e84c381",
+      "last_commit":"74f12dc3750f452d315a63ce510b213ef3593dd0",
       "pr":121,
-      "evidence":["orchestrator-run:32796223395:lane-ref=SUCCESS","DSG Verify run:32796256067=IN_PROGRESS","App Builder CI run:32796256054=IN_PROGRESS","Full Test Suite run:32796256063=IN_PROGRESS","ccvs-evidence run:32796256035=IN_PROGRESS"],
-      "blockers":[]
+      "evidence":[
+        "Agentic Improvement Runtime CI run:32796806280=SUCCESS",
+        "App Builder CI run:32796806266=SUCCESS",
+        "DSG Verify run:32796256067=SUCCESS",
+        "Full Test Suite:lane tests and project tests passed"
+      ],
+      "blockers":[],
+      "known_debt":[
+        "ccvs-evidence global coverage threshold is pre-existing debt: baseline main 279 tests passed at ~15.69% coverage; lane 282 tests passed at ~15.91%, both below existing 60/65 thresholds. Threshold was not weakened."
+      ]
     },
     "W1-D":{
-      "status":"RUNNING",
+      "status":"READY_TO_JOIN",
       "repo":"tdealer01-crypto/dsg-agi-simulation",
       "branch":"feat/governed-candidate-envelope",
       "last_commit":"65794f42e3c288df96dd822eec34b6fdb320e6d7",
       "pr":16,
-      "evidence":["AGI CI run:32796262551=QUEUED","orchestrator-run:32796223395/job:97647965658=http404-private-cross-repo-access"],
-      "blockers":["Control Plane GitHub Actions token cannot read the private AGI repository. Lane-local CI remains authoritative until DSG_CROSS_REPO_TOKEN or equivalent GitHub App access is provisioned."]
+      "evidence":[
+        "AGI CI run:32796262551=SUCCESS",
+        "nondeterminism-gate=SUCCESS",
+        "rust-tests=SUCCESS",
+        "typescript-aemo-properties=SUCCESS",
+        "contract-conformance=SUCCESS",
+        "integration-tests=SUCCESS including governed candidate tests"
+      ],
+      "blockers":[],
+      "join_infrastructure_blockers":[
+        "Control Plane Actions cannot centrally read this private repo without an installation/cross-repo token; GitHub App mint step was skipped in run 32796933026 because required Action secrets were unavailable. Lane-local CI is valid code evidence but autonomous central join remains blocked."
+      ]
     },
     "W1-E":{
-      "status":"RUNNING",
+      "status":"READY_TO_JOIN",
       "repo":"tdealer01-crypto/DSG-Cinema-Proof-Agent",
       "branch":"feat/improvement-proof-adapter",
-      "last_commit":"68d8bb8ec27a16b16fe40452481d0bbb04a06a9a",
+      "last_commit":"517c4818a1f5f9a5d71050084bc46f132321ee49",
       "pr":114,
-      "evidence":["orchestrator-run:32796223395:lane-ref=SUCCESS","Agent Plugin Conformance run:32796268454=SUCCESS","Verify DSG ONE v1 API run:32796268385=SUCCESS","lane-specific proof CI triggered by commit 68d8bb8ec27a16b16fe40452481d0bbb04a06a9a"],
+      "evidence":[
+        "Agentic Improvement Proof CI run:32796690887=SUCCESS",
+        "Agent Plugin Conformance=SUCCESS",
+        "Verify DSG ONE v1 API=SUCCESS",
+        "Z3 contract checks=SUCCESS",
+        "runtime probe=SUCCESS"
+      ],
       "blockers":[]
     }
+  },
+  "wave_join":{
+    "status":"BLOCKED",
+    "blocking_lanes":["W1-A"],
+    "infrastructure_blockers":["central-private-repo-visibility:W1-D"],
+    "reason":"Do not advance to JOINED until Monitoring has a governed branch and the autonomous orchestrator can consume private-lane evidence without relying on chat-only connector access."
   }
 }
