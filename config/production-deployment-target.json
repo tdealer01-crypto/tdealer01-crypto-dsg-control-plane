@@ -3,12 +3,17 @@
   "provider": "UNBOUND",
   "status": "BLOCKED_UNTIL_BOUND",
   "productionDeployEnabled": false,
+  "autoDeployOnPromotedMerge": true,
+  "promotionStatusContext": "dsg/promotion",
+  "deploymentAdapter": null,
   "healthProbe": null,
   "rollbackTarget": null,
   "boundAt": null,
   "notes": [
     "Vercel is not an active DSG production target.",
     "Render is not an active DSG production target.",
+    "A merged PR may auto-deploy only when its candidate head commit has a successful dsg/promotion status emitted after Cinema VERIFIED_RAW_EVIDENCE and Control Plane ALLOW.",
+    "Supported deployment adapters are allowlisted in the post-merge workflow; arbitrary commands from configuration are never executed.",
     "Build, test, evidence, Cinema verification, and promotion evaluation may proceed while deployment remains unbound.",
     "Production mutation must remain fail-closed until an approved provider adapter, health probe, rollback/recovery path, credential binding, and deployment evidence contract are configured."
   ]
