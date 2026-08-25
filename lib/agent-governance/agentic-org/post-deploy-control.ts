@@ -53,6 +53,7 @@ export interface ProductionTargetSnapshot {
   deploymentAdapter: string | null;
   healthProbe: string | null;
   rollbackTarget: string | null;
+  rollbackAdapterEndpoint: string | null;
 }
 
 export type PostDeployControlAction =
@@ -70,7 +71,8 @@ export type PostDeployControlFailureCode =
   | 'DEPLOYMENT_BINDING_MISMATCH'
   | 'PRODUCTION_TARGET_UNBOUND'
   | 'ROLLBACK_ADAPTER_UNBOUND'
-  | 'ROLLBACK_ADAPTER_NOT_ALLOWLISTED';
+  | 'ROLLBACK_ADAPTER_NOT_ALLOWLISTED'
+  | 'ROLLBACK_ADAPTER_ENDPOINT_INVALID';
 
 export interface PostDeployControlFailure {
   code: PostDeployControlFailureCode;
@@ -241,10 +243,10 @@ export function evaluatePostDeployControl(input: {
     }, monitoring, receipt, deployment);
   }
 
-  if (!target.deploymentAdapter || !target.rollbackTarget || !target.healthProbe) {
+  if (!target.deploymentAdapter || !target.rollbackTarget || !target.healthProbe || !target.rollbackAdapterEndpoint) {
     return fail({
       code: 'ROLLBACK_ADAPTER_UNBOUND',
-      message: 'Rollback requires an approved deployment adapter, rollback target, and health probe.',
+      message: 'Rollback requires an approved deployment adapter, signed rollback endpoint, rollback target, and health probe.',
     }, monitoring, receipt, deployment);
   }
 
@@ -253,6 +255,13 @@ export function evaluatePostDeployControl(input: {
     return fail({
       code: 'ROLLBACK_ADAPTER_NOT_ALLOWLISTED',
       message: `Rollback adapter ${adapter} is not in the deterministic allowlist.`,
+    }, monitoring, receipt, deployment);
+  }
+
+  if (!target.rollbackAdapterEndpoint.startsWith('https://')) {
+    return fail({
+      code: 'ROLLBACK_ADAPTER_ENDPOINT_INVALID',
+      message: 'Rollback adapter endpoint must use HTTPS.',
     }, monitoring, receipt, deployment);
   }
 
