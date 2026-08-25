@@ -1,24 +1,25 @@
-name: DSG Secure Deploy Gate
+name: DSG Production Deploy Gate (Provider Unbound)
 
 on:
-  pull_request:
-  push:
-    branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
-  dsg-gate:
+  deployment-target:
     runs-on: ubuntu-latest
     steps:
-      # Use the verified public production domain for release evidence. The
-      # project-scoped Vercel alias is covered by Deployment Protection and can
-      # return the SSO page with HTTP 200, which is not application evidence.
-      # This production domain was verified to return finance readiness JSON
-      # with ok=true and 401 from the protected /api/api-keys route.
-      - uses: tdealer01-crypto/dsg-secure-deploy-gate-action@v1
-        with:
-          readiness_url: "https://tdealer01-crypto-dsg-control-plane-nine.vercel.app/api/finance-governance/readiness"
-          expected_status: "200"
-          require_json_ok: "true"
-          protected_url: "https://tdealer01-crypto-dsg-control-plane-nine.vercel.app/api/api-keys"
-          protected_expected: "401,403"
+      - uses: actions/checkout@v4
+      - name: Enforce production target binding
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFile } from 'node:fs/promises';
+          const target = JSON.parse(await readFile('config/production-deployment-target.json', 'utf8'));
+          console.log(JSON.stringify(target, null, 2));
+          if (target.provider === 'UNBOUND' || target.productionDeployEnabled !== true) {
+            console.error('BLOCK: production deployment target is not bound. Vercel and Render are retired targets.');
+            process.exit(1);
+          }
+          console.log(`Production provider bound: ${target.provider}`);
+          NODE
