@@ -225,7 +225,23 @@ export function evaluatePostDeployControl(input: {
     return { ...core, controlEvidenceHash: stableHash(core) };
   }
 
+  // A measured next baseline must have come from a real, bound production
+  // deployment. `UNBOUND` is never accepted as a deployable provider merely
+  // because the submitted deployment object uses the same string.
+  if (target.provider === 'UNBOUND' || target.productionDeployEnabled !== true) {
+    return fail({
+      code: 'PRODUCTION_TARGET_UNBOUND',
+      message: 'Post-deploy mutation is blocked because no production provider is currently bound and enabled.',
+    }, monitoring, receipt, deployment);
+  }
+
   if (monitoring.status === 'PASS') {
+    if (!target.deploymentAdapter || !target.healthProbe) {
+      return fail({
+        code: 'PRODUCTION_TARGET_UNBOUND',
+        message: 'Next-baseline promotion requires a bound deployment adapter and health probe.',
+      }, monitoring, receipt, deployment);
+    }
     const core = {
       ...common,
       action: 'COMMIT_NEXT_BASELINE' as const,
@@ -234,13 +250,6 @@ export function evaluatePostDeployControl(input: {
       nextBaselineCommit: receipt.candidateCommit,
     };
     return { ...core, controlEvidenceHash: stableHash(core) };
-  }
-
-  if (target.provider === 'UNBOUND' || target.productionDeployEnabled !== true) {
-    return fail({
-      code: 'PRODUCTION_TARGET_UNBOUND',
-      message: 'Rollback execution is blocked because no production provider is currently bound.',
-    }, monitoring, receipt, deployment);
   }
 
   if (!target.deploymentAdapter || !target.rollbackTarget || !target.healthProbe || !target.rollbackAdapterEndpoint) {
