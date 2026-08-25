@@ -9,6 +9,7 @@ import {
   type ProductionTargetSnapshot,
   type PromotionReceipt,
 } from '@/lib/agent-governance/agentic-org/post-deploy-control';
+import { executeGovernedRollback } from '@/lib/agent-governance/agentic-org/rollback-executor';
 
 export const dynamic = 'force-dynamic';
 
@@ -70,13 +71,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ status: 'BLOCK', reason: 'POST_DEPLOY_PAYLOAD_INVALID' }, { status: 400 });
   }
 
+  const productionTarget = productionTargetJson as ProductionTargetSnapshot;
   let control;
   try {
     control = evaluatePostDeployControl({
       monitoring: parsed.monitoring,
       promotionReceipt: parsed.promotionReceipt,
       deployment: parsed.deployment,
-      productionTarget: productionTargetJson as ProductionTargetSnapshot,
+      productionTarget,
     });
   } catch {
     return NextResponse.json({ status: 'BLOCK', reason: 'POST_DEPLOY_EVALUATION_FAILED' }, { status: 400 });
@@ -148,6 +150,102 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  if (control.action === 'EXECUTE_ROLLBACK') {
+    const rollbackSecret = process.env.DSG_PRODUCTION_ROLLBACK_SECRET;
+    if (!rollbackSecret || !productionTarget.rollbackAdapterEndpoint || !control.rollbackAdapter || !control.rollbackTarget) {
+      return NextResponse.json({
+        status: 'BLOCK',
+        reason: 'ROLLBACK_EXECUTOR_NOT_CONFIGURED',
+        missing: [
+          ...(!rollbackSecret ? ['DSG_PRODUCTION_ROLLBACK_SECRET'] : []),
+          ...(!productionTarget.rollbackAdapterEndpoint ? ['rollbackAdapterEndpoint'] : []),
+        ],
+        control,
+      }, { status: 503 });
+    }
+
+    const { data: existingRollback, error: rollbackLookupError } = await supabase
+      .from('agentic_rollback_evidence')
+      .select('promotion_id,deployment_id,rollback_adapter,rollback_target,control_evidence_hash,adapter_evidence_hash,health_passed,evidence_payload')
+      .eq('deployment_id', control.deploymentId)
+      .maybeSingle();
+
+    if (rollbackLookupError) {
+      return NextResponse.json({ status: 'BLOCK', reason: 'ROLLBACK_EVIDENCE_LOOKUP_FAILED', control }, { status: 503 });
+    }
+
+    if (existingRollback) {
+      const sameRollback = existingRollback.promotion_id === control.promotionId &&
+        existingRollback.rollback_adapter === control.rollbackAdapter &&
+        existingRollback.rollback_target === control.rollbackTarget &&
+        existingRollback.control_evidence_hash === control.controlEvidenceHash &&
+        existingRollback.health_passed === true;
+      if (!sameRollback) {
+        return NextResponse.json({ status: 'BLOCK', reason: 'ROLLBACK_EVIDENCE_CONFLICT', control }, { status: 409 });
+      }
+      return NextResponse.json({
+        status: 'PASS',
+        reason: 'ROLLBACK_ALREADY_VERIFIED',
+        control,
+        rollback: existingRollback.evidence_payload,
+        persisted: true,
+        rollbackExecuted: true,
+        baselineCommitted: false,
+      });
+    }
+
+    let rollbackEvidence;
+    try {
+      rollbackEvidence = await executeGovernedRollback(
+        productionTarget.rollbackAdapterEndpoint,
+        rollbackSecret,
+        {
+          schemaVersion: 'dsg-governed-rollback-v1',
+          promotionId: control.promotionId,
+          deploymentId: control.deploymentId,
+          targetRepository: parsed.promotionReceipt.targetRepository,
+          candidateCommit: control.candidateCommit,
+          adapter: control.rollbackAdapter,
+          rollbackTarget: control.rollbackTarget,
+          controlEvidenceHash: control.controlEvidenceHash,
+        },
+      );
+    } catch (error) {
+      return NextResponse.json({
+        status: 'BLOCK',
+        reason: 'ROLLBACK_EXECUTION_FAILED',
+        errorClass: error instanceof Error ? error.message : 'UNKNOWN',
+        control,
+      }, { status: 502 });
+    }
+
+    const { error: rollbackPersistError } = await supabase.from('agentic_rollback_evidence').insert({
+      deployment_id: control.deploymentId,
+      promotion_id: control.promotionId,
+      target_repository: parsed.promotionReceipt.targetRepository,
+      candidate_commit: control.candidateCommit,
+      rollback_adapter: control.rollbackAdapter,
+      rollback_target: control.rollbackTarget,
+      control_evidence_hash: control.controlEvidenceHash,
+      adapter_evidence_hash: rollbackEvidence.evidenceHash,
+      health_passed: rollbackEvidence.healthPassed,
+      evidence_payload: rollbackEvidence,
+    });
+    if (rollbackPersistError) {
+      return NextResponse.json({ status: 'BLOCK', reason: 'ROLLBACK_EVIDENCE_PERSIST_FAILED', control }, { status: 503 });
+    }
+
+    return NextResponse.json({
+      status: 'PASS',
+      reason: 'ROLLBACK_EXECUTED_AND_VERIFIED',
+      control,
+      rollback: rollbackEvidence,
+      persisted: true,
+      rollbackExecuted: true,
+      baselineCommitted: false,
+    });
+  }
+
   if (control.action === 'BLOCK') {
     return NextResponse.json({ status: 'BLOCK', reason: 'POST_DEPLOY_CONTROL_BLOCKED', control }, { status: 409 });
   }
@@ -158,6 +256,6 @@ export async function POST(request: NextRequest) {
     control,
     persisted: true,
     baselineCommitted: control.action === 'COMMIT_NEXT_BASELINE',
-    rollbackExecutionRequired: control.action === 'EXECUTE_ROLLBACK',
+    rollbackExecuted: false,
   }, { status: control.action === 'HOLD_REVIEW' ? 202 : 200 });
 }
