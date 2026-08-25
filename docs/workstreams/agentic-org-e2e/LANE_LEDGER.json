@@ -1,10 +1,50 @@
 {
-  "updated_at":"2026-08-25T08:05:00+07:00",
+  "updated_at":"2026-08-25T08:09:00+07:00",
   "lanes":{
-    "W1-A":{"status":"QUEUED","repo":"tdealer01-crypto/dsg-unified-data-monitoring","branch":"integration/unified-monitoring-e2e","last_commit":null,"evidence":[],"blockers":[]},
-    "W1-B":{"status":"QUEUED","repo":"tdealer01-crypto/tdealer01-crypto-dsg-control-plane","branch":"feat/agentic-org-orchestrator","last_commit":null,"evidence":[],"blockers":[]},
-    "W1-C":{"status":"QUEUED","repo":"tdealer01-crypto/dsg-one-v1","branch":"feat/governed-improvement-runtime","last_commit":null,"evidence":[],"blockers":[]},
-    "W1-D":{"status":"QUEUED","repo":"tdealer01-crypto/dsg-agi-simulation","branch":"feat/governed-candidate-envelope","last_commit":null,"evidence":[],"blockers":[]},
-    "W1-E":{"status":"QUEUED","repo":"tdealer01-crypto/DSG-Cinema-Proof-Agent","branch":"feat/improvement-proof-adapter","last_commit":null,"evidence":[],"blockers":[]}
+    "W1-A":{
+      "status":"BLOCKED",
+      "repo":"tdealer01-crypto/dsg-unified-data-monitoring",
+      "branch":"integration/unified-monitoring-e2e",
+      "last_commit":null,
+      "pr":null,
+      "evidence":["orchestrator-run:32796223395/job:97647965654:http404"],
+      "blockers":["GitHub integration returns 403 when creating a new branch/ref in this repository; orchestrator confirms target ref does not exist (404). Direct writes to main/master are prohibited by the approved plan."]
+    },
+    "W1-B":{
+      "status":"RUNNING",
+      "repo":"tdealer01-crypto/tdealer01-crypto-dsg-control-plane",
+      "branch":"feat/agentic-org-orchestrator",
+      "last_commit":"3f118fa0096950bec370800a0294d458a3daf9c3",
+      "pr":1151,
+      "evidence":["orchestrator-run:32796223395:canonical-gate=SUCCESS","orchestrator-run:32796223395:lane-ref=SUCCESS"],
+      "blockers":["Wave 1 join is blocked until W1-A exists and W1-D cross-repo visibility/evidence is available."]
+    },
+    "W1-C":{
+      "status":"RUNNING",
+      "repo":"tdealer01-crypto/dsg-one-v1",
+      "branch":"feat/governed-improvement-runtime",
+      "last_commit":"4dc1853ecc8f7683707277d07aac6dab1e84c381",
+      "pr":121,
+      "evidence":["orchestrator-run:32796223395:lane-ref=SUCCESS","DSG Verify run:32796256067=IN_PROGRESS","App Builder CI run:32796256054=IN_PROGRESS","Full Test Suite run:32796256063=IN_PROGRESS","ccvs-evidence run:32796256035=IN_PROGRESS"],
+      "blockers":[]
+    },
+    "W1-D":{
+      "status":"RUNNING",
+      "repo":"tdealer01-crypto/dsg-agi-simulation",
+      "branch":"feat/governed-candidate-envelope",
+      "last_commit":"65794f42e3c288df96dd822eec34b6fdb320e6d7",
+      "pr":16,
+      "evidence":["AGI CI run:32796262551=QUEUED","orchestrator-run:32796223395/job:97647965658=http404-private-cross-repo-access"],
+      "blockers":["Control Plane GitHub Actions token cannot read the private AGI repository. Lane-local CI remains authoritative until DSG_CROSS_REPO_TOKEN or equivalent GitHub App access is provisioned."]
+    },
+    "W1-E":{
+      "status":"RUNNING",
+      "repo":"tdealer01-crypto/DSG-Cinema-Proof-Agent",
+      "branch":"feat/improvement-proof-adapter",
+      "last_commit":"68d8bb8ec27a16b16fe40452481d0bbb04a06a9a",
+      "pr":114,
+      "evidence":["orchestrator-run:32796223395:lane-ref=SUCCESS","Agent Plugin Conformance run:32796268454=SUCCESS","Verify DSG ONE v1 API run:32796268385=SUCCESS","lane-specific proof CI triggered by commit 68d8bb8ec27a16b16fe40452481d0bbb04a06a9a"],
+      "blockers":[]
+    }
   }
 }
