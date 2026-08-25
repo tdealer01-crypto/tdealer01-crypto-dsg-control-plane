@@ -53,6 +53,8 @@ export interface ImprovementCandidateEnvelope {
     proofId: string;
     proofHash: string;
     verified: boolean;
+    verification: 'VERIFIED_ENVELOPE_BINDING' | 'VERIFIED_RAW_EVIDENCE';
+    rawEvidenceVerified: boolean;
     boundCandidateCommit: string;
   };
   requestedPromotion: 'PR' | 'DEPLOY';
@@ -76,7 +78,8 @@ export interface PromotionGateFailure {
     | 'SELF_PROMOTION_AUTHORITY_INVALID'
     | 'CINEMA_PROOF_MISSING'
     | 'CINEMA_PROOF_INVALID'
-    | 'CINEMA_COMMIT_MISMATCH';
+    | 'CINEMA_COMMIT_MISMATCH'
+    | 'CINEMA_RAW_EVIDENCE_REQUIRED';
   message: string;
 }
 
