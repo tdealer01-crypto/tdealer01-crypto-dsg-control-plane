@@ -7,6 +7,8 @@ on:
   pull_request:
     paths:
       - 'supabase/migrations/**'
+      - '.github/workflows/monitoring-schema-consistency.yml'
+      - 'config/production-deployment-target.json'
 
 jobs:
   verify-schema:
@@ -17,36 +19,94 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Run schema consistency check
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      - name: Run local schema consistency check
         run: |
-          echo "Verifying schema consistency across all repositories..."
+          set -euo pipefail
+          echo "Verifying local schema consistency evidence..."
+
+          migration_count="$(find supabase/migrations -maxdepth 1 -type f -name '*.sql' | wc -l | tr -d ' ')"
+          test "$migration_count" -gt 0
+
+          while IFS= read -r migration; do
+            test -s "$migration"
+          done < <(find supabase/migrations -maxdepth 1 -type f -name '*.sql' -print | sort)
+
+          provider="$(jq -r '.provider' config/production-deployment-target.json)"
+          deploy_enabled="$(jq -r '.productionDeployEnabled' config/production-deployment-target.json)"
+
+          jq -n \
+            --arg provider "$provider" \
+            --argjson productionDeployEnabled "$deploy_enabled" \
+            --argjson migrationCount "$migration_count" \
+            '{
+              schemaVersion: "dsg.schema-consistency.v1",
+              localSchemaCheck: "PASS",
+              migrationCount: $migrationCount,
+              productionTarget: {
+                provider: $provider,
+                productionDeployEnabled: $productionDeployEnabled
+              },
+              externalMonitoringVerification: {
+                status: "PENDING"
+              }
+            }' > schema-check.json
 
       - name: Check migration versions
         run: |
+          set -euo pipefail
           echo "Checking migration versions..."
           ls -la supabase/migrations/ | tail -5
 
-      - name: Verify unified monitoring endpoints
+      - name: Verify unified monitoring endpoint when production is bound
         env:
           MONITORING_URL: ${{ secrets.PRODUCTION_URL }}
+          MONITORING_API_KEY: ${{ secrets.MONITORING_API_KEY }}
           X_ORG_ID: ${{ secrets.MONITORING_ORG_ID }}
         run: |
-          echo "Verifying monitoring endpoints..."
-          curl -X GET \
-            -H "Authorization: Bearer ${{ secrets.MONITORING_API_KEY }}" \
+          set -euo pipefail
+          provider="$(jq -r '.productionTarget.provider' schema-check.json)"
+          deploy_enabled="$(jq -r '.productionTarget.productionDeployEnabled' schema-check.json)"
+
+          if [ "$provider" = "UNBOUND" ] || [ "$deploy_enabled" != "true" ]; then
+            echo "Production target is unbound/disabled; live monitoring verification is not claimed."
+            jq '.externalMonitoringVerification = {
+              status: "NOT_RUN_PRODUCTION_UNBOUND",
+              verified: false,
+              reason: "Canonical production target is not bound and enabled."
+            }' schema-check.json > schema-check.tmp
+            mv schema-check.tmp schema-check.json
+            exit 0
+          fi
+
+          if [ -z "$MONITORING_URL" ] || [ -z "$MONITORING_API_KEY" ] || [ -z "$X_ORG_ID" ]; then
+            echo "Bound production target requires monitoring endpoint credentials." >&2
+            jq '.externalMonitoringVerification = {
+              status: "BLOCKED_MISSING_BINDING",
+              verified: false,
+              reason: "Bound production target is missing monitoring endpoint credentials."
+            }' schema-check.json > schema-check.tmp
+            mv schema-check.tmp schema-check.json
+            exit 1
+          fi
+
+          echo "Verifying monitoring endpoint for the bound production target..."
+          curl --fail --show-error --silent \
+            -H "Authorization: Bearer $MONITORING_API_KEY" \
             -H "x-org-id: $X_ORG_ID" \
             "$MONITORING_URL/api/dsg/v1/monitoring/data-sync?check=metrics" \
-            -o schema-check.json
+            -o monitoring-response.json
 
-          jq .data.metrics schema-check.json | head -20
+          jq -e '.data.metrics != null' monitoring-response.json >/dev/null
+          jq '.externalMonitoringVerification = {
+            status: "VERIFIED_BOUND_PRODUCTION",
+            verified: true
+          }' schema-check.json > schema-check.tmp
+          mv schema-check.tmp schema-check.json
 
       - name: Upload results
         if: always()
@@ -54,3 +114,4 @@ jobs:
         with:
           name: schema-check-results
           path: schema-check.json
+          if-no-files-found: error
