@@ -11,6 +11,16 @@ on:
       - 'evidence/agentic-org/**'
       - 'tests/unit/agentic-org-*.test.ts'
       - '.github/workflows/agentic-org-wave-orchestrator.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'lib/agent-governance/agentic-org/**'
+      - 'contracts/agentic-improvement/**'
+      - 'config/production-deployment-target.json'
+      - 'evidence/agentic-org/**'
+      - 'tests/unit/agentic-org-*.test.ts'
+      - '.github/workflows/agentic-org-wave-orchestrator.yml'
   workflow_dispatch:
 
 permissions:
