@@ -20,8 +20,9 @@ function candidate(overrides: Partial<ImprovementCandidateEnvelope> = {}): Impro
     buildPassed: true,
     evidence: [
       { kind: 'commit', uri: 'git://candidate', commitSha: 'b'.repeat(40) },
-      { kind: 'metric', uri: 'artifact://metric.json', commitSha: 'b'.repeat(40) },
-      { kind: 'test_output', uri: 'artifact://tests.txt', commitSha: 'b'.repeat(40) },
+      { kind: 'metric', uri: 'artifact://metric.json', sha256: '1'.repeat(64), commitSha: 'b'.repeat(40) },
+      { kind: 'test_output', uri: 'artifact://tests.txt', sha256: '2'.repeat(64), commitSha: 'b'.repeat(40) },
+      { kind: 'build_output', uri: 'artifact://build.txt', sha256: '3'.repeat(64), commitSha: 'b'.repeat(40) },
     ],
     candidateAuthority: 'SIMULATION_ONLY',
     promotionAuthority: 'DSG_CONTROL_PLANE',
@@ -30,6 +31,8 @@ function candidate(overrides: Partial<ImprovementCandidateEnvelope> = {}): Impro
       proofId: 'proof-1',
       proofHash: 'proof-hash',
       verified: true,
+      verification: 'VERIFIED_RAW_EVIDENCE',
+      rawEvidenceVerified: true,
       boundCandidateCommit: 'b'.repeat(40),
     },
     requestedPromotion: 'PR',
@@ -38,14 +41,29 @@ function candidate(overrides: Partial<ImprovementCandidateEnvelope> = {}): Impro
 }
 
 describe('evaluatePromotionCandidate', () => {
-  it('allows a plan-aligned, evidenced, independently verified improvement', () => {
+  it('allows only a plan-aligned improvement with independently verified raw evidence', () => {
     const result = evaluatePromotionCandidate(candidate(), '2026-08-25T00:00:00.000Z');
     expect(result.verdict).toBe('ALLOW');
     expect(result.failures).toEqual([]);
     expect(result.metricDelta).toBeCloseTo(0.1);
   });
 
-  it('blocks metric regression even when an agent marks every other gate as passing', () => {
+  it('blocks structural Cinema binding that has not verified raw evidence', () => {
+    const result = evaluatePromotionCandidate(candidate({
+      cinemaProof: {
+        proofId: 'structural-proof',
+        proofHash: 'structural-hash',
+        verified: true,
+        verification: 'VERIFIED_ENVELOPE_BINDING',
+        rawEvidenceVerified: false,
+        boundCandidateCommit: 'b'.repeat(40),
+      },
+    }));
+    expect(result.verdict).toBe('BLOCK');
+    expect(result.failures.map((failure) => failure.code)).toContain('CINEMA_RAW_EVIDENCE_REQUIRED');
+  });
+
+  it('blocks metric regression even when every other gate passes', () => {
     const result = evaluatePromotionCandidate(candidate({
       candidateMetric: { name: 'success_rate', value: 0.7, direction: 'HIGHER_IS_BETTER' },
     }));
@@ -59,6 +77,8 @@ describe('evaluatePromotionCandidate', () => {
         proofId: 'proof-1',
         proofHash: 'proof-hash',
         verified: true,
+        verification: 'VERIFIED_RAW_EVIDENCE',
+        rawEvidenceVerified: true,
         boundCandidateCommit: 'c'.repeat(40),
       },
     }));
@@ -66,9 +86,13 @@ describe('evaluatePromotionCandidate', () => {
     expect(result.failures.map((failure) => failure.code)).toContain('CINEMA_COMMIT_MISMATCH');
   });
 
-  it('blocks incomplete evidence', () => {
+  it('blocks incomplete evidence including a missing build artifact', () => {
     const result = evaluatePromotionCandidate(candidate({
-      evidence: [{ kind: 'commit', uri: 'git://candidate' }],
+      evidence: [
+        { kind: 'commit', uri: 'git://candidate' },
+        { kind: 'metric', uri: 'artifact://metric.json' },
+        { kind: 'test_output', uri: 'artifact://tests.txt' },
+      ],
     }));
     expect(result.verdict).toBe('BLOCK');
     expect(result.failures.map((failure) => failure.code)).toContain('EVIDENCE_INCOMPLETE');
