@@ -66,6 +66,17 @@ describe('issuePromotionReceipt', () => {
     }
   });
 
+  it('keeps the same receipt identity when the same evidence is retried later', () => {
+    const first = issuePromotionReceipt(envelope(), gate({ evaluatedAt: '2026-08-25T00:00:00.000Z' }));
+    const later = issuePromotionReceipt(envelope(), gate({ evaluatedAt: '2026-08-25T12:00:00.000Z' }));
+    expect(first.ok).toBe(true);
+    expect(later.ok).toBe(true);
+    if (first.ok && later.ok) {
+      expect(later.receipt.promotionId).toBe(first.receipt.promotionId);
+      expect(later.receipt.promotionHash).toBe(first.receipt.promotionHash);
+    }
+  });
+
   it('refuses to mint a receipt for BLOCK', () => {
     const result = issuePromotionReceipt(envelope(), gate({ verdict: 'BLOCK' }));
     expect(result).toEqual({ ok: false, reason: 'PROMOTION_NOT_ALLOWED' });
