@@ -20,6 +20,9 @@
     "testsPassed",
     "buildPassed",
     "evidence",
+    "candidateAuthority",
+    "promotionAuthority",
+    "selfPromotionAllowed",
     "requestedPromotion"
   ],
   "properties": {
@@ -39,6 +42,9 @@
     "buildPassed": { "type": "boolean" },
     "simulationHash": { "type": "string", "minLength": 1 },
     "evidence": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/evidence" } },
+    "candidateAuthority": { "const": "SIMULATION_ONLY" },
+    "promotionAuthority": { "const": "DSG_CONTROL_PLANE" },
+    "selfPromotionAllowed": { "const": false },
     "cinemaProof": {
       "type": "object",
       "additionalProperties": false,
