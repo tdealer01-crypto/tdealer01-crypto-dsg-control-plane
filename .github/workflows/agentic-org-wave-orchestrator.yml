@@ -41,7 +41,7 @@ jobs:
             repo: tdealer01-crypto/dsg-unified-data-monitoring
             repo_name: dsg-unified-data-monitoring
             branch: integration/unified-monitoring-e2e
-            needs_app_token: true
+            needs_app_token: false
           - lane: W1-B
             repo: tdealer01-crypto/tdealer01-crypto-dsg-control-plane
             repo_name: tdealer01-crypto-dsg-control-plane
