@@ -75,6 +75,48 @@ This file is append-only evidence routing. Do not paste secrets or oversized log
 - Result: IMPLEMENTATION_CANDIDATE
 - Finding: real Supabase-backed table monitoring/divergence/cross-repo logic exists and can be reused after path/contract/test review.
 
+### E-010 Wave 1 implementation join
+
+- Timestamp: 2026-08-25
+- Repo: `tdealer01-crypto/tdealer01-crypto-dsg-control-plane`
+- Branch/PR: `feat/agentic-org-orchestrator` / PR `#1151`
+- Commit SHA: `fc6903da2b70e715292143e2fc633fde853b6f97`
+- Workflow/run: `DSG Agentic Organization Wave Orchestrator` run `32808841798`
+- Result: PASS
+- Claim supported: canonical gate, W1-A/B/C/E public refs, W1-D pinned private CI checkpoint, and final implementation join gate all completed successfully.
+- Limitation: implementation join grants no production, merge, or runtime promotion authority.
+
+### E-011 Daily governed technology intake activated
+
+- Timestamp: 2026-08-25
+- Repo: `tdealer01-crypto/dsg-agi-simulation`
+- Default branch: `master`
+- Scheduler PRs: `#17`, `#18`, `#19`
+- Active master commit after hardening: `a53d39b05f02ebeeea0b971e1d9422b71441ec06`
+- Workflow: `.github/workflows/daily-technology-intake.yml`
+- Schedule: daily GitHub Actions cron; `workflow_dispatch` retained for manual verification.
+- Result: PASS_FOR_SCHEDULER_ACTIVATION
+- Claim supported: GitHub Actions is the daily scheduler/source-of-truth for technology intake; ChatGPT task is reporting-only.
+- Authority boundary: workflow has `contents: read` only, performs no repository mutation, and carries no merge/deploy/promotion authority.
+
+### E-012 Daily technology intake first real self-test
+
+- Timestamp: 2026-08-25T04:42:06Z
+- Repo: `tdealer01-crypto/dsg-agi-simulation`
+- Workflow run ID embedded in checkpoint commit message: `32809939691`
+- Generated checkpoint commit: `f347041c22b6c6545e7bbeaad4c6224dd5db5334`
+- Collection result: `OBSERVATION_UPDATED`
+- Feed items fetched: `1174`
+- Relevant signals in first classifier pass: `7`
+- Evaluation: `PROPOSE`
+- Candidate authority: `SIMULATION_ONLY`
+- Promotion authority: `DSG_CONTROL_PLANE`
+- Self-promotion: `false`
+- Result: PASS_WITH_CLASSIFIER_REVIEW
+- Finding: execution path worked end-to-end, but generic `snapshot`/`workflow` wording caused false-positive capability classifications.
+- Remediation: strict classifier + regression tests added on PR `#16`; generic snapshot/runner/workflow wording no longer creates evolution signals and duplicate signal scoring was removed.
+- Limitation: this is technology observation/evaluation evidence, not permission to change code or production policy.
+
 ## Future evidence entry template
 
 ### E-XXX <title>
