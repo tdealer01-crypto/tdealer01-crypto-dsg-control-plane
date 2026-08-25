@@ -67,6 +67,7 @@ function target(overrides: Partial<ProductionTargetSnapshot> = {}): ProductionTa
     deploymentAdapter: null,
     healthProbe: null,
     rollbackTarget: null,
+    rollbackAdapterEndpoint: null,
     ...overrides,
   };
 }
@@ -126,7 +127,7 @@ describe('evaluatePostDeployControl', () => {
     expect(result.failures.map((failure) => failure.code)).toContain('PRODUCTION_TARGET_UNBOUND');
   });
 
-  it('allows rollback only with an allowlisted bound adapter and target', () => {
+  it('allows rollback only with an allowlisted bound adapter, signed endpoint and target', () => {
     const boundTarget = target({
       provider: 'GCLOUD',
       status: 'BOUND',
@@ -134,6 +135,7 @@ describe('evaluatePostDeployControl', () => {
       deploymentAdapter: 'GCLOUD',
       healthProbe: 'https://service.example.com/api/health',
       rollbackTarget: 'revision-previous',
+      rollbackAdapterEndpoint: 'https://deploy-adapter.example.com/v1/rollback',
     });
     const result = evaluatePostDeployControl({
       monitoring: monitoring({
@@ -154,6 +156,35 @@ describe('evaluatePostDeployControl', () => {
     expect(result.action).toBe('EXECUTE_ROLLBACK');
     expect(result.rollbackAdapter).toBe('GCLOUD');
     expect(result.rollbackTarget).toBe('revision-previous');
+  });
+
+  it('blocks a non-HTTPS rollback endpoint', () => {
+    const result = evaluatePostDeployControl({
+      monitoring: monitoring({
+        status: 'BLOCK',
+        reason: 'PROTECTED_METRIC_REGRESSION',
+        data: {
+          ...monitoring().data,
+          recommendedAction: 'ROLLBACK_RECOMMENDED',
+          rollbackRecommended: true,
+          nextBaselineEligible: false,
+        },
+      }),
+      promotionReceipt: receipt(),
+      deployment: deployment({ provider: 'GCLOUD' }),
+      productionTarget: target({
+        provider: 'GCLOUD',
+        status: 'BOUND',
+        productionDeployEnabled: true,
+        deploymentAdapter: 'GCLOUD',
+        healthProbe: 'https://service.example.com/api/health',
+        rollbackTarget: 'revision-previous',
+        rollbackAdapterEndpoint: 'http://deploy-adapter.example.com/v1/rollback',
+      }),
+    });
+
+    expect(result.action).toBe('BLOCK');
+    expect(result.failures.map((failure) => failure.code)).toContain('ROLLBACK_ADAPTER_ENDPOINT_INVALID');
   });
 
   it('blocks forged or mismatched promotion bindings', () => {
