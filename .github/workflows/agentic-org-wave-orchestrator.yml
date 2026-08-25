@@ -1,0 +1,84 @@
+name: DSG Agentic Organization Wave Orchestrator
+
+on:
+  push:
+    branches:
+      - feat/agentic-org-orchestrator
+    paths:
+      - 'lib/agent-governance/agentic-org/**'
+      - 'contracts/agentic-improvement/**'
+      - 'tests/unit/agentic-org-*.test.ts'
+      - '.github/workflows/agentic-org-wave-orchestrator.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  canonical-gate:
+    name: Canonical promotion contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Run deterministic promotion gate tests
+        run: npx vitest run tests/unit/agentic-org-promotion-gate.test.ts
+      - name: Validate canonical JSON schema parses
+        run: node -e "JSON.parse(require('fs').readFileSync('contracts/agentic-improvement/promotion-envelope.v1.schema.json','utf8')); console.log('schema-ok')"
+
+  lane-ref-check:
+    name: Lane ${{ matrix.lane }} ref/evidence availability
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - lane: W1-A
+            repo: tdealer01-crypto/dsg-unified-data-monitoring
+            branch: integration/unified-monitoring-e2e
+          - lane: W1-B
+            repo: tdealer01-crypto/tdealer01-crypto-dsg-control-plane
+            branch: feat/agentic-org-orchestrator
+          - lane: W1-C
+            repo: tdealer01-crypto/dsg-one-v1
+            branch: feat/governed-improvement-runtime
+          - lane: W1-D
+            repo: tdealer01-crypto/dsg-agi-simulation
+            branch: feat/governed-candidate-envelope
+          - lane: W1-E
+            repo: tdealer01-crypto/DSG-Cinema-Proof-Agent
+            branch: feat/improvement-proof-adapter
+    env:
+      CROSS_REPO_TOKEN: ${{ secrets.DSG_CROSS_REPO_TOKEN }}
+    steps:
+      - name: Resolve lane ref fail-closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="https://api.github.com/repos/${{ matrix.repo }}/git/ref/heads/${{ matrix.branch }}"
+          auth=()
+          if [ -n "${CROSS_REPO_TOKEN:-}" ]; then
+            auth=(-H "Authorization: Bearer ${CROSS_REPO_TOKEN}")
+          fi
+          code=$(curl -sS -o ref.json -w '%{http_code}' "${auth[@]}" \
+            -H 'Accept: application/vnd.github+json' "$url")
+          if [ "$code" != "200" ]; then
+            echo "lane=${{ matrix.lane }} status=BLOCKED_REF_OR_ACCESS http=$code" | tee lane-status.txt
+            cat ref.json || true
+            exit 1
+          fi
+          sha=$(node -e "const x=require('./ref.json'); process.stdout.write(x.object.sha)")
+          echo "lane=${{ matrix.lane }} status=REF_READY sha=$sha" | tee lane-status.txt
+
+  wave-1-join:
+    name: Wave 1 join gate
+    runs-on: ubuntu-latest
+    needs: [canonical-gate, lane-ref-check]
+    steps:
+      - run: |
+          echo 'Wave 1 lane refs are reachable and the canonical promotion contract passed.'
+          echo 'This join does not authorize deployment; later evidence and Cinema proof gates remain required.'
