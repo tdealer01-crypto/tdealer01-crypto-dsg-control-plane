@@ -7,6 +7,8 @@ on:
     paths:
       - 'lib/agent-governance/agentic-org/**'
       - 'contracts/agentic-improvement/**'
+      - 'config/production-deployment-target.json'
+      - 'evidence/agentic-org/**'
       - 'tests/unit/agentic-org-*.test.ts'
       - '.github/workflows/agentic-org-wave-orchestrator.yml'
   workflow_dispatch:
@@ -26,12 +28,31 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Run deterministic agentic organization tests
-        run: npx vitest run tests/unit/agentic-org-promotion-gate.test.ts tests/unit/agentic-org-promotion-packet.test.ts tests/unit/agentic-org-orchestrator.test.ts tests/unit/agentic-org-github-branch-bootstrap.test.ts
+        run: >-
+          npx vitest run
+          tests/unit/agentic-org-promotion-gate.test.ts
+          tests/unit/agentic-org-promotion-packet.test.ts
+          tests/unit/agentic-org-orchestrator.test.ts
+          tests/unit/agentic-org-github-branch-bootstrap.test.ts
+          tests/unit/agentic-org-promotion-schema.test.ts
       - name: Validate canonical JSON schema parses
         run: node -e "JSON.parse(require('fs').readFileSync('contracts/agentic-improvement/promotion-envelope.v1.schema.json','utf8')); console.log('schema-ok')"
+      - name: Validate provider-neutral deployment state
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFile } from 'node:fs/promises';
+          const target = JSON.parse(await readFile('config/production-deployment-target.json', 'utf8'));
+          if (target.schemaVersion !== 'dsg.production-target.v1') throw new Error('unsupported deployment target schema');
+          if (target.provider === 'UNBOUND') {
+            if (target.status !== 'BLOCKED_UNTIL_BOUND' || target.productionDeployEnabled !== false) {
+              throw new Error('UNBOUND deployment target must remain fail-closed');
+            }
+          }
+          console.log(`deployment-provider=${target.provider} deploy-enabled=${target.productionDeployEnabled}`);
+          NODE
 
-  lane-ref-check:
-    name: Lane ${{ matrix.lane }} ref/evidence availability
+  public-lane-ref-check:
+    name: Lane ${{ matrix.lane }} public ref availability
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -39,57 +60,23 @@ jobs:
         include:
           - lane: W1-A
             repo: tdealer01-crypto/dsg-unified-data-monitoring
-            repo_name: dsg-unified-data-monitoring
             branch: integration/unified-monitoring-e2e
-            needs_app_token: false
           - lane: W1-B
             repo: tdealer01-crypto/tdealer01-crypto-dsg-control-plane
-            repo_name: tdealer01-crypto-dsg-control-plane
             branch: feat/agentic-org-orchestrator
-            needs_app_token: false
           - lane: W1-C
             repo: tdealer01-crypto/dsg-one-v1
-            repo_name: dsg-one-v1
             branch: feat/governed-improvement-runtime
-            needs_app_token: false
-          - lane: W1-D
-            repo: tdealer01-crypto/dsg-agi-simulation
-            repo_name: dsg-agi-simulation
-            branch: feat/governed-candidate-envelope
-            needs_app_token: true
           - lane: W1-E
             repo: tdealer01-crypto/DSG-Cinema-Proof-Agent
-            repo_name: DSG-Cinema-Proof-Agent
             branch: feat/improvement-proof-adapter
-            needs_app_token: false
-    env:
-      APP_ID: ${{ secrets.GITHUB_APP_ID }}
-      APP_PRIVATE_KEY: ${{ secrets.GITHUB_APP_PRIVATE_KEY }}
-      CROSS_REPO_TOKEN: ${{ secrets.DSG_CROSS_REPO_TOKEN }}
     steps:
-      - name: Mint existing DSG GitHub App installation token
-        id: app-token
-        if: ${{ matrix.needs_app_token && env.APP_ID != '' && env.APP_PRIVATE_KEY != '' }}
-        uses: actions/create-github-app-token@v3
-        with:
-          app-id: ${{ env.APP_ID }}
-          private-key: ${{ env.APP_PRIVATE_KEY }}
-          owner: tdealer01-crypto
-          repositories: ${{ matrix.repo_name }}
-
       - name: Resolve lane ref fail-closed
         shell: bash
-        env:
-          APP_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           set -euo pipefail
           url="https://api.github.com/repos/${{ matrix.repo }}/git/ref/heads/${{ matrix.branch }}"
-          token="${APP_TOKEN:-${CROSS_REPO_TOKEN:-}}"
-          auth=()
-          if [ -n "$token" ]; then
-            auth=(-H "Authorization: Bearer ${token}")
-          fi
-          code=$(curl -sS -o ref.json -w '%{http_code}' "${auth[@]}" \
+          code=$(curl -sS -o ref.json -w '%{http_code}' \
             -H 'Accept: application/vnd.github+json' "$url")
           if [ "$code" != "200" ]; then
             echo "lane=${{ matrix.lane }} status=BLOCKED_REF_OR_ACCESS http=$code" | tee lane-status.txt
@@ -99,11 +86,41 @@ jobs:
           sha=$(node -e "const x=require('./ref.json'); process.stdout.write(x.object.sha)")
           echo "lane=${{ matrix.lane }} status=REF_READY sha=$sha" | tee lane-status.txt
 
-  wave-1-join:
-    name: Wave 1 join gate
+  private-agi-checkpoint:
+    name: W1-D private AGI implementation checkpoint
     runs-on: ubuntu-latest
-    needs: [canonical-gate, lane-ref-check]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate pinned lane-local CI evidence
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFile } from 'node:fs/promises';
+          const e = JSON.parse(await readFile('evidence/agentic-org/w1-d-agi-ci.json', 'utf8'));
+          const fail = (m) => { throw new Error(m); };
+          if (e.schemaVersion !== 'dsg.lane-ci-evidence.v1') fail('bad evidence schema');
+          if (e.lane !== 'W1-D') fail('bad lane');
+          if (e.repository !== 'tdealer01-crypto/dsg-agi-simulation') fail('bad repository');
+          if (e.repositoryId !== 1263153975 || e.repositoryPrivate !== true) fail('private repository identity mismatch');
+          if (e.branch !== 'feat/governed-candidate-envelope') fail('bad branch');
+          if (!/^[0-9a-f]{40}$/.test(e.headSha)) fail('invalid head sha');
+          if (e.pullRequest !== 16) fail('unexpected PR');
+          if (e.workflowRunId !== 32803651839) fail('unexpected CI run');
+          if (e.workflowPath !== '.github/workflows/ci.yml') fail('unexpected workflow');
+          if (e.conclusion !== 'success') fail('lane-local CI did not succeed');
+          if (e.source !== 'github-api-observation') fail('untrusted checkpoint source');
+          if (e.implementationJoinEvidence !== true) fail('not implementation join evidence');
+          if (e.rawPromotionAttestationRequired !== true) fail('raw promotion attestation must remain required');
+          if (e.productionAuthority !== false) fail('private AGI checkpoint cannot carry production authority');
+          console.log(`lane=W1-D status=IMPLEMENTATION_EVIDENCE_READY sha=${e.headSha} run=${e.workflowRunId}`);
+          NODE
+
+  wave-1-join:
+    name: Wave 1 implementation join gate
+    runs-on: ubuntu-latest
+    needs: [canonical-gate, public-lane-ref-check, private-agi-checkpoint]
     steps:
       - run: |
-          echo 'Wave 1 lane refs are reachable and the canonical contract/state-machine/bootstrap/promotion-packet tests passed.'
-          echo 'This join does not authorize deployment; later raw-evidence and Cinema proof gates remain required.'
+          echo 'Wave 1 implementation join PASS: canonical tests, public lane refs, and the pinned private AGI successful CI checkpoint are present.'
+          echo 'This join authorizes no production mutation.'
+          echo 'Runtime candidate promotion still requires Cinema VERIFIED_RAW_EVIDENCE and the Control Plane promotion gate.'
+          echo 'Production deployment remains BLOCKED while config/production-deployment-target.json is UNBOUND.'
