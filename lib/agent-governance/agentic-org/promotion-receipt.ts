@@ -20,6 +20,9 @@ export function issuePromotionReceipt(
     return { ok: false, reason: 'PROMOTION_GATE_FAILURES_PRESENT' };
   }
 
+  // Promotion identity is derived only from immutable decision evidence.
+  // evaluatedAt is intentionally excluded so retrying the same verified packet
+  // at a different wall-clock time produces the same promotion id/hash.
   const canonical = {
     schemaVersion: PROMOTION_RECEIPT_SCHEMA_VERSION,
     targetRepository: envelope.targetRepository,
@@ -30,7 +33,6 @@ export function issuePromotionReceipt(
     candidateCommit: envelope.candidateCommit,
     cinemaProofId: envelope.cinemaProof?.proofId ?? null,
     cinemaProofHash: envelope.cinemaProof?.proofHash ?? null,
-    gateEvaluatedAt: gate.evaluatedAt,
     metricDelta: gate.metricDelta,
   };
 
