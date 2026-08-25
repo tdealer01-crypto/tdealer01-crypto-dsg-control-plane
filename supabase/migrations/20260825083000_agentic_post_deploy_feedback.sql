@@ -1,6 +1,6 @@
 -- Durable, service-role-only post-deploy evidence and baseline state.
 -- Monitoring observes; DSG Control Plane is the only authority that may commit
--- a measured next baseline. Production rollback remains provider-adapter work.
+-- a measured next baseline or authorize a provider rollback.
 
 create table if not exists public.agentic_post_deploy_receipts (
   id uuid primary key default gen_random_uuid(),
@@ -31,15 +31,32 @@ create table if not exists public.agentic_evolution_baselines (
   promoted_at timestamptz not null default now()
 );
 
+create table if not exists public.agentic_rollback_evidence (
+  deployment_id text primary key,
+  promotion_id text not null,
+  target_repository text not null,
+  candidate_commit text not null check (candidate_commit ~ '^[0-9a-fA-F]{40}$'),
+  rollback_adapter text not null,
+  rollback_target text not null,
+  control_evidence_hash text not null check (control_evidence_hash ~ '^[0-9a-fA-F]{64}$'),
+  adapter_evidence_hash text not null check (adapter_evidence_hash ~ '^[0-9a-fA-F]{64}$'),
+  health_passed boolean not null check (health_passed = true),
+  evidence_payload jsonb not null,
+  rolled_back_at timestamptz not null default now()
+);
+
 alter table public.agentic_post_deploy_receipts enable row level security;
 alter table public.agentic_evolution_baselines enable row level security;
+alter table public.agentic_rollback_evidence enable row level security;
 
 -- No anon/authenticated policies are intentionally created. These tables are
 -- governance state and are only mutated by the server-side service role.
 revoke all on table public.agentic_post_deploy_receipts from anon, authenticated;
 revoke all on table public.agentic_evolution_baselines from anon, authenticated;
+revoke all on table public.agentic_rollback_evidence from anon, authenticated;
 grant all on table public.agentic_post_deploy_receipts to service_role;
 grant all on table public.agentic_evolution_baselines to service_role;
+grant all on table public.agentic_rollback_evidence to service_role;
 
 -- Atomic compare-and-swap baseline promotion. A stale canary result cannot
 -- overwrite a baseline that has already advanced in another deployment.
