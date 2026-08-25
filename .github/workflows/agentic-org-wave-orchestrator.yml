@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   canonical-gate:
-    name: Canonical promotion contract
+    name: Canonical contract and wave state machine
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,8 +25,8 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
-      - name: Run deterministic promotion gate tests
-        run: npx vitest run tests/unit/agentic-org-promotion-gate.test.ts
+      - name: Run deterministic agentic organization tests
+        run: npx vitest run tests/unit/agentic-org-promotion-gate.test.ts tests/unit/agentic-org-orchestrator.test.ts
       - name: Validate canonical JSON schema parses
         run: node -e "JSON.parse(require('fs').readFileSync('contracts/agentic-improvement/promotion-envelope.v1.schema.json','utf8')); console.log('schema-ok')"
 
@@ -80,5 +80,5 @@ jobs:
     needs: [canonical-gate, lane-ref-check]
     steps:
       - run: |
-          echo 'Wave 1 lane refs are reachable and the canonical promotion contract passed.'
+          echo 'Wave 1 lane refs are reachable and the canonical contract/state-machine tests passed.'
           echo 'This join does not authorize deployment; later evidence and Cinema proof gates remain required.'
