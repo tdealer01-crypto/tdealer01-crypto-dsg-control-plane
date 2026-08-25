@@ -1,0 +1,73 @@
+import { describe, expect, it } from 'vitest';
+import { AGENTIC_ORG_SCHEMA_VERSION, type ImprovementCandidateEnvelope } from '../../lib/agent-governance/agentic-org/contracts';
+import { evaluatePromotionCandidate } from '../../lib/agent-governance/agentic-org/promotion-gate';
+
+function candidate(overrides: Partial<ImprovementCandidateEnvelope> = {}): ImprovementCandidateEnvelope {
+  return {
+    schemaVersion: AGENTIC_ORG_SCHEMA_VERSION,
+    candidateId: 'cand-1',
+    goalId: 'goal-1',
+    approvedPlanHash: 'plan-hash',
+    targetRepository: 'tdealer01-crypto/dsg-one-v1',
+    baselineCommit: 'a'.repeat(40),
+    candidateCommit: 'b'.repeat(40),
+    allowedPaths: ['lib/dsg/app-builder/**'],
+    baselineMetric: { name: 'success_rate', value: 0.8, direction: 'HIGHER_IS_BETTER' },
+    candidateMetric: { name: 'success_rate', value: 0.9, direction: 'HIGHER_IS_BETTER' },
+    constraintsPassed: true,
+    planAligned: true,
+    testsPassed: true,
+    buildPassed: true,
+    evidence: [
+      { kind: 'commit', uri: 'git://candidate', commitSha: 'b'.repeat(40) },
+      { kind: 'metric', uri: 'artifact://metric.json' },
+      { kind: 'test_output', uri: 'artifact://tests.txt' },
+    ],
+    cinemaProof: {
+      proofId: 'proof-1',
+      proofHash: 'proof-hash',
+      verified: true,
+      boundCandidateCommit: 'b'.repeat(40),
+    },
+    requestedPromotion: 'PR',
+    ...overrides,
+  };
+}
+
+describe('evaluatePromotionCandidate', () => {
+  it('allows a plan-aligned, evidenced, independently verified improvement', () => {
+    const result = evaluatePromotionCandidate(candidate(), '2026-08-25T00:00:00.000Z');
+    expect(result.verdict).toBe('ALLOW');
+    expect(result.failures).toEqual([]);
+    expect(result.metricDelta).toBeCloseTo(0.1);
+  });
+
+  it('blocks metric regression even when an agent marks every other gate as passing', () => {
+    const result = evaluatePromotionCandidate(candidate({
+      candidateMetric: { name: 'success_rate', value: 0.7, direction: 'HIGHER_IS_BETTER' },
+    }));
+    expect(result.verdict).toBe('BLOCK');
+    expect(result.failures.map((failure) => failure.code)).toContain('METRIC_REGRESSION');
+  });
+
+  it('blocks a Cinema proof bound to another commit', () => {
+    const result = evaluatePromotionCandidate(candidate({
+      cinemaProof: {
+        proofId: 'proof-1',
+        proofHash: 'proof-hash',
+        verified: true,
+        boundCandidateCommit: 'c'.repeat(40),
+      },
+    }));
+    expect(result.verdict).toBe('BLOCK');
+    expect(result.failures.map((failure) => failure.code)).toContain('CINEMA_COMMIT_MISMATCH');
+  });
+
+  it('blocks incomplete evidence', () => {
+    const result = evaluatePromotionCandidate(candidate({
+      evidence: [{ kind: 'commit', uri: 'git://candidate' }],
+    }));
+    expect(result.verdict).toBe('BLOCK');
+    expect(result.failures.map((failure) => failure.code)).toContain('EVIDENCE_INCOMPLETE');
+  });
+});
