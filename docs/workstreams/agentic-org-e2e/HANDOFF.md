@@ -1,73 +1,108 @@
 # Current Handoff
 
-Updated: 2026-08-25T07:53:00+07:00
+Updated: 2026-08-25T16:27:32+07:00
 
-## What this workstream is doing
+## Goal
 
-Build DSG ONE into the operating/governance layer for agentic organizations across five existing repositories. The user gives one goal; the system plans, organizes agents/skills/tools/workflows, executes within approved scope, measures outcomes, evaluates candidate improvements, proves evidence independently, promotes through GitHub PRs, and observes post-deploy results.
+Build the five-repository DSG system into a governed closed self-evolution loop:
+
+`observe → simulate frequently → admit only measurable non-regressing improvements → batch review → Cinema raw proof → Control Plane ALLOW → merge approved batch → deploy once → canary → rollback regression or commit measured winner as next baseline → simulate again`.
 
 ## Current status
 
-`CONTEXT_READY_IMPLEMENTATION_PENDING_APPROVAL`
+`PARTIALLY_VERIFIED`
 
-The durable context store has been designed and is being committed on the Control Plane context branch. No implementation/deploy change is authorized by this checkpoint alone.
+Monitoring post-deploy evaluation and signed handoff are CI verified. Control Plane canonical promotion receipts, durable baseline state and signed rollback execution are implemented; current-head CI/validation remains required. Production remains blocked because the provider is unbound.
 
-## Current architecture
+## Authority map
 
-- Control Plane = canonical authority.
-- DSG ONE v1 = runtime/orchestrator.
-- AGI Simulation = candidate/evaluation engine only.
-- Cinema = independent verifier.
-- Unified Monitoring = observe/metric/evidence-intake layer.
-- GitHub Actions = CI/execution/evidence substrate.
+- Control Plane — sole canonical promotion, baseline and rollback execution authority.
+- DSG ONE v1 — governed runtime/orchestrator.
+- AGI Simulation — search/candidate proposal only.
+- Cinema — independent raw-evidence verifier.
+- Unified Monitoring — observed-truth metrics and post-deploy evidence only.
 
-## Known truths that must not be forgotten
+## Verified checkpoints
 
-1. Unified Monitoring has only `main` and `master`; there is no `dev/develop` branch.
-2. `main` and `master` have no common ancestor, so do not open a normal `master -> main` integration PR.
-3. Unified Monitoring `main` baseline: `73a443e13e1e0bcd72cc68a9059b06c9f5fb8324`.
-4. Unified Monitoring source `master`: `cc06be7a37f05ae44a1ba968cc31fd6c85dc617b`.
-5. Existing CI run `31999238949` failed at `npm ci` because there is no lockfile; later checks were skipped.
-6. Existing CI masks typecheck/build/test failures and must become fail-closed.
-7. Unified Monitoring `api/endpoints.ts` still contains placeholder result paths and cannot be used as production proof.
-8. `monitoring/src/data-sync-monitor.ts` contains real Supabase-backed monitoring logic worth reusing after review/testing.
-9. Service-role access bypasses RLS; it cannot by itself prove tenant isolation. Tenant-isolation proof must use a non-bypass identity or policy/schema evidence appropriate to the claim.
-10. Existing production secrets are unverified through the current GitHub connector; do not assume they exist.
-11. AGI Simulation already has deterministic/self-evolution machinery, but promotion must be changed conceptually from self-push authority to governed candidate -> proof -> PR/promotion.
-12. Plan-authorized actions should not be blocked by redundant approvals; out-of-plan actions fail closed.
+### Wave 1 join
+- Run `32808841798`; final job `97684455603`: PASS.
+- Implementation join only; not deployment authority.
 
-## Next action after user approves implementation
+### AGI Simulation
+- PR #16, verified code checkpoint `dd3180d5423df65ccca851f7a3690444bf060334`.
+- CI `32812605204`: SUCCESS.
+- ENS `32812605259`: SUCCESS.
+- Candidate requires measurable improvement plus protected-metric non-regression.
 
-1. Refresh HEAD SHA of all five repositories and record drift.
-2. Re-read repository-local agent instructions.
-3. Create `integration/unified-monitoring-e2e` from Unified Monitoring `main`.
-4. Transplant/rebuild only inspected required source from `master`.
-5. Fix dependency lockfile, TypeScript entrypoints/config, scripts and tests.
-6. Replace masked CI with fail-closed required checks.
-7. Wire monitoring API to real observation code and explicit NOT_RUN/REVIEW/BLOCK semantics.
-8. Run real CI and checkpoint evidence before moving to cross-repo integration.
+### Unified Monitoring
+- PR #1, branch `integration/unified-monitoring-e2e`.
+- Head `06e3c266855d0d6d883265e3f9c051436826cf06`.
+- CI `32831029832`: SUCCESS; lockfile, npm ci, lint, typecheck, tests, build and Docker all passed.
+- Post-deploy output:
+  - regression/health failure → `BLOCK + ROLLBACK_RECOMMENDED`
+  - neutral/insufficient evidence → `REVIEW + HOLD_REVIEW`
+  - measured improvement without protected regression → `PASS + ACCEPT_NEXT_BASELINE`
+- Signed HTTPS handoff to Control Plane is implemented and tested.
+- Monitoring never performs production mutation.
 
-## Stop conditions
+## Control Plane implementation
 
-Stop and record BLOCK/REVIEW if:
+PR #1151 `feat/agentic-org-orchestrator` remains open and mergeable.
 
-- requested action is outside the approved implementation scope;
-- a current repository drift materially changes assumptions;
-- a required credential/OTP/CAPTCHA cannot be resolved through an available authorized mechanism;
-- evidence contradicts a claimed PASS;
-- a candidate regresses the declared objective or violates constraints;
-- plan/evidence hashes do not match;
-- a production mutation would occur without the required promotion/authorization state.
+Code checkpoint before the latest documentation-only commits: `da57e5fe4e697ba3ca4bfef7677df9bc18be4607`.
 
-## Final delivery package must include
+Implemented:
 
-- final current-state `WORKSTREAM.json`;
-- implementation PRs/commits across affected repositories;
-- required GitHub Actions run evidence;
-- observation and metric evidence;
-- AGI candidate/eval evidence;
-- approved-plan/scope binding evidence;
-- Cinema proof/replay evidence;
-- positive E2E run;
-- negative BLOCK/no-promotion E2E run;
-- unresolved limitations and next operational actions.
+1. Canonical promotion receipt only after Cinema `VERIFIED_RAW_EVIDENCE` and deterministic `ALLOW` with zero failures.
+2. HMAC promotion-evaluation endpoint persists canonical receipts in `agentic_promotion_receipts`.
+3. HMAC post-deploy endpoint resolves the receipt from Control Plane storage; the Monitoring copy is only a reference.
+4. Durable post-deploy receipts bind promotion, deployment, commits and evidence hashes.
+5. Atomic compare-and-swap next-baseline commit rejects stale canary results.
+6. Rollback requires bound provider, allowlisted adapter, rollback target, health probe and HTTPS rollback endpoint.
+7. Rollback requests are HMAC-signed and only strict bound `ROLLED_BACK` + `healthPassed=true` evidence is accepted.
+8. Rollback execution is idempotent by deployment id and verified evidence is persisted.
+9. Governance state tables are service-role-only with RLS enabled and no general-user mutation policy.
+
+## Current production truth
+
+`config/production-deployment-target.json`:
+
+- provider: `UNBOUND`
+- productionDeployEnabled: `false`
+- deploymentAdapter: `null`
+- healthProbe: `null`
+- rollbackTarget: `null`
+- rollbackAdapterEndpoint: `null`
+- Vercel: retired/not used
+- Render: retired/not used
+
+Therefore implementation/test/evidence may continue, but production deploy and rollback remain fail-closed. Do not select a provider by assumption.
+
+## Current blockers
+
+1. Control Plane current-head CI/type/schema/API/security validation has not yet completed successfully.
+2. The new post-deploy Supabase migration has not been proven applied in a live environment.
+3. Cinema live raw-evidence binding is not yet verified.
+4. Monitoring → Control Plane runtime binding is not yet verified.
+5. A real production provider/adapter/health/rollback binding is still absent.
+
+## Resume procedure
+
+1. Read `WORKSTREAM.json`, `STATE.md`, `EVIDENCE_INDEX.md`, `HANDOFF.md`.
+2. Resolve PR #1151 current head and current-head workflow runs.
+3. Repair any exact CI/schema/API/security failure; never use an older head as PASS evidence.
+4. When current-head checks pass, append run/job evidence and update state.
+5. Verify migration applied-state and live cross-repo bindings.
+6. Keep production target unbound until the actual provider is explicitly selected and bound.
+7. Only after that may merge→deploy→canary→Monitoring→rollback/new-baseline be claimed as live E2E.
+
+## Delivery proof still required
+
+- Control Plane current-head CI/schema/API/security PASS.
+- Live migration applied-state proof.
+- Live Cinema proof handoff.
+- Live Monitoring → Control Plane signed handoff.
+- Bound provider adapter + health + rollback evidence.
+- Positive E2E: improved batch → one deployment → canary PASS → next baseline committed.
+- Negative E2E: regression → rollback recommendation → governed rollback → verified healthy recovery.
+- Negative authority proof: forged/mismatched/self-promoted candidates remain BLOCKED.
