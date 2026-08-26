@@ -1,0 +1,148 @@
+{
+  "schema_version": "dsg-workstream-context-v1",
+  "workstream_id": "agentic-org-e2e-2026-08-25",
+  "title": "DSG ONE Operating & Governance Layer for Agentic Organizations",
+  "created_at": "2026-08-25T07:53:00+07:00",
+  "updated_at": "2026-08-25T16:27:32+07:00",
+  "status": "PARTIALLY_VERIFIED_CLOSED_LOOP_IMPLEMENTATION",
+  "canonical_repo": "tdealer01-crypto/tdealer01-crypto-dsg-control-plane",
+  "context_branch": "workstream/agentic-org-e2e-context",
+  "implementation_branch": "feat/agentic-org-orchestrator",
+  "authorization": {
+    "context_store_creation": "APPROVED_BY_USER",
+    "implementation_plan": "APPROVED_BY_USER_2026-08-25",
+    "plan_authorized_actions": [
+      "create implementation branches",
+      "create and update files within approved workstream scope",
+      "run and repair CI",
+      "create tests and evidence artifacts",
+      "open and update pull requests",
+      "iterate until acceptance gates pass"
+    ],
+    "production_deploy": "REQUIRES_CONTROL_PLANE_ALLOW_AND_BOUND_PRODUCTION_TARGET",
+    "production_rollback": "REQUIRES_BOUND_SIGNED_ROLLBACK_ADAPTER_AND_CONTROL_PLANE_AUTHORITY"
+  },
+  "goal": "User states one goal once; DSG ONE organizes agents, skills, tools, schedules and workflows, searches for measurable improvements, admits only non-regressing winners, proves evidence independently, promotes through the canonical Control Plane, deploys approved batches once, measures live canary outcomes, rolls back regressions and commits measured improvements as the next baseline.",
+  "repositories": [
+    {
+      "name": "Control Plane",
+      "repo": "tdealer01-crypto/tdealer01-crypto-dsg-control-plane",
+      "canonical_branch": "main",
+      "baseline_sha": "05660b19303861ac6f6023e78b18eb3933562eb5",
+      "implementation_branch": "feat/agentic-org-orchestrator",
+      "implementation_code_checkpoint": "da57e5fe4e697ba3ca4bfef7677df9bc18be4607",
+      "pr": 1151,
+      "role": "canonical_authority",
+      "verification": "CURRENT_HEAD_CI_PENDING_AFTER_CHECKPOINT_WRITES"
+    },
+    {
+      "name": "DSG ONE v1",
+      "repo": "tdealer01-crypto/dsg-one-v1",
+      "canonical_branch": "main",
+      "baseline_sha": "27c4463262bff3712ce5956fb0ce8140ccb869a5",
+      "implementation_branch": "feat/governed-improvement-runtime",
+      "pr": 121,
+      "role": "runtime_orchestrator",
+      "verification": "IMPLEMENTATION_LANE_CHECKPOINT_AVAILABLE"
+    },
+    {
+      "name": "AGI Simulation",
+      "repo": "tdealer01-crypto/dsg-agi-simulation",
+      "canonical_branch": "master",
+      "baseline_sha": "ff969f9bda2d101a5f9c062a60535709a40cfb5a",
+      "implementation_branch": "feat/governed-candidate-envelope",
+      "verified_code_checkpoint": "dd3180d5423df65ccca851f7a3690444bf060334",
+      "pr": 16,
+      "role": "candidate_and_eval_engine",
+      "verification": "CANDIDATE_ADMISSION_CODE_CI_VERIFIED"
+    },
+    {
+      "name": "Cinema Proof Agent",
+      "repo": "tdealer01-crypto/DSG-Cinema-Proof-Agent",
+      "canonical_branch": "main",
+      "baseline_sha": "aef371d8930e6ee72afc8fb06738f9fc4a4e12cc",
+      "implementation_branch": "feat/improvement-proof-adapter",
+      "pr": 114,
+      "role": "independent_verifier",
+      "verification": "RAW_EVIDENCE_ADAPTER_IMPLEMENTATION_CHECKPOINT_AVAILABLE"
+    },
+    {
+      "name": "Unified Data Monitoring",
+      "repo": "tdealer01-crypto/dsg-unified-data-monitoring",
+      "canonical_branch": "main",
+      "baseline_sha": "73a443e13e1e0bcd72cc68a9059b06c9f5fb8324",
+      "historical_source_branch": "master",
+      "historical_source_sha": "cc06be7a37f05ae44a1ba968cc31fd6c85dc617b",
+      "history_relation": "NO_COMMON_ANCESTOR_MAIN_MASTER",
+      "implementation_branch": "integration/unified-monitoring-e2e",
+      "implementation_head": "06e3c266855d0d6d883265e3f9c051436826cf06",
+      "pr": 1,
+      "role": "observe_metric_evidence_intake",
+      "verification": "CI_VERIFIED_RUN_32831029832"
+    }
+  ],
+  "parallel_waves": {
+    "W1": {
+      "status": "IMPLEMENTATION_JOIN_PASS",
+      "join_run_id": "32808841798",
+      "join_job_id": "97684455603",
+      "authority_note": "Implementation join is not runtime promotion or production-deployment authority.",
+      "lanes": [
+        {"id": "W1-A", "repo": "dsg-unified-data-monitoring", "status": "CI_VERIFIED"},
+        {"id": "W1-B", "repo": "tdealer01-crypto-dsg-control-plane", "status": "EXTENDED_POST_DEPLOY_IMPLEMENTATION_CI_PENDING"},
+        {"id": "W1-C", "repo": "dsg-one-v1", "status": "IMPLEMENTATION_CHECKPOINT_AVAILABLE"},
+        {"id": "W1-D", "repo": "dsg-agi-simulation", "status": "CANDIDATE_ADMISSION_CI_VERIFIED"},
+        {"id": "W1-E", "repo": "DSG-Cinema-Proof-Agent", "status": "PROOF_ADAPTER_CHECKPOINT_AVAILABLE"}
+      ]
+    }
+  },
+  "closed_loop": {
+    "technology_intake": "ACTIVE_READ_ONLY",
+    "simulation_search": "CONFIGURED_FREQUENT_SEARCH",
+    "candidate_admission": "IMPLEMENTED_AND_CI_VERIFIED_CHECKPOINT",
+    "batch_review": "CONFIGURED_POLICY_INTEGRATION_REMAINS",
+    "cinema_raw_evidence": "IMPLEMENTED_RUNTIME_BINDING_REQUIRED",
+    "control_plane_promotion_receipt": "IMPLEMENTED_CURRENT_HEAD_CI_PENDING",
+    "batch_merge": "GOVERNED_FLOW_INTEGRATION_REMAINS",
+    "production_deploy": "BLOCKED_PROVIDER_UNBOUND",
+    "post_deploy_monitoring": "IMPLEMENTED_AND_CI_VERIFIED",
+    "monitoring_to_control_plane_handoff": "IMPLEMENTED_AND_CI_VERIFIED",
+    "next_baseline_compare_and_swap": "IMPLEMENTED_CURRENT_HEAD_CI_PENDING",
+    "automatic_rollback": "IMPLEMENTED_UP_TO_BOUND_ADAPTER_CURRENT_HEAD_CI_PENDING",
+    "feedback_to_next_simulation": "BASELINE_STORE_IMPLEMENTED_INTEGRATION_REMAINS"
+  },
+  "known_environment": {
+    "github_connector_repo_write": "READY",
+    "github_branch_file_pr_operations": "READY",
+    "github_actions_logs_read": "READY",
+    "monitoring_ci": "PASS_RUN_32831029832",
+    "control_plane_current_head_ci": "QUEUED_PENDING",
+    "supabase_post_deploy_migration_applied": "UNVERIFIED_NOT_CLAIMED",
+    "cinema_live_attestation_binding": "UNVERIFIED",
+    "monitoring_control_plane_runtime_binding": "UNVERIFIED",
+    "production_provider": "UNBOUND",
+    "vercel": "RETIRED_NOT_USED",
+    "render": "RETIRED_NOT_USED"
+  },
+  "phases": [
+    {"id": "P0", "name": "Context and baseline freeze", "status": "COMPLETED"},
+    {"id": "P1", "name": "Repair and normalize Unified Monitoring", "status": "PASS"},
+    {"id": "P2", "name": "Real observation and monitoring contracts", "status": "PASS"},
+    {"id": "P3", "name": "Five-repo registry and evidence binding", "status": "PARTIALLY_VERIFIED"},
+    {"id": "P4", "name": "Metric and AGI evaluation loop", "status": "PARTIALLY_VERIFIED"},
+    {"id": "P5", "name": "Governed implementation runtime", "status": "PARTIALLY_VERIFIED"},
+    {"id": "P6", "name": "Cinema independent proof integration", "status": "IMPLEMENTED_UNVERIFIED_LIVE_BINDING"},
+    {"id": "P7", "name": "Promotion gate, canonical receipt and PR flow", "status": "IMPLEMENTED_UNVERIFIED_CURRENT_HEAD"},
+    {"id": "P8", "name": "Post-deploy monitoring, next baseline and rollback loop", "status": "PARTIALLY_VERIFIED"},
+    {"id": "P9", "name": "Positive and negative live E2E delivery proof", "status": "NOT_RUN"}
+  ],
+  "current_blockers": [
+    "Control Plane current-head CI/validation is queued/pending; do not claim the new canonical receipt/baseline/rollback implementation PASS yet.",
+    "The Supabase migration that creates canonical promotion receipts, post-deploy receipts, baselines and rollback evidence has not been proven applied to a live environment.",
+    "Cinema live OIDC/raw-evidence endpoint binding has not been verified in the runtime environment.",
+    "Monitoring-to-Control-Plane URL/secret runtime binding has not been verified.",
+    "Production provider is UNBOUND; deploymentAdapter, healthProbe, rollbackTarget and rollbackAdapterEndpoint are null, so production deploy/rollback must remain blocked."
+  ],
+  "next_action": "Wait only on actual GitHub runner execution, repair any current-head Control Plane CI/schema/API failures, then verify live migration/bindings. Keep production mutation blocked until an explicit provider is bound.",
+  "delivery_status": "IN_PROGRESS"
+}

@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dsg.pics/contracts/agentic-improvement/promotion-envelope.v1.schema.json",
+  "title": "DSG Agentic Improvement Promotion Envelope v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "candidateId",
+    "goalId",
+    "approvedPlanHash",
+    "targetRepository",
+    "baselineCommit",
+    "candidateCommit",
+    "allowedPaths",
+    "baselineMetric",
+    "candidateMetric",
+    "constraintsPassed",
+    "planAligned",
+    "testsPassed",
+    "buildPassed",
+    "evidence",
+    "candidateAuthority",
+    "promotionAuthority",
+    "selfPromotionAllowed",
+    "requestedPromotion"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "dsg-agentic-improvement-v1" },
+    "candidateId": { "type": "string", "minLength": 1 },
+    "goalId": { "type": "string", "minLength": 1 },
+    "approvedPlanHash": { "type": "string", "minLength": 1 },
+    "targetRepository": { "type": "string", "minLength": 1 },
+    "baselineCommit": { "type": "string", "minLength": 7 },
+    "candidateCommit": { "type": "string", "minLength": 7 },
+    "allowedPaths": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "baselineMetric": { "$ref": "#/$defs/metric" },
+    "candidateMetric": { "$ref": "#/$defs/metric" },
+    "constraintsPassed": { "type": "boolean" },
+    "planAligned": { "type": "boolean" },
+    "testsPassed": { "type": "boolean" },
+    "buildPassed": { "type": "boolean" },
+    "simulationHash": { "type": "string", "minLength": 1 },
+    "evidence": {
+      "type": "array",
+      "minItems": 4,
+      "items": { "$ref": "#/$defs/evidence" },
+      "allOf": [
+        { "contains": { "type": "object", "properties": { "kind": { "const": "commit" } }, "required": ["kind"] }, "minContains": 1 },
+        { "contains": { "type": "object", "properties": { "kind": { "const": "metric" } }, "required": ["kind"] }, "minContains": 1 },
+        { "contains": { "type": "object", "properties": { "kind": { "const": "test_output" } }, "required": ["kind"] }, "minContains": 1 },
+        { "contains": { "type": "object", "properties": { "kind": { "const": "build_output" } }, "required": ["kind"] }, "minContains": 1 }
+      ]
+    },
+    "candidateAuthority": { "const": "SIMULATION_ONLY" },
+    "promotionAuthority": { "const": "DSG_CONTROL_PLANE" },
+    "selfPromotionAllowed": { "const": false },
+    "cinemaProof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "proofId",
+        "proofHash",
+        "verified",
+        "verification",
+        "rawEvidenceVerified",
+        "boundCandidateCommit"
+      ],
+      "properties": {
+        "proofId": { "type": "string", "minLength": 1 },
+        "proofHash": { "type": "string", "minLength": 1 },
+        "verified": { "type": "boolean" },
+        "verification": { "enum": ["VERIFIED_ENVELOPE_BINDING", "VERIFIED_RAW_EVIDENCE"] },
+        "rawEvidenceVerified": { "type": "boolean" },
+        "boundCandidateCommit": { "type": "string", "minLength": 7 }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "verification": { "const": "VERIFIED_RAW_EVIDENCE" } }, "required": ["verification"] },
+          "then": {
+            "properties": {
+              "verified": { "const": true },
+              "rawEvidenceVerified": { "const": true }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "verification": { "const": "VERIFIED_ENVELOPE_BINDING" } }, "required": ["verification"] },
+          "then": {
+            "properties": {
+              "rawEvidenceVerified": { "const": false }
+            }
+          }
+        }
+      ]
+    },
+    "requestedPromotion": { "enum": ["PR", "DEPLOY"] }
+  },
+  "$defs": {
+    "metric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "value", "direction"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "value": { "type": "number" },
+        "unit": { "type": "string" },
+        "direction": { "enum": ["HIGHER_IS_BETTER", "LOWER_IS_BETTER"] }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "uri"],
+      "properties": {
+        "kind": { "enum": ["commit", "workflow_run", "test_output", "build_output", "contract_check", "observation", "metric", "candidate", "proof", "pr", "deployment", "replay"] },
+        "uri": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "repository": { "type": "string", "minLength": 1 },
+        "commitSha": { "type": "string", "minLength": 7 }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": { "enum": ["metric", "test_output", "build_output"] }
+            },
+            "required": ["kind"]
+          },
+          "then": {
+            "required": ["sha256", "repository", "commitSha"]
+          }
+        }
+      ]
+    }
+  }
+}
