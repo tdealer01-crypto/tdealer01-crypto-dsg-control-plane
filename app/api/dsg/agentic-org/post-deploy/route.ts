@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import productionTargetJson from '@/config/production-deployment-target.json';
+import { handleApiError } from '@/lib/security/api-error';
 import {
   evaluatePostDeployControl,
   type DeploymentBinding,
@@ -239,12 +240,15 @@ export async function POST(request: NextRequest) {
         },
       );
     } catch (error) {
-      return NextResponse.json({
-        status: 'BLOCK',
-        reason: 'ROLLBACK_EXECUTION_FAILED',
-        errorClass: error instanceof Error ? error.message : 'UNKNOWN',
-        control,
-      }, { status: 502 });
+      return handleApiError('api/dsg/agentic-org/post-deploy/rollback', error, {
+        status: 502,
+        details: {
+          reason: 'ROLLBACK_EXECUTION_FAILED',
+          promotionId: control.promotionId,
+          deploymentId: control.deploymentId,
+          controlEvidenceHash: control.controlEvidenceHash,
+        },
+      });
     }
 
     const { error: rollbackPersistError } = await supabase.from('agentic_rollback_evidence').insert({
