@@ -1,0 +1,466 @@
+{
+  "schemaVersion": "dsg.supabase-canonical-ledger.v1",
+  "projectRef": "zeyguilldygozufpgxms",
+  "capturedAt": "2026-08-28T11:27:00Z",
+  "remoteHead": "20260823124642",
+  "policy": "keep-canonical-and-newer-quarantine-local-before-head",
+  "migrations": [
+    {
+      "version": "1784914864",
+      "name": "test_integration"
+    },
+    {
+      "version": "20260430102302",
+      "name": "finance_governance_control_layer_tables"
+    },
+    {
+      "version": "20260430145030",
+      "name": "gateway_managed_connectors"
+    },
+    {
+      "version": "20260430202349",
+      "name": "gateway_monitor_events"
+    },
+    {
+      "version": "20260502174934",
+      "name": "create_dsg_runtime_core_step_2"
+    },
+    {
+      "version": "20260502175026",
+      "name": "harden_dsg_runtime_functions_step_2"
+    },
+    {
+      "version": "20260502181720",
+      "name": "add_dsg_runtime_policies_and_rpc"
+    },
+    {
+      "version": "20260502183649",
+      "name": "add_dsg_plan_audit_completion_rpc"
+    },
+    {
+      "version": "20260502184542",
+      "name": "add_dsg_deployment_production_flow_rpc"
+    },
+    {
+      "version": "20260504035550",
+      "name": "create_dsg_governed_memory_layer"
+    },
+    {
+      "version": "20260504074722",
+      "name": "create_dsg_app_builder_runtime_tables"
+    },
+    {
+      "version": "20260504074941",
+      "name": "expose_dsg_app_builder_tables_in_api_schema"
+    },
+    {
+      "version": "20260504075201",
+      "name": "replace_api_app_builder_views_with_tables"
+    },
+    {
+      "version": "20260504090942",
+      "name": "create_dsg_one_memory_api_tables_retry"
+    },
+    {
+      "version": "20260504143801",
+      "name": "create_api_generated_app_items"
+    },
+    {
+      "version": "20260505190322",
+      "name": "create_dsg_crud_proof_tasks_20260506"
+    },
+    {
+      "version": "20260505201507",
+      "name": "create_api_dsg_record_production_flow_proof"
+    },
+    {
+      "version": "20260509061545",
+      "name": "create_dsg_agent_command_gate_v2"
+    },
+    {
+      "version": "20260512122854",
+      "name": "create_agent_gate_settings"
+    },
+    {
+      "version": "20260512165406",
+      "name": "add_runtime_spine_missing_tables_uuid_compatible"
+    },
+    {
+      "version": "20260512171007",
+      "name": "drop_legacy_runtime_commit_execution_contract"
+    },
+    {
+      "version": "20260512171043",
+      "name": "create_minimal_runtime_commit_execution_contract"
+    },
+    {
+      "version": "20260512171454",
+      "name": "fix_runtime_commit_execution_qualified_sequences"
+    },
+    {
+      "version": "20260512171820",
+      "name": "fix_runtime_commit_execution_return_output_vars"
+    },
+    {
+      "version": "20260512172033",
+      "name": "fix_runtime_commit_execution_pgcrypto_schema"
+    },
+    {
+      "version": "20260512172250",
+      "name": "add_policies_status_for_auto_setup"
+    },
+    {
+      "version": "20260512175603",
+      "name": "create_runtime_policies_table"
+    },
+    {
+      "version": "20260512180047",
+      "name": "create_runtime_policy_governance_events_table"
+    },
+    {
+      "version": "20260512182657",
+      "name": "seed_default_runtime_policy_if_missing"
+    },
+    {
+      "version": "20260516051839",
+      "name": "add_api_keys_webhooks_notifications"
+    },
+    {
+      "version": "20260516051853",
+      "name": "dsg_one_tables"
+    },
+    {
+      "version": "20260516051911",
+      "name": "dsg_templates"
+    },
+    {
+      "version": "20260518172627",
+      "name": "marketing_content"
+    },
+    {
+      "version": "20260518173030",
+      "name": "marketing_agent_runs"
+    },
+    {
+      "version": "20260518180715",
+      "name": "github_app_installations"
+    },
+    {
+      "version": "20260519054417",
+      "name": "fix_security_advisors_safe_defaults"
+    },
+    {
+      "version": "20260526034235",
+      "name": "dsg_template_marketplace"
+    },
+    {
+      "version": "20260526034248",
+      "name": "dsg_template_sales_rpc"
+    },
+    {
+      "version": "20260526034300",
+      "name": "template_sales_unique_buyer"
+    },
+    {
+      "version": "20260526125644",
+      "name": "dsg_mcp_billing_tables"
+    },
+    {
+      "version": "20260526125700",
+      "name": "dsg_mcp_billing_policies"
+    },
+    {
+      "version": "20260526125723",
+      "name": "dsg_mcp_billing_rpcs"
+    },
+    {
+      "version": "20260526142954",
+      "name": "dsg_template_entitlement"
+    },
+    {
+      "version": "20260526143111",
+      "name": "fix_can_use_template_ambiguity"
+    },
+    {
+      "version": "20260609153009",
+      "name": "create_dsg_access_invites_v2"
+    },
+    {
+      "version": "20260609153206",
+      "name": "create_dsg_provision_user_access_v2"
+    },
+    {
+      "version": "20260615062651",
+      "name": "fix_api_key_usage_summary_security_invoker"
+    },
+    {
+      "version": "20260702122530",
+      "name": "marketplace_stripe_schema"
+    },
+    {
+      "version": "20260703014019",
+      "name": "grant_org_membership_helpers_to_authenticated"
+    },
+    {
+      "version": "20260703023351",
+      "name": "add_monitoring_tables"
+    },
+    {
+      "version": "20260703025555",
+      "name": "add_monitoring_alerts_webhooks"
+    },
+    {
+      "version": "20260703025714",
+      "name": "grant_org_helpers_execute_to_anon"
+    },
+    {
+      "version": "20260703071335",
+      "name": "github_marketplace_events"
+    },
+    {
+      "version": "20260703083006",
+      "name": "marketplace_account_links"
+    },
+    {
+      "version": "20260704163930",
+      "name": "fix_payment_summary_monitoring_metrics_security_invoker"
+    },
+    {
+      "version": "20260704165250",
+      "name": "trinity_end_to_end_workflow"
+    },
+    {
+      "version": "20260704190930",
+      "name": "github_marketplace_oauth_link_columns"
+    },
+    {
+      "version": "20260709035923",
+      "name": "add_dsg_determinism_ledger"
+    },
+    {
+      "version": "20260710071019",
+      "name": "audit_batch_trail"
+    },
+    {
+      "version": "20260710071830",
+      "name": "revenue_events_phase2"
+    },
+    {
+      "version": "20260710111912",
+      "name": "20260628_agent_profiles_tables"
+    },
+    {
+      "version": "20260710112851",
+      "name": "20260603001000_breach_signal_evaluations"
+    },
+    {
+      "version": "20260710112906",
+      "name": "20260605_dsg_ui_memory"
+    },
+    {
+      "version": "20260710113859",
+      "name": "add_expires_at_to_guest_access_grants"
+    },
+    {
+      "version": "20260710130207",
+      "name": "add_guest_access_grants_expires_at"
+    },
+    {
+      "version": "20260713054100",
+      "name": "ai_firstify_core_schema"
+    },
+    {
+      "version": "20260713054110",
+      "name": "ai_firstify_audit_logs"
+    },
+    {
+      "version": "20260713080443",
+      "name": "ai_firstify_simplify_rls"
+    },
+    {
+      "version": "20260718115700",
+      "name": "20260718_superteam_agent_tables"
+    },
+    {
+      "version": "20260725030349",
+      "name": "20260725120000_system_inventory_schema"
+    },
+    {
+      "version": "20260731083805",
+      "name": "repair_system_inventory_seed_and_grants"
+    },
+    {
+      "version": "20260804084739",
+      "name": "agent_workspace_control_plane"
+    },
+    {
+      "version": "20260804085957",
+      "name": "agent_workspace_autonomy_v2"
+    },
+    {
+      "version": "20260804090121",
+      "name": "agent_workspace_authorization_alias_fix"
+    },
+    {
+      "version": "20260804090358",
+      "name": "agent_workspace_promotion_scopes"
+    },
+    {
+      "version": "20260804091421",
+      "name": "agent_workspace_plan_hash_trigger"
+    },
+    {
+      "version": "20260804091946",
+      "name": "agent_workspace_org_scoped_leases"
+    },
+    {
+      "version": "20260804092326",
+      "name": "agent_workspace_promotion_evidence_gate"
+    },
+    {
+      "version": "20260804093140",
+      "name": "agent_workspace_commit_bound_promotion"
+    },
+    {
+      "version": "20260804093707",
+      "name": "agent_workspace_dev_scope_boundaries"
+    },
+    {
+      "version": "20260804094212",
+      "name": "agent_workspace_permanent_production_lock"
+    },
+    {
+      "version": "20260804094654",
+      "name": "agent_workspace_promotion_state_machine"
+    },
+    {
+      "version": "20260804095110",
+      "name": "agent_workspace_ci_approval_provenance"
+    },
+    {
+      "version": "20260804100306",
+      "name": "agent_workspace_remove_unenforced_main_merge_scope"
+    },
+    {
+      "version": "20260806064005",
+      "name": "dsg_gate_revenue_hardening"
+    },
+    {
+      "version": "20260806064216",
+      "name": "dsg_gate_function_grants"
+    },
+    {
+      "version": "20260806065317",
+      "name": "dsg_gate_atomic_usage_position"
+    },
+    {
+      "version": "20260806065800",
+      "name": "revenue_event_idempotency"
+    },
+    {
+      "version": "20260806065903",
+      "name": "revenue_event_stripe_idempotency_backfill"
+    },
+    {
+      "version": "20260806065956",
+      "name": "revenue_event_idempotency_conflict_target"
+    },
+    {
+      "version": "20260808020115",
+      "name": "create_dsg_launchpad_launches"
+    },
+    {
+      "version": "20260808133441",
+      "name": "billing_activation_proofs"
+    },
+    {
+      "version": "20260808134158",
+      "name": "billing_activation_proofs_hardening"
+    },
+    {
+      "version": "20260808134235",
+      "name": "billing_activation_proofs_privilege_lockdown"
+    },
+    {
+      "version": "20260810052204",
+      "name": "secure_mcp_actor_context"
+    },
+    {
+      "version": "20260810052612",
+      "name": "secure_mcp_actor_context_uuid_fix"
+    },
+    {
+      "version": "20260810055902",
+      "name": "mcp_oauth_tokens"
+    },
+    {
+      "version": "20260810055931",
+      "name": "secure_mcp_oauth_context"
+    },
+    {
+      "version": "20260812163842",
+      "name": "dsg_gate_encoding_usage_route"
+    },
+    {
+      "version": "20260812203538",
+      "name": "create_leads_and_alerts_revenue_autopilot"
+    },
+    {
+      "version": "20260812203550",
+      "name": "leads_growth_columns_revenue_autopilot"
+    },
+    {
+      "version": "20260812203603",
+      "name": "outreach_approvals_revenue_autopilot"
+    },
+    {
+      "version": "20260812203613",
+      "name": "lead_enhancements_revenue_autopilot"
+    },
+    {
+      "version": "20260812204340",
+      "name": "revenue_autopilot_runtime"
+    },
+    {
+      "version": "20260814190648",
+      "name": "dashboard_live_data_contracts"
+    },
+    {
+      "version": "20260814191709",
+      "name": "dashboard_live_data_contract_grants"
+    },
+    {
+      "version": "20260816080453",
+      "name": "dsg_one_verified_execution_runs"
+    },
+    {
+      "version": "20260817081058",
+      "name": "trinity_revenue_tables"
+    },
+    {
+      "version": "20260818115153",
+      "name": "create_dsg_audit_ledger"
+    },
+    {
+      "version": "20260818123357",
+      "name": "create_dsg_audit_ledger_api_schema"
+    },
+    {
+      "version": "20260818123435",
+      "name": "grant_dsg_audit_ledger_service_role"
+    },
+    {
+      "version": "20260818124307",
+      "name": "add_dsg_audit_proof_hash"
+    },
+    {
+      "version": "20260823121921",
+      "name": "extend_dsg_guarded_evidence"
+    },
+    {
+      "version": "20260823124642",
+      "name": "guarded_evidence_text_payloads_and_observations"
+    }
+  ]
+}
+

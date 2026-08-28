@@ -258,6 +258,16 @@ jobs:
         shell: bash
         run: supabase link --project-ref "$SUPABASE_PROJECT_REF" --yes
 
+      - name: Stage canonical migration ledger
+        if: ${{ inputs.supabase_mode == 'migrations' || inputs.supabase_mode == 'all' }}
+        shell: bash
+        run: |
+          node scripts/prepare-supabase-canonical-migrations.mjs \
+            --ledger supabase/canonical-migration-ledger.json \
+            --migrations-dir supabase/migrations \
+            --quarantine-dir "$RUNNER_TEMP/dsg-supabase-legacy-local-only" \
+            --evidence-out supabase-ledger-preparation.json
+
       - name: Preflight pending migrations
         if: ${{ inputs.supabase_mode == 'migrations' || inputs.supabase_mode == 'all' }}
         shell: bash
@@ -292,6 +302,7 @@ jobs:
           import hashlib, json, os, subprocess
           from pathlib import Path
           files = [
+              'supabase-ledger-preparation.json',
               'supabase-migration-dry-run.txt',
               'supabase-migration-push.txt',
               'supabase-functions-deploy.txt',
@@ -323,6 +334,7 @@ jobs:
           name: dsg-deployment-evidence-supabase-${{ inputs.environment }}-${{ inputs.idempotency_key }}
           path: |
             deployment-evidence.json
+            supabase-ledger-preparation.json
             supabase-*.txt
           if-no-files-found: error
           retention-days: 30
