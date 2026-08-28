@@ -3,7 +3,6 @@ name: Production Readiness Check
 # - VERCEL_TOKEN
 # - VERCEL_TOKEN_NEW (only when .github/vercel-routing.json selects new)
 # - SUPABASE_ACCESS_TOKEN
-# - SUPABASE_DB_PASSWORD
 # - SUPABASE_PROJECT_REF (optional override; project ID fallback is configured)
 #
 # Runtime readiness is verified through /api/finance-governance/readiness
@@ -44,7 +43,6 @@ jobs:
         id: check
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF || secrets.SUPABASE_PROJECT_ID || 'zeyguilldygozufpgxms' }}
         run: |
           if [ -n "$VERCEL_TOKEN" ] && [ -n "$VERCEL_ORG_ID" ] && [ -n "$VERCEL_PROJECT_ID" ]; then
@@ -55,9 +53,9 @@ jobs:
             echo "⚠ Vercel management secrets missing — offline env-var-check will be skipped"
           fi
 
-          if [ -n "${SUPABASE_ACCESS_TOKEN:-}" ] && [ -n "${SUPABASE_DB_PASSWORD:-}" ] && [ -n "${SUPABASE_PROJECT_REF:-}" ]; then
+          if [ -n "${SUPABASE_ACCESS_TOKEN:-}" ] && [ -n "${SUPABASE_PROJECT_REF:-}" ]; then
             echo "has_supabase=true" >> $GITHUB_OUTPUT
-            echo "✓ Supabase migration secrets available"
+            echo "✓ Supabase passwordless migration access available"
           else
             echo "has_supabase=false" >> $GITHUB_OUTPUT
             echo "⚠ Supabase migration secrets missing — db-migration-check will be skipped"
@@ -192,32 +190,45 @@ jobs:
     if: needs.preflight-secrets-check.outputs.has_supabase == 'true'
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF || secrets.SUPABASE_PROJECT_ID || 'zeyguilldygozufpgxms' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Supabase CLI
-        run: npm install -g supabase
+      - name: Install pinned Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: 2.116.0
 
-      - name: Link to Supabase project
-        run: supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+      - name: Link to Supabase project without a database password
+        run: supabase link --project-ref "$SUPABASE_PROJECT_REF" --yes
 
       - name: Check pending migrations
         id: migration_check
         run: |
-          OUTPUT=$(supabase db push --dry-run 2>&1 || true)
+          set +e
+          OUTPUT=$(supabase db push --linked --dry-run --yes 2>&1)
+          EXIT_CODE=$?
+          set -e
           echo "$OUTPUT" | tee /tmp/migration_output.txt
+
+          if [ "$EXIT_CODE" -ne 0 ]; then
+            echo "status=fail" >> $GITHUB_OUTPUT
+            echo "✗ Supabase migration check failed with exit code $EXIT_CODE"
+            exit "$EXIT_CODE"
+          fi
 
           if echo "$OUTPUT" | grep -q "No pending migrations"; then
             echo "status=pass" >> $GITHUB_OUTPUT
             echo "✓ All migrations applied"
-          elif echo "$OUTPUT" | grep -q "pending"; then
-            echo "status=warn" >> $GITHUB_OUTPUT
-            echo "⚠ Pending migrations found"
+          elif echo "$OUTPUT" | grep -Eq "Would push migration|Applying migration"; then
+            echo "status=fail" >> $GITHUB_OUTPUT
+            echo "✗ Pending migrations found"
+            exit 1
           else
-            echo "status=pass" >> $GITHUB_OUTPUT
+            echo "status=fail" >> $GITHUB_OUTPUT
+            echo "✗ Unrecognized Supabase migration check output"
+            exit 1
           fi
 
       - name: Generate migration summary
