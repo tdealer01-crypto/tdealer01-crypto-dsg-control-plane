@@ -75,7 +75,7 @@ jobs:
           - lane: W1-B
             repo: tdealer01-crypto/tdealer01-crypto-dsg-control-plane
             branch: main
-            required_commit: 0ba2cafd14f22dc53594a435041d709d094bbe19
+            required_commit: 011cf0b60f85adf273908aa71b929549a18d9c07
           - lane: W1-C
             repo: tdealer01-crypto/dsg-one-v1
             branch: feat/governed-improvement-runtime
