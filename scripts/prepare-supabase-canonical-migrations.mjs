@@ -63,7 +63,8 @@ export async function prepareCanonicalMigrations({ ledger, migrationsDir, quaran
     .filter((entry) => entry.isFile() && entry.name.endsWith('.sql'))
     .map((entry) => entry.name)
     .sort();
-  const localByVersion = new Map();
+  const canonicalFound = new Set();
+  const pendingByVersion = new Map();
   const keptCanonicalNames = [];
   const pendingNames = [];
   const quarantinedNames = [];
@@ -75,14 +76,15 @@ export async function prepareCanonicalMigrations({ ledger, migrationsDir, quaran
       continue;
     }
     const [, version, migrationName] = match;
-    assert(!localByVersion.has(version), `duplicate local migration version ${version}: ${localByVersion.get(version)}, ${name}`, 'DUPLICATE_LOCAL_VERSION');
-    localByVersion.set(version, name);
-
     if (canonicalByVersion.has(version)) {
       const canonicalName = canonicalByVersion.get(version);
       assert(migrationName === canonicalName, `canonical name mismatch for ${version}: expected ${canonicalName}, found ${migrationName}`, 'CANONICAL_NAME_MISMATCH', { canonicalName, name, version });
+      assert(!canonicalFound.has(version), `duplicate canonical migration version ${version}`, 'DUPLICATE_CANONICAL_VERSION', { name, version });
+      canonicalFound.add(version);
       keptCanonicalNames.push(name);
     } else if (version.localeCompare(canonical.remoteHead) > 0) {
+      assert(!pendingByVersion.has(version), `duplicate pending migration version ${version}: ${pendingByVersion.get(version)}, ${name}`, 'DUPLICATE_PENDING_VERSION', { name, version });
+      pendingByVersion.set(version, name);
       pendingNames.push(name);
     } else {
       quarantinedNames.push(name);
@@ -90,7 +92,7 @@ export async function prepareCanonicalMigrations({ ledger, migrationsDir, quaran
   }
 
   const missing = canonical.migrations
-    .filter(({ version }) => !localByVersion.has(version))
+    .filter(({ version }) => !canonicalFound.has(version))
     .map(({ version, name }) => `${version}_${name}.sql`);
   assert(missing.length === 0, `Local source is missing ${missing.length} canonical remote migrations: ${missing.join(', ')}`, 'MISSING_CANONICAL_MIGRATIONS', { missing });
 

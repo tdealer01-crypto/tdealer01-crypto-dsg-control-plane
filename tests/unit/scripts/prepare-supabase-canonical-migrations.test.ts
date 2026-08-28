@@ -29,6 +29,7 @@ describe('canonical Supabase migration preparation', () => {
       writeFile(join(migrationsDir, '20260817081058_canonical_one.sql'), 'select 1;'),
       writeFile(join(migrationsDir, '20260823124642_canonical_two.sql'), 'select 2;'),
       writeFile(join(migrationsDir, '20260701000000_legacy.sql'), 'select 3;'),
+      writeFile(join(migrationsDir, '20260701000000_legacy_duplicate.sql'), 'select 3;'),
       writeFile(join(migrationsDir, '20260825083000_pending.sql'), 'select 4;'),
       writeFile(join(migrationsDir, 'invalid_name.sql'), 'select 5;'),
     ]);
@@ -39,8 +40,12 @@ describe('canonical Supabase migration preparation', () => {
       '20260823124642_canonical_two.sql',
       '20260825083000_pending.sql',
     ]);
-    expect(await readdir(quarantineDir)).toEqual(['20260701000000_legacy.sql', 'invalid_name.sql']);
-    expect(evidence).toMatchObject({ canonicalCount: 2, pendingCount: 1, quarantinedCount: 2, ready: true });
+    expect(await readdir(quarantineDir)).toEqual([
+      '20260701000000_legacy.sql',
+      '20260701000000_legacy_duplicate.sql',
+      'invalid_name.sql',
+    ]);
+    expect(evidence).toMatchObject({ canonicalCount: 2, pendingCount: 1, quarantinedCount: 3, ready: true });
   });
 
   it('fails closed when canonical source is missing', async () => {
