@@ -71,21 +71,28 @@ jobs:
           - lane: W1-A
             repo: tdealer01-crypto/dsg-unified-data-monitoring
             branch: integration/unified-monitoring-e2e
+            required_commit: ''
           - lane: W1-B
             repo: tdealer01-crypto/tdealer01-crypto-dsg-control-plane
-            branch: feat/agentic-org-orchestrator
+            branch: main
+            required_commit: 011cf0b60f85adf273908aa71b929549a18d9c07
           - lane: W1-C
             repo: tdealer01-crypto/dsg-one-v1
             branch: feat/governed-improvement-runtime
+            required_commit: ''
           - lane: W1-E
             repo: tdealer01-crypto/DSG-Cinema-Proof-Agent
             branch: feat/improvement-proof-adapter
+            required_commit: ''
     steps:
       - name: Resolve lane ref fail-closed
         shell: bash
         run: |
           set -euo pipefail
-          url="https://api.github.com/repos/${{ matrix.repo }}/git/ref/heads/${{ matrix.branch }}"
+          repo="${{ matrix.repo }}"
+          branch="${{ matrix.branch }}"
+          required_commit="${{ matrix.required_commit }}"
+          url="https://api.github.com/repos/${repo}/git/ref/heads/${branch}"
           code=$(curl -sS -o ref.json -w '%{http_code}' \
             -H 'Accept: application/vnd.github+json' "$url")
           if [ "$code" != "200" ]; then
@@ -94,7 +101,25 @@ jobs:
             exit 1
           fi
           sha=$(node -e "const x=require('./ref.json'); process.stdout.write(x.object.sha)")
-          echo "lane=${{ matrix.lane }} status=REF_READY sha=$sha" | tee lane-status.txt
+
+          if [ -n "$required_commit" ]; then
+            compare_url="https://api.github.com/repos/${repo}/compare/${required_commit}...${branch}"
+            compare_code=$(curl -sS -o compare.json -w '%{http_code}' \
+              -H 'Accept: application/vnd.github+json' "$compare_url")
+            if [ "$compare_code" != "200" ]; then
+              echo "lane=${{ matrix.lane }} status=BLOCKED_REQUIRED_COMMIT_CHECK http=$compare_code required_commit=$required_commit" | tee lane-status.txt
+              cat compare.json || true
+              exit 1
+            fi
+            compare_status=$(node -e "const x=require('./compare.json'); process.stdout.write(x.status)")
+            if [ "$compare_status" != "ahead" ] && [ "$compare_status" != "identical" ]; then
+              echo "lane=${{ matrix.lane }} status=BLOCKED_REQUIRED_COMMIT_NOT_MERGED compare_status=$compare_status required_commit=$required_commit" | tee lane-status.txt
+              exit 1
+            fi
+            echo "lane=${{ matrix.lane }} status=MERGED_REF_READY sha=$sha required_commit=$required_commit compare_status=$compare_status" | tee lane-status.txt
+          else
+            echo "lane=${{ matrix.lane }} status=REF_READY sha=$sha" | tee lane-status.txt
+          fi
 
   private-agi-checkpoint:
     name: W1-D private AGI implementation checkpoint
