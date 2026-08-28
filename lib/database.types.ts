@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.4"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
@@ -3091,6 +3091,66 @@ export type Database = {
           },
         ]
       }
+      dsg_audit_events: {
+        Row: {
+          action_kind: string
+          adapter_kind: string
+          agent_id: string
+          attempt_number: number
+          created_at: string
+          current_hash: string
+          decision: string
+          event_type: string
+          evidence_hash: string | null
+          execution_id: string
+          id: string
+          metadata: Json
+          occurred_at: string
+          owner_open_id: string
+          policy_version: string
+          previous_hash: string | null
+          status: string
+        }
+        Insert: {
+          action_kind: string
+          adapter_kind: string
+          agent_id: string
+          attempt_number?: number
+          created_at?: string
+          current_hash: string
+          decision: string
+          event_type: string
+          evidence_hash?: string | null
+          execution_id: string
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          owner_open_id: string
+          policy_version: string
+          previous_hash?: string | null
+          status: string
+        }
+        Update: {
+          action_kind?: string
+          adapter_kind?: string
+          agent_id?: string
+          attempt_number?: number
+          created_at?: string
+          current_hash?: string
+          decision?: string
+          event_type?: string
+          evidence_hash?: string | null
+          execution_id?: string
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          owner_open_id?: string
+          policy_version?: string
+          previous_hash?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       dsg_audit_exports: {
         Row: {
           created_at: string
@@ -4104,6 +4164,92 @@ export type Database = {
         }
         Relationships: []
       }
+      dsg_guarded_evidence: {
+        Row: {
+          action: string
+          action_hash: string
+          agent_identity: string
+          channel: string
+          control_hash: string
+          created_at: string
+          decision: string
+          evidence_hash: string
+          evidence_id: string
+          finished_at: string | null
+          idempotency_key: string
+          label: string
+          mutation_status: string
+          output_sha256: string | null
+          outputs: string
+          parameters: string
+          plan_hash: string
+          plan_id: string
+          recorded_at: string
+          started_at: string | null
+          step_id: string | null
+          target: string
+          tenant_id: string
+        }
+        Insert: {
+          action: string
+          action_hash: string
+          agent_identity: string
+          channel: string
+          control_hash: string
+          created_at?: string
+          decision: string
+          evidence_hash: string
+          evidence_id: string
+          finished_at?: string | null
+          idempotency_key: string
+          label: string
+          mutation_status: string
+          output_sha256?: string | null
+          outputs?: string
+          parameters?: string
+          plan_hash: string
+          plan_id: string
+          recorded_at: string
+          started_at?: string | null
+          step_id?: string | null
+          target: string
+          tenant_id: string
+        }
+        Update: {
+          action?: string
+          action_hash?: string
+          agent_identity?: string
+          channel?: string
+          control_hash?: string
+          created_at?: string
+          decision?: string
+          evidence_hash?: string
+          evidence_id?: string
+          finished_at?: string | null
+          idempotency_key?: string
+          label?: string
+          mutation_status?: string
+          output_sha256?: string | null
+          outputs?: string
+          parameters?: string
+          plan_hash?: string
+          plan_id?: string
+          recorded_at?: string
+          started_at?: string | null
+          step_id?: string | null
+          target?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dsg_guarded_evidence_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_revenue_accounts"
+            referencedColumns: ["account_id"]
+          },
+        ]
+      }
       dsg_input_locks: {
         Row: {
           canonical_input: Json
@@ -4944,6 +5090,152 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      dsg_revenue_accounts: {
+        Row: {
+          account_id: string
+          activation_ref: string | null
+          channel: string
+          created_at: string
+          display_name: string
+          hard_cap_units: number | null
+          key_id: string
+          mode: string
+          payment_linked: boolean
+          plan: string
+          secret_hash: string
+          status: string
+          stripe_customer_id: string | null
+          stripe_field_event_created: Json
+          stripe_paid_amounts_micros: Json
+          stripe_paid_invoice_ids: Json
+          stripe_processed_event_ids: Json
+          stripe_subscription_id: string | null
+          unit_price_micros: number | null
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          activation_ref?: string | null
+          channel: string
+          created_at: string
+          display_name: string
+          hard_cap_units?: number | null
+          key_id: string
+          mode: string
+          payment_linked?: boolean
+          plan: string
+          secret_hash: string
+          status: string
+          stripe_customer_id?: string | null
+          stripe_field_event_created?: Json
+          stripe_paid_amounts_micros?: Json
+          stripe_paid_invoice_ids?: Json
+          stripe_processed_event_ids?: Json
+          stripe_subscription_id?: string | null
+          unit_price_micros?: number | null
+          updated_at: string
+        }
+        Update: {
+          account_id?: string
+          activation_ref?: string | null
+          channel?: string
+          created_at?: string
+          display_name?: string
+          hard_cap_units?: number | null
+          key_id?: string
+          mode?: string
+          payment_linked?: boolean
+          plan?: string
+          secret_hash?: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_field_event_created?: Json
+          stripe_paid_amounts_micros?: Json
+          stripe_paid_invoice_ids?: Json
+          stripe_processed_event_ids?: Json
+          stripe_subscription_id?: string | null
+          unit_price_micros?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      dsg_revenue_ledger_entries: {
+        Row: {
+          account_id: string
+          amount_micros: number
+          channel: string
+          context_hash: string
+          entry_hash: string
+          idempotency_key: string
+          period: string
+          previous_hash: string
+          proof_hash: string
+          quantity: number
+          recorded_at: string
+          sequence: number
+          sku: string
+          unit_price_micros: number
+          units_before: number
+        }
+        Insert: {
+          account_id: string
+          amount_micros: number
+          channel: string
+          context_hash: string
+          entry_hash: string
+          idempotency_key: string
+          period: string
+          previous_hash: string
+          proof_hash: string
+          quantity: number
+          recorded_at: string
+          sequence: number
+          sku: string
+          unit_price_micros: number
+          units_before: number
+        }
+        Update: {
+          account_id?: string
+          amount_micros?: number
+          channel?: string
+          context_hash?: string
+          entry_hash?: string
+          idempotency_key?: string
+          period?: string
+          previous_hash?: string
+          proof_hash?: string
+          quantity?: number
+          recorded_at?: string
+          sequence?: number
+          sku?: string
+          unit_price_micros?: number
+          units_before?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dsg_revenue_ledger_entries_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_revenue_accounts"
+            referencedColumns: ["account_id"]
+          },
+        ]
+      }
+      dsg_revenue_schema_migrations: {
+        Row: {
+          applied_at: string
+          version: number
+        }
+        Insert: {
+          applied_at?: string
+          version: number
+        }
+        Update: {
+          applied_at?: string
+          version?: number
+        }
+        Relationships: []
       }
       dsg_reviewer_allowlist: {
         Row: {
@@ -10153,6 +10445,134 @@ export type Database = {
           updated_at?: string
           verified_at?: string | null
           worker_wallet_address?: string | null
+        }
+        Relationships: []
+      }
+      trinity_revenue_agents: {
+        Row: {
+          agent_cost_usd: number
+          agent_name: string
+          cpu_usage: number | null
+          created_at: string
+          id: string
+          jobs_processed: number | null
+          trinity_revenue_record_id: string | null
+        }
+        Insert: {
+          agent_cost_usd: number
+          agent_name: string
+          cpu_usage?: number | null
+          created_at?: string
+          id?: string
+          jobs_processed?: number | null
+          trinity_revenue_record_id?: string | null
+        }
+        Update: {
+          agent_cost_usd?: number
+          agent_name?: string
+          cpu_usage?: number | null
+          created_at?: string
+          id?: string
+          jobs_processed?: number | null
+          trinity_revenue_record_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trinity_revenue_agents_trinity_revenue_record_id_fkey"
+            columns: ["trinity_revenue_record_id"]
+            isOneToOne: false
+            referencedRelation: "trinity_revenue_records"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trinity_revenue_records: {
+        Row: {
+          agent_count: number
+          context_sharing: number | null
+          created_at: string
+          fragmentation_risk: number | null
+          healthy_agents: number | null
+          id: string
+          metrics_json: Json | null
+          organization_id: string
+          period_end: string
+          period_start: string
+          source: string
+          status: string
+          total_amount_usd: number
+          updated_at: string
+        }
+        Insert: {
+          agent_count: number
+          context_sharing?: number | null
+          created_at?: string
+          fragmentation_risk?: number | null
+          healthy_agents?: number | null
+          id?: string
+          metrics_json?: Json | null
+          organization_id: string
+          period_end: string
+          period_start: string
+          source?: string
+          status?: string
+          total_amount_usd: number
+          updated_at?: string
+        }
+        Update: {
+          agent_count?: number
+          context_sharing?: number | null
+          created_at?: string
+          fragmentation_risk?: number | null
+          healthy_agents?: number | null
+          id?: string
+          metrics_json?: Json | null
+          organization_id?: string
+          period_end?: string
+          period_start?: string
+          source?: string
+          status?: string
+          total_amount_usd?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      trinity_revenue_sync_state: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          last_successful_sync: string | null
+          last_sync_attempt: string | null
+          last_sync_period: string | null
+          last_sync_record_count: number | null
+          last_sync_total_cost: number | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          last_successful_sync?: string | null
+          last_sync_attempt?: string | null
+          last_sync_period?: string | null
+          last_sync_record_count?: number | null
+          last_sync_total_cost?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          last_successful_sync?: string | null
+          last_sync_attempt?: string | null
+          last_sync_period?: string | null
+          last_sync_record_count?: number | null
+          last_sync_total_cost?: number | null
+          status?: string
+          updated_at?: string
         }
         Relationships: []
       }
