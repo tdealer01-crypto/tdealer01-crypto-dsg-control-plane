@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   bindDeploymentToPromotion,
   deploymentRecordMatchesReceipt,
+  DEPLOYMENT_PREFLIGHT_MESSAGE,
   DEPLOYMENT_RECORD_SCHEMA_VERSION,
+  evaluateDeploymentPreflightTarget,
   isDeploymentRecordRequest,
   type DeploymentRecordRequest,
   type PersistedDeploymentRecordRow,
@@ -45,6 +47,38 @@ function receiptRow(overrides: Partial<PersistedPromotionReceiptRow> = {}): Pers
     ...overrides,
   };
 }
+
+describe('deployment preflight target', () => {
+  it('uses a stable HMAC message shared with the deployment workflow', () => {
+    expect(DEPLOYMENT_PREFLIGHT_MESSAGE).toBe('dsg-deployment-preflight-v1');
+  });
+
+  it('passes only for an enabled bound provider with a rollback slot', () => {
+    expect(evaluateDeploymentPreflightTarget({
+      provider: 'AZURE',
+      productionDeployEnabled: true,
+      rollbackTarget: 'staging',
+    })).toEqual([]);
+  });
+
+  it('blocks the canonical UNBOUND target before cloud mutation', () => {
+    const failures = evaluateDeploymentPreflightTarget({
+      provider: 'UNBOUND',
+      productionDeployEnabled: false,
+      rollbackTarget: null,
+    });
+    expect(failures).toContain('PRODUCTION_TARGET_UNBOUND');
+    expect(failures).toContain('DEPLOYMENT_ROLLBACK_TARGET_MISSING');
+  });
+
+  it('blocks a nominally enabled target with no rollback slot', () => {
+    expect(evaluateDeploymentPreflightTarget({
+      provider: 'AZURE',
+      productionDeployEnabled: true,
+      rollbackTarget: '',
+    })).toContain('DEPLOYMENT_ROLLBACK_TARGET_MISSING');
+  });
+});
 
 describe('isDeploymentRecordRequest', () => {
   it('accepts a well-formed request', () => {
