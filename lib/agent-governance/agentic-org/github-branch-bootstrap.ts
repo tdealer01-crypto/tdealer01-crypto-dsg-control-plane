@@ -1,6 +1,6 @@
 import { Octokit } from '@octokit/rest';
 
-const ALLOWED_REPOSITORIES = new Set([
+export const ALLOWED_REPOSITORIES = new Set([
   'tdealer01-crypto/tdealer01-crypto-dsg-control-plane',
   'tdealer01-crypto/dsg-one-v1',
   'tdealer01-crypto/dsg-agi-simulation',

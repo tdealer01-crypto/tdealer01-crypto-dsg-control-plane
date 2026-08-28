@@ -7,6 +7,7 @@ import {
   type CinemaEnvelopeBindingProof,
   type CinemaRawEvidenceProof,
 } from '@/lib/agent-governance/agentic-org/promotion-packet';
+import { verifyCandidateProvenance } from '@/lib/agent-governance/agentic-org/candidate-lineage';
 
 export const dynamic = 'force-dynamic';
 
@@ -94,6 +95,29 @@ export async function POST(request: NextRequest) {
 
   const receipt = result.receipt;
   const envelope = result.rawBinding.envelope;
+
+  // Everything above checks internal consistency of what the caller sent.
+  // This is the independent check: it asks GitHub directly whether the
+  // approved plan, and the candidate commit's lineage/diff scope, actually
+  // match what the envelope claims. See candidate-lineage.ts for why this
+  // exists and what it does and does not verify.
+  const lineageFailures = await verifyCandidateProvenance(
+    envelope.targetRepository,
+    envelope.baselineCommit,
+    envelope.candidateCommit,
+    envelope.allowedPaths,
+    envelope.approvedPlanHash,
+  );
+  if (lineageFailures.length > 0) {
+    return NextResponse.json({
+      status: 'BLOCK',
+      reason: 'PROMOTION_PROVENANCE_NOT_VERIFIED',
+      gate: result.gate,
+      lineageFailures,
+      receipt: null,
+    }, { status: 409 });
+  }
+
   const supabase = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
