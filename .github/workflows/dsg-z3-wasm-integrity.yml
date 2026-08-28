@@ -1,0 +1,41 @@
+name: DSG Z3 WASM Integrity
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/dsg-exact-mcp-runtime-proof
+    paths:
+      - .github/workflows/dsg-z3-wasm-integrity.yml
+
+permissions:
+  contents: read
+
+jobs:
+  hash-pinned-wasm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Install pinned z3-solver and hash WASM
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/z3-integrity" evidence/dsg-exact-mcp-runtime
+          cd "$RUNNER_TEMP/z3-integrity"
+          npm init -y >/dev/null
+          npm install --ignore-scripts --no-audit --no-fund z3-solver@5.2.0
+          WASM=node_modules/z3-solver/build/z3-built.wasm
+          test -f "$WASM"
+          SIZE=$(stat -c '%s' "$WASM")
+          SHA=$(sha256sum "$WASM" | awk '{print $1}')
+          printf '{"package":"z3-solver","version":"5.2.0","asset":"build/z3-built.wasm","sizeBytes":%s,"sha256":"%s"}\n' "$SIZE" "$SHA" | tee "$GITHUB_WORKSPACE/evidence/dsg-exact-mcp-runtime/z3-wasm-integrity.json"
+          echo "Z3_WASM_SHA256=$SHA" >> "$GITHUB_STEP_SUMMARY"
+          echo "Z3_WASM_SIZE=$SIZE" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload integrity evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: dsg-z3-wasm-integrity
+          path: evidence/dsg-exact-mcp-runtime/z3-wasm-integrity.json
+          if-no-files-found: error
+          retention-days: 30
