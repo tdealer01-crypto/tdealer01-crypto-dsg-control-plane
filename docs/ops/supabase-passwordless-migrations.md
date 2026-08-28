@@ -8,7 +8,12 @@ Hosted Supabase migrations use the CLI's temporary login role. GitHub Actions no
 - `SUPABASE_PROJECT_REF` or `SUPABASE_PROJECT_ID`: optional project selector. The canonical control-plane project ref is the checked-in fallback.
 - Supabase CLI `2.116.0`: pinned because this release restores the `postgres` role correctly in passwordless migration sessions.
 
-The workflows intentionally never pass `--include-all`. Normal `db push` therefore applies migrations newer than the remote migration head and does not replay older local-only history.
+The workflows intentionally never pass `--include-all`. Before `db push`,
+`scripts/prepare-supabase-canonical-migrations.mjs` verifies the checked-in
+remote ledger snapshot, keeps its exact files plus migrations newer than the
+remote head, and quarantines legacy local-only files in runner temporary
+storage. Normal `db push` therefore applies only new canonical migrations and
+does not replay divergent historical files.
 
 ## Workflows
 
@@ -44,3 +49,10 @@ Instead, recover `version`, `name`, and `statements` from
 timestamped files. The seven files from `20260817081058` through
 `20260823124642` were restored this way on 2026-08-28. This lets `db push`
 compare the ledger honestly and preserves full replay for a fresh database.
+
+`supabase/canonical-migration-ledger.json` records the canonical version/name
+pairs observed from the linked project. Preparation fails if a canonical file
+is missing, duplicated, or renamed. Files older than the recorded remote head
+that are not in that ledger are preserved in git but excluded only inside the
+ephemeral hosted runner. The names-only preparation evidence is uploaded with
+the migration run.

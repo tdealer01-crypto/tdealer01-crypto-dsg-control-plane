@@ -203,6 +203,14 @@ jobs:
       - name: Link to Supabase project without a database password
         run: supabase link --project-ref "$SUPABASE_PROJECT_REF" --yes
 
+      - name: Stage canonical migration ledger
+        run: |
+          node scripts/prepare-supabase-canonical-migrations.mjs \
+            --ledger supabase/canonical-migration-ledger.json \
+            --migrations-dir supabase/migrations \
+            --quarantine-dir "$RUNNER_TEMP/dsg-supabase-legacy-local-only" \
+            --evidence-out "$RUNNER_TEMP/dsg-supabase-ledger-preparation.json"
+
       - name: Check pending migrations
         id: migration_check
         run: |

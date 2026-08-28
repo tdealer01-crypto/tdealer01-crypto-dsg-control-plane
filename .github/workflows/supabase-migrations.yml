@@ -89,6 +89,15 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: supabase link --project-ref "$SUPABASE_PROJECT_REF" --yes
 
+      - name: Stage canonical migration ledger
+        id: canonical_ledger
+        run: |
+          node scripts/prepare-supabase-canonical-migrations.mjs \
+            --ledger supabase/canonical-migration-ledger.json \
+            --migrations-dir supabase/migrations \
+            --quarantine-dir "$RUNNER_TEMP/dsg-supabase-legacy-local-only" \
+            --evidence-out "$RUNNER_TEMP/dsg-supabase-ledger-preparation.json"
+
       - name: Run database migrations with temporary login role
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
@@ -98,3 +107,12 @@ jobs:
         if: failure()
         run: |
           echo "::error::Database migration failed. Check logs and recovery steps in docs/RUNBOOK_DEPLOY.md"
+
+      - name: Upload canonical-ledger evidence
+        if: always() && steps.canonical_ledger.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: supabase-canonical-ledger-${{ github.run_id }}
+          path: ${{ runner.temp }}/dsg-supabase-ledger-preparation.json
+          if-no-files-found: error
+          retention-days: 30
