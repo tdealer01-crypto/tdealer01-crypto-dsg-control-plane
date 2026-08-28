@@ -10,6 +10,9 @@ import {
 
 export const dynamic = 'force-dynamic';
 
+/** Signed in place of a request body, since the preflight is a GET. Must match the deploy job. */
+const DEPLOYMENT_PREFLIGHT_MESSAGE = 'dsg-deployment-preflight-v1';
+
 function safeEqualHex(left: string, right: string): boolean {
   if (!/^[0-9a-f]+$/i.test(left) || !/^[0-9a-f]+$/i.test(right)) return false;
   const a = Buffer.from(left, 'hex');
@@ -22,6 +25,72 @@ function verifySignature(rawBody: string, header: string | null, secret: string)
   const supplied = header.replace(/^sha256=/i, '').trim();
   const expected = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
   return safeEqualHex(supplied, expected);
+}
+
+/**
+ * Deployment preflight for the governed candidate deploy job.
+ *
+ * The deploy job in dsg-agi-simulation mutates real Azure infrastructure: it
+ * builds an image, publishes it to a slot, and swaps that slot into
+ * production. Without this, the first time the Control Plane could refuse the
+ * deployment was POST below -- after the swap had already happened. The job
+ * now calls this first and only touches Azure when it answers PASS.
+ *
+ * It deliberately reports the bound slot so the caller can compare it against
+ * its own AZURE_DEPLOYMENT_SLOT. A slot mismatch means the rollback adapter
+ * would later swap a different slot than the one deployed to, which is the one
+ * way a "successful" rollback can silently restore the wrong build.
+ *
+ * Authenticated with the same secret as POST, over the fixed string
+ * DEPLOYMENT_PREFLIGHT_MESSAGE -- there is no body to sign on a GET. This
+ * returns only configuration the caller is about to act on; no promotion,
+ * deployment, or database state is read or disclosed.
+ */
+export async function GET(request: NextRequest) {
+  const secret = process.env.DSG_PROMOTION_EVALUATION_SECRET;
+  if (!secret) {
+    return NextResponse.json({
+      status: 'BLOCK',
+      reason: 'DEPLOYMENT_RECORD_NOT_CONFIGURED',
+      missing: ['DSG_PROMOTION_EVALUATION_SECRET'],
+    }, { status: 503 });
+  }
+
+  if (!verifySignature(DEPLOYMENT_PREFLIGHT_MESSAGE, request.headers.get('x-dsg-signature'), secret)) {
+    return NextResponse.json({ status: 'BLOCK', reason: 'DEPLOYMENT_PREFLIGHT_SIGNATURE_INVALID' }, { status: 401 });
+  }
+
+  const target = productionTargetJson as ProductionTargetSnapshot;
+  if (target.provider === 'UNBOUND' || target.productionDeployEnabled !== true) {
+    return NextResponse.json({
+      status: 'BLOCK',
+      reason: 'PRODUCTION_TARGET_UNBOUND',
+      provider: target.provider,
+      productionDeployEnabled: target.productionDeployEnabled === true,
+      deploymentSlot: target.rollbackTarget ?? null,
+    }, { status: 409 });
+  }
+
+  // A bound target with no rollback slot would let a deploy proceed with no
+  // way back, so it is refused here rather than at rollback time.
+  if (typeof target.rollbackTarget !== 'string' || target.rollbackTarget.length === 0) {
+    return NextResponse.json({
+      status: 'BLOCK',
+      reason: 'PRODUCTION_TARGET_ROLLBACK_SLOT_MISSING',
+      provider: target.provider,
+      productionDeployEnabled: true,
+      deploymentSlot: null,
+    }, { status: 409 });
+  }
+
+  return NextResponse.json({
+    status: 'PASS',
+    reason: 'DEPLOYMENT_PREFLIGHT_OK',
+    provider: target.provider,
+    productionDeployEnabled: true,
+    deploymentSlot: target.rollbackTarget,
+    healthProbe: target.healthProbe ?? null,
+  });
 }
 
 /**
