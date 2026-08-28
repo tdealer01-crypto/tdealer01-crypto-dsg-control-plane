@@ -34,7 +34,8 @@ export type CinemaBindingFailureCode =
   | 'CINEMA_PROOF_HAS_FAILURES'
   | 'CINEMA_CANDIDATE_COMMIT_MISMATCH'
   | 'CINEMA_RAW_EVIDENCE_NOT_VERIFIED'
-  | 'CINEMA_RAW_ARTIFACT_DIGESTS_INCOMPLETE';
+  | 'CINEMA_RAW_ARTIFACT_DIGESTS_INCOMPLETE'
+  | 'CINEMA_RAW_ARTIFACT_DIGEST_MISMATCH';
 
 export interface CinemaBindingFailure {
   code: CinemaBindingFailureCode;
@@ -139,13 +140,29 @@ export function bindCinemaRawEvidenceProof(
       message: 'Cinema did not verify the raw evidence bytes.',
     });
   }
-  const requiredDigests = ['metric', 'test_output', 'build_output'];
-  if (requiredDigests.some((kind) => !proof.artifactDigests[kind])) {
-    failures.push({
-      code: 'CINEMA_RAW_ARTIFACT_DIGESTS_INCOMPLETE',
-      message: 'Metric, test and build raw artifact digests are required.',
-    });
+
+  const requiredDigests = ['metric', 'test_output', 'build_output'] as const;
+  for (const kind of requiredDigests) {
+    const proofDigest = proof.artifactDigests[kind];
+    const envelopeEvidence = envelope.evidence.find((item) => item.kind === kind);
+    const envelopeDigest = envelopeEvidence?.sha256;
+
+    if (!proofDigest || !envelopeDigest) {
+      failures.push({
+        code: 'CINEMA_RAW_ARTIFACT_DIGESTS_INCOMPLETE',
+        message: `Raw ${kind} digest must exist in both the Cinema proof and canonical envelope evidence.`,
+      });
+      continue;
+    }
+
+    if (proofDigest !== envelopeDigest) {
+      failures.push({
+        code: 'CINEMA_RAW_ARTIFACT_DIGEST_MISMATCH',
+        message: `Cinema ${kind} digest does not match the canonical envelope evidence digest.`,
+      });
+    }
   }
+
   if (failures.length > 0) {
     return { ok: false, failures, verificationLevel: 'BLOCKED', rawEvidenceVerified: false };
   }
