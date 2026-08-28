@@ -1,4 +1,8 @@
 # 🔐 DSG ONE: Control Plane for AI Operations# Source of Truth
+> [!IMPORTANT]
+> **Production platform authority — Azure only.** Vercel, Render, Railway, AWS, and Google Cloud are retired for DSG production; legacy URLs, checks, and statuses are not deployment or health evidence.
+> Runtime secrets belong in Azure Key Vault and are resolved by the service Managed Identity. GitHub OIDC may bootstrap or rotate them; `.env.example` is documentation only. Any unresolved Key Vault reference is `BLOCK`.
+> See [`docs/ops/azure-runtime-env-sync.md`](docs/ops/azure-runtime-env-sync.md).
 
 > **The source of truth is the current. implementation in this repository.**
 
@@ -88,7 +92,7 @@ Do not treat this policy as evidence that existing capabilities work. Run the ap
 >
 > **Monitor** every action. **Verify** before execution. **Audit** and replay proof. **Optimize** costs and risk.
 >
-> [▶️ Try DSG ONE Free](showcase/) | [📊 View Benchmarks](BENCHMARKS.md) | Live: https://tdealer01-crypto-dsg-control-plane.vercel.app
+> [▶️ Try DSG ONE Free](showcase/) | [📊 View Benchmarks](BENCHMARKS.md) | Live: https://dsg-control-plane.azurewebsites.net
 
 **One-Sentence Pitch:** Write a policy once ("Only allow transfers under ฿50K"). DSG ONE gates every AI decision against it, proves why it decided, and exports tamper-proof evidence for audits.
 
@@ -365,7 +369,7 @@ npm run benchmark:gateway:compare
 
 ```bash
 # Go/No-Go gate check
-npm run go:no-go https://tdealer01-crypto-dsg-control-plane.vercel.app
+npm run go:no-go https://dsg-control-plane.azurewebsites.net
 
 # Production manifest verification
 npm run verify:production-manifest
@@ -417,14 +421,14 @@ Evidence for claims comes from:
 ### CI/CD & Deployment
 
 * GitHub Actions workflows in `.github/workflows/`
-* Vercel deployment logs and build artifacts
+* Vercel (retired) deployment logs and build artifacts
 * Runtime status from production API endpoints
 
 ### Live Runtime Proof
 
 ```bash
 # Production health check
-curl -fsSL https://tdealer01-crypto-dsg-control-plane.vercel.app/api/agent/status
+curl -fsSL https://dsg-control-plane.azurewebsites.net/api/agent/status
 
 # Response includes:
 # - Deployed commit hash
@@ -435,7 +439,7 @@ curl -fsSL https://tdealer01-crypto-dsg-control-plane.vercel.app/api/agent/statu
 
 ***
 
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript)](https://www.typescriptlang.org/) [![Build](https://img.shields.io/badge/Build-Pass-brightgreen)](https://vercel.com) [![Security](https://img.shields.io/badge/Security-0%20Critical-brightgreen)](docs/SECURITY.md) [![License](https://img.shields.io/badge/License-MIT-blue)](LICENSE/) [![CodeQL](https://img.shields.io/badge/CodeQL-Pass-brightgreen)](https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/security/code-scanning)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript)](https://www.typescriptlang.org/) [![Build](https://img.shields.io/badge/Build-Pass-brightgreen)](https://learn.microsoft.com/en-us/azure/app-service/) [![Security](https://img.shields.io/badge/Security-0%20Critical-brightgreen)](docs/SECURITY.md) [![License](https://img.shields.io/badge/License-MIT-blue)](LICENSE/) [![CodeQL](https://img.shields.io/badge/CodeQL-Pass-brightgreen)](https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/security/code-scanning)
 
 ***
 
@@ -646,10 +650,10 @@ Agent frameworks help you **run** REVIEW or BLOCK, never ALLOW. Policy can be wr
 | **Tests**                            | ✅ **4026** passing / 0 failing | +1412 tests added (July 2026). CCVS evidence run, Z3 theorem proofs, webhook tests, agent gates                                                                           |
 | **Code Coverage**                    | ✅ **21.58%** overall           | Critical modules: Z3 (95%), Stripe (92%), Auth (91%), Validation (83%), Usage (100%)                                                                                      |
 | **Security**                         | ✅                              | 0 critical/high vulnerabilities, CodeQL clean, JWT spoofing prevented, ReDoS/XSS fixed                                                                                    |
-| **Deployment**                       | ✅                              | Vercel production-ready, auto-deploy from main (CI/CD gated)                                                                                                              |
+| **Deployment**                       | ✅                              | Vercel (retired) production-ready, auto-deploy from main (CI/CD gated)                                                                                                              |
 | **CI/CD**                            | ✅                              | GitHub Secrets configured (Supabase, Stripe, Anthropic), all checks passing                                                                                               |
 | **Z3 Formal Solver**                 | ✅ **COMPLETE**                 | 5 safety theorems proved, 6 Python files deployed, hybrid solver API live                                                                                                 |
-| **Delivery Proof Revenue**           | ✅ **LIVE**                     | $99 product, live on Vercel, Stripe → Claude → Email pipeline working                                                                                                     |
+| **Delivery Proof Revenue**           | ✅ **LIVE**                     | $99 product, live on Vercel (retired), Stripe → Claude → Email pipeline working                                                                                                     |
 | **Enterprise Features**              | ✅                              | PR #963 merged: Phases 1-3 (SAML/OIDC, SCIM, RBAC, SOC 2, workload identity)                                                                                              |
 | **RBAC & SSO**                       | ✅                              | Production-ready role-based access control with custom roles, SAML 2.0 + OIDC federation                                                                                  |
 | **Audit & Compliance**               | ✅                              | Full audit trails with correlation IDs, SOC 2 Type II mapping, incident response playbook                                                                                 |
@@ -690,7 +694,7 @@ All 6 Python Z3 files present and verified on production:
 ### Integration
 
 * TypeScript bridge: `lib/dsg/logic/z3-agent-gate.ts` (spawns Python subprocess)
-* API endpoint: `POST /api/dsg/v1/solver/hybrid/evaluate` (live on Vercel)
+* API endpoint: `POST /api/dsg/v1/solver/hybrid/evaluate` (live on Vercel (retired))
 * Hybrid solver: Z3 + Ising with intelligent switching
 * Proof recording: Z3 proof hash in `ai_audit_logs` table
 
@@ -709,7 +713,7 @@ All 6 Python Z3 files present and verified on production:
 | **Proof Consistency**   | **100%** ✓           | Deterministic proof output verified       |
 | **Deterministic Score** | **100%** ✓           | Replay test: same input → same output     |
 | **Fallback Rate**       | **50%**              | As designed (Z3 timeout → Ising advisory) |
-| **Status**              | ✅ Operational        | Live on Vercel, production load tested    |
+| **Status**              | ✅ Operational        | Live on Vercel (retired), production load tested    |
 
 **See Also:** [Z3\_FORMAL\_SOLVER\_README.md](docs/Z3_FORMAL_SOLVER_README.md) for complete implementation details.
 
@@ -752,7 +756,7 @@ A $99 USD delivery audit service powered by Claude AI with formal verification.
 * **API response time:** < 500ms
 * **Email delivery:** 99% within 1 minute
 * **Proof generation:** \~11ms average via Z3 gate
-* **Availability:** 99.9% (Vercel SLA)
+* **Availability:** 99.9% (Vercel (retired) SLA)
 
 **See Also:** [Delivery Proof Documentation](docs/delivery-proof.md)
 
@@ -991,7 +995,7 @@ Comprehensive enterprise-grade features for DSG ONE to compete in the cloud mark
 * **Build** — 193 static pages generated successfully
 * **Tests** — 3578/3578 CCVS tests passing
 * **Security** — CodeQL clean, npm audit high-level clean, error handlers validated
-* **Deployment** — Vercel Ready, commit 3054674 deployed to production
+* **Deployment** — Vercel (retired) Ready, commit 3054674 deployed to production
 
 ### Live Features
 
@@ -1320,7 +1324,7 @@ Comprehensive revenue automation system with billing webhook processing, Stripe 
   * Credential verification (Stripe, Supabase, Anthropic)
   * Build & TypeScript checks
   * Test discovery and execution
-  * Vercel CLI authentication check
+  * Vercel (retired) CLI authentication check
   * Staging/production deployment guidance
 
 ### Production Ready ✅
@@ -1329,7 +1333,7 @@ Comprehensive revenue automation system with billing webhook processing, Stripe 
 * **TypeScript:** ✅ PASS (0 errors)
 * **Tests:** ✅ 4 suites created and verified
 * **Security:** ✅ RLS policies, logging, rate limiting deployed
-* **Deployment:** ✅ Merged to main, Vercel auto-deploy activated
+* **Deployment:** ✅ Merged to main, Vercel (retired) auto-deploy activated
 
 ### Verification Complete ✅
 
@@ -1373,7 +1377,7 @@ npm run dev
 npm test
 ```
 
-**Deploy to Vercel (1 click):** [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/import/project?template=https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane)
+**Vercel (retired) one-click deployment is retired. Production deployment requires governed Azure evidence.**
 
 ***
 
@@ -1383,7 +1387,7 @@ npm test
 
 ```bash
 # 1. Get JWT Token (exchange credentials for token)
-curl -X POST https://tdealer01-crypto-dsg-control-plane.vercel.app/api/auth/login \
+curl -X POST https://dsg-control-plane.azurewebsites.net/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com",
@@ -1403,7 +1407,7 @@ curl -X POST https://tdealer01-crypto-dsg-control-plane.vercel.app/api/auth/logi
 # 2. Use JWT token with authenticated API routes
 TOKEN="eyJhbGc..."
 curl -H "Authorization: Bearer $TOKEN" \
-  https://tdealer01-crypto-dsg-control-plane.vercel.app/api/executions
+  https://dsg-control-plane.azurewebsites.net/api/executions
 
 # 3. Token is validated by middleware and passed to route handlers
 # Response includes org-scoped data based on authenticated user
@@ -1486,13 +1490,13 @@ curl -H "Authorization: Bearer $TOKEN" \
   * XSS protection (SAML metadata endpoint)
   * Error message leakage removed (solver routes)
   * CodeQL: 2 high-severity alerts → 0 remaining
-* **Verification:** TypeScript ✅ | Build (193 pages) ✅ | Tests (3578/3578) ✅ | Security ✅ | Vercel Ready ✅
+* **Verification:** TypeScript ✅ | Build (193 pages) ✅ | Tests (3578/3578) ✅ | Security ✅ | Vercel (retired) Ready ✅
 * **Live Endpoints:** RBAC `/api/admin/roles`, SSO `/api/admin/sso/config`, SCIM `/api/scim/v2/users`, Usage `/api/dashboard/usage`, Audit `/api/admin/audit-trail`
 * **Public Pages:** `/public/security`, `/public/compliance`, `/public/support`
 
 ✅ **PR #951: Public Third-Party Test System** (Deployed Production)
 
-* **Live URL:** https://tdealer01-crypto-dsg-control-plane.vercel.app/public/test
+* **Live URL:** https://dsg-control-plane.azurewebsites.net/public/test
 * **Purpose:** Public API for third-party arbiter count validation testing with auditable proof chain
 * **Features:**
   * Interactive test UI with slider controls (0-5 arbiter range)
@@ -1509,7 +1513,7 @@ curl -H "Authorization: Bearer $TOKEN" \
   * RLS policy: Public read access, server-only writes
   * Integer validation + range checks (0-5) for audit evidence reproducibility
 * **Testing:** All 7 architectural issues resolved, 812+ integration tests passing, 3516+ CCVS evidence tests passing
-* **Status:** ✅ Production-ready, Supabase migration applied, Vercel deployed
+* **Status:** ✅ Production-ready, Supabase migration applied, Vercel (retired) deployed
 
 ✅ **Issue #3: Arbiter Count Validation Security Fix** (PR #952 #953 Merged)
 
@@ -1519,7 +1523,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 * **Test Coverage:** 9 comprehensive failure test cases covering all edge cases (41 total tests passing)
 * **Developer Guide:** New [DSG.md](DSG.md) with 24-section architectural guide (required pre-read for contributors)
 * **Evidence:** CCVS L1-L5 passing (3502+ tests), 0 vulnerabilities, all security checks green
-* **Deployment:** Live on main (commit 3b705f70), auto-deployed by Vercel CI/CD pipeline
+* **Deployment:** Live on main (commit 3b705f70), auto-deployed by Vercel (retired) CI/CD pipeline
 
 ✅ **DSG.md — Developer Guide** (Included in PR #952)
 
@@ -1530,9 +1534,9 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ✅ **MCP Integration Guide** (PR #930 Merged)
 
-* Comprehensive reference for 4 MCP integrations (PostHog, Supabase, Vercel, AWS Marketplace)
+* Comprehensive reference for 4 MCP integrations (PostHog, Supabase, Vercel (retired), AWS Marketplace)
 * 101+ tools documented with setup, auth, usage patterns, and troubleshooting
-* Live production data examples: 50+ PostHog tools, 25+ Supabase tools, 15+ Vercel tools, 11+ AWS tools
+* Live production data examples: 50+ PostHog tools, 25+ Supabase tools, 15+ Vercel (retired) tools, 11+ AWS tools
 * Security: Centralized error handling, no error-message leakage
 * All CI checks passed: security ✅, CCVS evidence ✅, CodeQL ✅, e2e tests ✅
 * [Read the Guide](docs/MCP_INTEGRATION_GUIDE.md)
@@ -1555,7 +1559,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 * 4 interfaces in 1: Dashboard tab, Chat tab, CLI reference, API docs
 * Supabase JWT auth (+ mock auth for demo)
 * Auto-refresh every 10s; responsive dark mode UI
-* Deploy in <5 min: Vercel (3 min), Docker (5 min), Local dev (npm run dev)
+* Deploy in <5 min: Vercel (retired) (3 min), Docker (5 min), Local dev (npm run dev)
 * Dashboard: [apps/trinity-dashboard/](apps/trinity-dashboard/) | Quick Start: [README](apps/trinity-dashboard/)
 
 ✅ **Trinity × DSG Agents Phase 5 Integration** (Merged to main)
@@ -1656,7 +1660,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 **Complete & Deployed:**
 
 * ✅ **MCP (Model Context Protocol)** — 5+ production MCPs with 130+ tools
-  * [Setup Guide](docs/MCP_INTEGRATION_GUIDE.md) | PostHog (50+ tools) + Supabase (25+ tools) + Vercel (15+ tools) + AWS Marketplace (11+ tools) + DSG ONE (30+ tools)
+  * [Setup Guide](docs/MCP_INTEGRATION_GUIDE.md) | PostHog (50+ tools) + Supabase (25+ tools) + Vercel (retired) (15+ tools) + AWS Marketplace (11+ tools) + DSG ONE (30+ tools)
   * Production-tested: Analytics, database management, deployment monitoring, solution discovery, governance decisions, compliance evidence
   * All security checks passed, comprehensive troubleshooting included
 * ✅ **Trinity Dashboard UI** — Real-time agent control plane (Chat + Dashboard + CLI + API)
@@ -1691,4 +1695,4 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 Apache License 2.0 — [See LICENSE](LICENSE/)
 
-**Latest:** ✅ Enterprise Features (PR #963) merged to main · ✅ SAML/OIDC + SCIM provisioning live · ✅ SOC 2 Type II mapping complete · ✅ Public pages deployed (security/compliance/support) · ✅ CodeQL security fixes applied (ReDoS + XSS) · ✅ Production deployment ready (Vercel, 3578 tests passing, 0 critical vulnerabilities)
+**Latest:** ✅ Enterprise Features (PR #963) merged to main · ✅ SAML/OIDC + SCIM provisioning live · ✅ SOC 2 Type II mapping complete · ✅ Public pages deployed (security/compliance/support) · ✅ CodeQL security fixes applied (ReDoS + XSS) · ✅ Production deployment ready (Vercel (retired), 3578 tests passing, 0 critical vulnerabilities)
