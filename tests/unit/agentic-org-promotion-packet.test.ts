@@ -125,6 +125,26 @@ describe('Cinema promotion packet binding', () => {
     }
   });
 
+  it('blocks raw proof when a Cinema digest differs from canonical envelope evidence', () => {
+    const result = evaluateRawPromotionPacket(
+      candidate(),
+      structuralProof(),
+      rawProof({
+        artifactDigests: {
+          metric: '9'.repeat(64),
+          test_output: '2'.repeat(64),
+          build_output: '3'.repeat(64),
+        },
+      }),
+    );
+    expect(result.rawEvidenceVerified).toBe(false);
+    expect(result.gate).toBeNull();
+    expect(result.rawBinding?.ok).toBe(false);
+    if (result.rawBinding && !result.rawBinding.ok) {
+      expect(result.rawBinding.failures.map((failure) => failure.code)).toContain('CINEMA_RAW_ARTIFACT_DIGEST_MISMATCH');
+    }
+  });
+
   it('blocks a response that claims raw verification while still carrying verifier failures', () => {
     const result = bindCinemaRawEvidenceProof(candidate(), rawProof({ failures: ['RAW_ARTIFACT_DIGEST_MISMATCH:metric'] }));
     expect(result.ok).toBe(false);
