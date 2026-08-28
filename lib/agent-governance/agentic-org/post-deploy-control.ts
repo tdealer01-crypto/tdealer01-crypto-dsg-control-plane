@@ -97,7 +97,7 @@ export interface PostDeployControlResult {
 
 const SHA256 = /^[0-9a-f]{64}$/i;
 const COMMIT = /^[0-9a-f]{40}$/i;
-const ALLOWED_ROLLBACK_ADAPTERS = new Set(['AWS', 'GCLOUD', 'DOCKER']);
+const ALLOWED_ROLLBACK_ADAPTERS = new Set(['AWS', 'GCLOUD', 'DOCKER', 'AZURE']);
 
 function stableHash(value: unknown): string {
   return crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');
