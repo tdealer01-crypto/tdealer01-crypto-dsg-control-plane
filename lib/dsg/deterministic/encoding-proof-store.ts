@@ -131,6 +131,43 @@ export async function persistEncodingProof(input: {
   throw storeError('insert', error);
 }
 
+/**
+ * Read one proof by its public proof id, scoped to the authenticated
+ * organization. The duplicated relational columns are cross-checked against
+ * the persisted JSON proof so a corrupted/inconsistent row never becomes an
+ * authority response.
+ */
+export async function getPersistedEncodingProof(input: {
+  organizationId: string;
+  proofId: string;
+}): Promise<EncodingProof | null> {
+  const db = admin();
+  const { data, error } = await db
+    .from('dsg_encoding_proofs')
+    .select('problem_id,encoding_type,encoding_hash,proof_id,proof_hash,proof')
+    .eq('organization_id', input.organizationId)
+    .eq('proof_id', input.proofId)
+    .maybeSingle();
+
+  if (error) throw storeError('lookup_proof_id', error);
+  if (!data) return null;
+
+  const proof = data.proof as EncodingProof;
+  const rowMatchesProof =
+    String(data.proof_id) === input.proofId &&
+    proof?.proofId === String(data.proof_id) &&
+    proof?.proofHash === String(data.proof_hash) &&
+    proof?.encodingHash === String(data.encoding_hash) &&
+    proof?.subject?.problemId === String(data.problem_id) &&
+    proof?.subject?.encodingType === String(data.encoding_type);
+
+  if (!rowMatchesProof) {
+    throw new Error('encoding_proof_store:lookup_integrity:row_proof_mismatch');
+  }
+
+  return proof;
+}
+
 export async function getEncodingProofChainHead(
   organizationId: string,
 ): Promise<Pick<StoredRow, 'proof_hash' | 'sequence'> | null> {
