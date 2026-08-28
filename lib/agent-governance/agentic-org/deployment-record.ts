@@ -15,6 +15,7 @@
 import type { PromotionReceipt } from './post-deploy-control';
 
 export const DEPLOYMENT_RECORD_SCHEMA_VERSION = 'dsg-deployment-record-v1' as const;
+export const DEPLOYMENT_PREFLIGHT_MESSAGE = 'dsg-deployment-preflight-v1' as const;
 
 const COMMIT = /^[0-9a-f]{40}$/i;
 const SHA256 = /^[0-9a-f]{64}$/i;
@@ -46,6 +47,29 @@ export type DeploymentRecordFailureCode =
   | 'DEPLOYMENT_RECORD_PAYLOAD_INVALID'
   | 'DEPLOYMENT_PROVIDER_MISMATCH'
   | 'DEPLOYMENT_PROMOTION_BINDING_MISMATCH';
+
+export type DeploymentPreflightFailureCode =
+  | 'PRODUCTION_TARGET_UNBOUND'
+  | 'DEPLOYMENT_ROLLBACK_TARGET_MISSING';
+
+export interface DeploymentPreflightTarget {
+  provider: string;
+  productionDeployEnabled: boolean;
+  rollbackTarget: string | null;
+}
+
+export function evaluateDeploymentPreflightTarget(
+  target: DeploymentPreflightTarget,
+): DeploymentPreflightFailureCode[] {
+  const failures: DeploymentPreflightFailureCode[] = [];
+  if (target.provider === 'UNBOUND' || target.productionDeployEnabled !== true) {
+    failures.push('PRODUCTION_TARGET_UNBOUND');
+  }
+  if (typeof target.rollbackTarget !== 'string' || target.rollbackTarget.trim().length === 0) {
+    failures.push('DEPLOYMENT_ROLLBACK_TARGET_MISSING');
+  }
+  return failures;
+}
 
 export function isDeploymentRecordRequest(value: unknown): value is DeploymentRecordRequest {
   if (!value || typeof value !== 'object') return false;
