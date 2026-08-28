@@ -28,3 +28,19 @@ After a migration run:
 4. Do not treat a workflow success alone as application E2E proof.
 
 For a self-hosted database or a direct PostgreSQL connection, use a separate credentialed workflow. Do not add a hosted database password back to these workflows.
+
+## Shared migration ledger recovery
+
+The linked project is also used by governed DSG services outside this
+repository. A successful passwordless connection can therefore still stop with
+`Remote migration versions not found in local migrations directory` when an
+external service applied DDL but its exact ledger files were never committed
+here.
+
+Do not run `migration repair --status reverted` for migrations that are visibly
+present in the live schema. That rewrites history rather than restoring source.
+Instead, recover `version`, `name`, and `statements` from
+`supabase_migrations.schema_migrations`, review the DDL, and commit the exact
+timestamped files. The seven files from `20260817081058` through
+`20260823124642` were restored this way on 2026-08-28. This lets `db push`
+compare the ledger honestly and preserves full replay for a fresh database.
