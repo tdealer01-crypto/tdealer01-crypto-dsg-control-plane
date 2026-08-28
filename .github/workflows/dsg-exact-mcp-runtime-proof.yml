@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 env:
-  BASE_URL: https://dsg-exact-mcp-runtime-wniyu0.v2.appdeploy.ai
+  BASE_URL: https://api-v2.appdeploy.ai/app/dsg-exact-mcp-runtime-wniyu0
   MCP_VERSION: '2026-07-28'
 
 jobs:
