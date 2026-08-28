@@ -1,0 +1,16 @@
+[
+  {
+    "name": "WEBSITES_ENABLE_APP_SERVICE_STORAGE",
+    "slotSetting": false,
+    "value": "false"
+  },
+  {
+    "name": "DOCKER_REGISTRY_SERVER_URL",
+    "slotSetting": false,
+    "value": "https://dsgcp50aaef839.azurecr.io"
+  },
+  {
+    "name": "DOCKER_CUSTOM_IMAGE_NAME",
+    "value": "DOCKER|dsgcp50aaef839.azurecr.io/dsg-control-plane:011cf0b60f85"
+  }
+]
