@@ -1,0 +1,9 @@
+{
+  "name": "dsg-exact-mcp-render",
+  "private": true,
+  "version": "0.4.0",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": { "start": "node server.mjs" },
+  "dependencies": { "z3-solver": "5.2.0" }
+}
