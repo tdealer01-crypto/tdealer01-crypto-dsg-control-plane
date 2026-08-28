@@ -1,0 +1,130 @@
+name: Azure Production Topology Proof
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/azure-topology-proof.yml'
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  topology-proof:
+    name: Discover Azure runtime bindings
+    runs-on: ubuntu-latest
+    environment: prod
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Validate Azure OIDC bindings
+        shell: bash
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID || vars.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID || vars.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID || vars.AZURE_SUBSCRIPTION_ID }}
+        run: |
+          set -euo pipefail
+          missing=()
+          [[ -n "${AZURE_CLIENT_ID:-}" ]] || missing+=(AZURE_CLIENT_ID)
+          [[ -n "${AZURE_TENANT_ID:-}" ]] || missing+=(AZURE_TENANT_ID)
+          [[ -n "${AZURE_SUBSCRIPTION_ID:-}" ]] || missing+=(AZURE_SUBSCRIPTION_ID)
+          if (( ${#missing[@]} > 0 )); then
+            printf 'AZURE_OIDC_BINDING=BLOCK missing=%s\n' "$(IFS=,; echo "${missing[*]}")"
+            exit 2
+          fi
+          echo 'AZURE_OIDC_BINDING=PASS'
+
+      - name: Login to Azure with GitHub OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID || vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID || vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID || vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Discover production resources and binding names
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/azure-topology-proof.txt"
+          : > "$out"
+
+          echo '=== WEB_APPS ===' | tee -a "$out"
+          az webapp list --only-show-errors \
+            --query '[].{name:name,resourceGroup:resourceGroup,host:defaultHostName,state:state}' \
+            --output tsv | tee -a "$out"
+
+          echo '=== CONTAINER_APPS ===' | tee -a "$out"
+          mapfile -t container_ids < <(az resource list --resource-type Microsoft.App/containerApps \
+            --only-show-errors --query '[].id' --output tsv)
+          for id in "${container_ids[@]:-}"; do
+            [[ -n "$id" ]] || continue
+            az resource show --ids "$id" --only-show-errors \
+              --query '{name:name,resourceGroup:resourceGroup,host:properties.configuration.ingress.fqdn}' \
+              --output tsv | tee -a "$out"
+          done
+
+          echo '=== KEY_VAULTS_AND_SECRET_NAMES ===' | tee -a "$out"
+          mapfile -t vaults < <(az keyvault list --only-show-errors --query '[].name' --output tsv)
+          for vault in "${vaults[@]:-}"; do
+            [[ -n "$vault" ]] || continue
+            echo "VAULT $vault" | tee -a "$out"
+            if ! names=$(az keyvault secret list --vault-name "$vault" --only-show-errors --query '[].name' --output tsv 2>/dev/null); then
+              echo '  SECRET_NAME_ACCESS=DENIED' | tee -a "$out"
+              continue
+            fi
+            while IFS= read -r name; do
+              [[ -n "$name" ]] && printf '  %s\n' "$name" | tee -a "$out"
+            done <<< "$names"
+          done
+
+          echo '=== WEB_APP_SETTING_NAMES ===' | tee -a "$out"
+          while IFS=$'\t' read -r app rg; do
+            [[ -n "$app" && -n "$rg" ]] || continue
+            echo "APP $app RG $rg" | tee -a "$out"
+            if ! names=$(az webapp config appsettings list --resource-group "$rg" --name "$app" \
+              --only-show-errors --query '[].name' --output tsv 2>/dev/null); then
+              echo '  APPSETTING_NAME_ACCESS=DENIED' | tee -a "$out"
+              continue
+            fi
+            while IFS= read -r name; do
+              [[ -n "$name" ]] && printf '  %s\n' "$name" | tee -a "$out"
+            done <<< "$names"
+          done < <(az webapp list --only-show-errors --query '[].[name,resourceGroup]' --output tsv)
+
+          echo '=== CONTAINER_APP_ENV_NAMES ===' | tee -a "$out"
+          for id in "${container_ids[@]:-}"; do
+            [[ -n "$id" ]] || continue
+            name=$(az resource show --ids "$id" --only-show-errors --query name --output tsv)
+            rg=$(az resource show --ids "$id" --only-show-errors --query resourceGroup --output tsv)
+            echo "APP $name RG $rg" | tee -a "$out"
+            az resource show --ids "$id" --only-show-errors \
+              --query 'properties.template.containers[].env[].name' --output tsv 2>/dev/null | \
+              while IFS= read -r envname; do
+                [[ -n "$envname" ]] && printf '  %s\n' "$envname" | tee -a "$out"
+              done || true
+          done
+
+          echo '=== AIMO_BINDING_NAME_MATCHES ===' | tee -a "$out"
+          grep -Ei 'DSG_(AIMO|AGI_SIMULATION|CINEMA_PROOF|CONTROL_PLANE)|AIMO|SIMULATION|CINEMA' "$out" | \
+            sort -u | tee -a "$out.matches" || true
+          if [[ -s "$out.matches" ]]; then
+            cat "$out.matches" | tee -a "$out"
+          else
+            echo 'NO_MATCHING_BINDING_NAMES_FOUND' | tee -a "$out"
+          fi
+
+          echo 'AZURE_TOPOLOGY_DISCOVERY=PASS values_not_read=true' | tee -a "$out"
+
+      - name: Upload topology evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: azure-topology-proof-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/azure-topology-proof.txt
+          if-no-files-found: error
+          retention-days: 7
