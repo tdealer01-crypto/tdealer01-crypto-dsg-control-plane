@@ -1,4 +1,4 @@
-name: Apply Supabase Migrations
+name: Apply Supabase Migrations (Governed Sentinel)
 
 on:
   workflow_dispatch:
@@ -6,54 +6,49 @@ on:
 permissions:
   contents: read
 
-env:
-  SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF || secrets.SUPABASE_PROJECT_ID || 'zeyguilldygozufpgxms' }}
-
 jobs:
-  migrate:
-    name: Push migrations to Supabase
+  migration-authority:
+    name: Enforce governed migration authority
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-
+    timeout-minutes: 5
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install pinned Supabase CLI
-        uses: supabase/setup-cli@v2
-        with:
-          version: 2.116.0
-
-      - name: Validate Supabase access
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      - name: Block standalone remote database mutation
+        shell: bash
         run: |
-          test -n "${SUPABASE_ACCESS_TOKEN:-}" || { echo "::error::Missing SUPABASE_ACCESS_TOKEN repository secret"; exit 1; }
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const target = JSON.parse(fs.readFileSync('config/production-deployment-target.json', 'utf8'));
+          const canonicalUnbound =
+            target.schemaVersion === 'dsg.production-target.v1' &&
+            target.provider === 'UNBOUND' &&
+            target.status === 'BLOCKED_UNTIL_BOUND' &&
+            target.productionDeployEnabled === false &&
+            target.deploymentAdapter === null &&
+            target.healthProbe === null &&
+            target.rollbackTarget === null &&
+            target.rollbackAdapterEndpoint === null &&
+            target.boundAt === null;
 
-      - name: Link project without a database password
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-        run: supabase link --project-ref "$SUPABASE_PROJECT_REF" --yes
+          if (!canonicalUnbound) {
+            console.error('BLOCK_STANDALONE_SUPABASE_MUTATION: manual workflow has no production mutation authority.');
+            process.exit(1);
+          }
 
-      - name: Stage canonical migration ledger
-        id: canonical_ledger
-        run: |
-          node scripts/prepare-supabase-canonical-migrations.mjs \
-            --ledger supabase/canonical-migration-ledger.json \
-            --migrations-dir supabase/migrations \
-            --quarantine-dir "$RUNNER_TEMP/dsg-supabase-legacy-local-only" \
-            --evidence-out "$RUNNER_TEMP/dsg-supabase-ledger-preparation.json"
-
-      - name: Push migrations with temporary login role
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-        run: supabase db push --linked --yes
-
-      - name: Upload canonical-ledger evidence
-        if: always() && steps.canonical_ledger.outcome == 'success'
-        uses: actions/upload-artifact@v4
-        with:
-          name: supabase-canonical-ledger-${{ github.run_id }}
-          path: ${{ runner.temp }}/dsg-supabase-ledger-preparation.json
-          if-no-files-found: error
-          retention-days: 30
+          const summary = [
+            '## Manual Supabase migration request',
+            '',
+            '- status: `NOT_RUN_PRODUCTION_UNBOUND`',
+            '- provider: `UNBOUND`',
+            '- productionDeployEnabled: `false`',
+            '- mutation: `NONE`',
+            '- authority: `DSG_CONTROL_PLANE`',
+            '',
+            'This legacy manual entry point is a sentinel only. Remote database mutation is not authorized here.',
+          ].join('\n');
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${summary}\n`);
+          console.log('NOT_RUN_PRODUCTION_UNBOUND');
+          NODE
