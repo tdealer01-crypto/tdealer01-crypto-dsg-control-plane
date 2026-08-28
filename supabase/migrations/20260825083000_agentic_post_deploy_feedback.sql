@@ -1,6 +1,8 @@
 -- Durable, service-role-only promotion/post-deploy evidence and baseline state.
 -- Simulation and Monitoring never become authority. Canonical ALLOW receipts,
 -- baseline commits and rollback execution are Control Plane responsibilities.
+-- This migration must be applied before enabling the promotion evaluation route;
+-- otherwise a verified ALLOW cannot be persisted and must fail closed.
 
 create table if not exists public.agentic_promotion_receipts (
   promotion_id text primary key,
