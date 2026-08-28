@@ -1,0 +1,392 @@
+name: Sync Azure Runtime Environment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: GitHub Environment used for Azure OIDC and optional one-time secret seeding
+        required: true
+        type: choice
+        options: [staging, prod]
+        default: prod
+      profile:
+        description: Smallest runtime contract to enforce
+        required: true
+        type: choice
+        options: [core, governed, rollback]
+        default: governed
+      slot:
+        description: Azure App Service slot to configure
+        required: true
+        type: choice
+        options: [staging, production]
+        default: production
+      secret_mode:
+        description: reference reuses Key Vault; seed writes or rotates values first
+        required: true
+        type: choice
+        options: [reference, seed]
+        default: reference
+      apply:
+        description: Apply after fail-closed preflight
+        required: true
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      environment: { required: true, type: string }
+      profile: { required: true, type: string }
+      slot: { required: true, type: string }
+      secret_mode: { required: false, type: string, default: reference }
+      apply: { required: true, type: boolean }
+    secrets:
+      AZURE_CLIENT_ID: { required: false }
+      AZURE_TENANT_ID: { required: false }
+      AZURE_SUBSCRIPTION_ID: { required: false }
+      APP_URL: { required: false }
+      NEXT_PUBLIC_APP_URL: { required: false }
+      DSG_ALLOWED_ORIGINS: { required: false }
+      NEXT_PUBLIC_SUPABASE_URL: { required: false }
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: { required: false }
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: { required: false }
+      SUPABASE_SERVICE_ROLE_KEY: { required: false }
+      NEXTAUTH_SECRET: { required: false }
+      DSG_CORE_MODE: { required: false }
+      READINESS_STRICT: { required: false }
+      UPSTASH_REDIS_REST_URL: { required: false }
+      UPSTASH_REDIS_REST_TOKEN: { required: false }
+      DSG_PROMOTION_EVALUATION_SECRET: { required: false }
+      DSG_POST_DEPLOY_FEEDBACK_SECRET: { required: false }
+      DSG_PRODUCTION_ROLLBACK_SECRET: { required: false }
+      DSG_GITHUB_AUTOMATION_TOKEN: { required: false }
+      AZURE_CLIENT_SECRET: { required: false }
+      DSG_AZURE_APP_SERVICE_MAP: { required: false }
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: azure-runtime-env-${{ inputs.environment }}-${{ inputs.slot }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: ${{ inputs.apply && 'Apply' || 'Preflight' }} ${{ inputs.profile }} ENV
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    timeout-minutes: 20
+    env:
+      AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP || 'rg-t.dealer01-0468' }}
+      AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME || 'dsg-control-plane' }}
+      AZURE_KEY_VAULT_NAME: ${{ vars.AZURE_KEY_VAULT_NAME || 'dsg-kv-tdealer01-0468' }}
+      AZURE_OIDC_PRINCIPAL_OBJECT_ID: ${{ vars.AZURE_OIDC_PRINCIPAL_OBJECT_ID }}
+    steps:
+      - name: Checkout exact source
+        uses: actions/checkout@v4
+
+      - name: Render fail-closed Key Vault contract
+        id: render
+        shell: bash
+        env:
+          PROFILE: ${{ inputs.profile }}
+          SECRET_MODE: ${{ inputs.secret_mode }}
+          DSG_ENV_APP_URL: ${{ secrets.APP_URL || vars.APP_URL }}
+          DSG_ENV_NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL || vars.NEXT_PUBLIC_APP_URL }}
+          DSG_ENV_DSG_ALLOWED_ORIGINS: ${{ secrets.DSG_ALLOWED_ORIGINS || vars.DSG_ALLOWED_ORIGINS }}
+          DSG_ENV_NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL }}
+          DSG_ENV_NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          DSG_ENV_NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          DSG_ENV_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DSG_ENV_NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          DSG_ENV_DSG_CORE_MODE: ${{ secrets.DSG_CORE_MODE || vars.DSG_CORE_MODE }}
+          DSG_ENV_READINESS_STRICT: ${{ secrets.READINESS_STRICT || vars.READINESS_STRICT }}
+          DSG_ENV_UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL || vars.UPSTASH_REDIS_REST_URL }}
+          DSG_ENV_UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+          DSG_ENV_DSG_PROMOTION_EVALUATION_SECRET: ${{ secrets.DSG_PROMOTION_EVALUATION_SECRET }}
+          DSG_ENV_DSG_POST_DEPLOY_FEEDBACK_SECRET: ${{ secrets.DSG_POST_DEPLOY_FEEDBACK_SECRET }}
+          DSG_ENV_DSG_PRODUCTION_ROLLBACK_SECRET: ${{ secrets.DSG_PRODUCTION_ROLLBACK_SECRET }}
+          DSG_ENV_DSG_GITHUB_AUTOMATION_TOKEN: ${{ secrets.DSG_GITHUB_AUTOMATION_TOKEN }}
+          DSG_ENV_AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID || vars.AZURE_TENANT_ID }}
+          DSG_ENV_AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID || vars.AZURE_CLIENT_ID }}
+          DSG_ENV_AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          DSG_ENV_AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID || vars.AZURE_SUBSCRIPTION_ID }}
+          DSG_ENV_AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP || 'rg-t.dealer01-0468' }}
+          DSG_ENV_DSG_AZURE_APP_SERVICE_MAP: ${{ secrets.DSG_AZURE_APP_SERVICE_MAP || vars.DSG_AZURE_APP_SERVICE_MAP }}
+        run: |
+          set -euo pipefail
+          settings_file="$RUNNER_TEMP/dsg-azure-appsettings.json"
+          vault_secrets_file="$RUNNER_TEMP/dsg-azure-vault-secrets.json"
+          evidence_file="$RUNNER_TEMP/dsg-azure-env-evidence.json"
+          node scripts/render-azure-key-vault-settings.mjs \
+            --contract config/azure-runtime-env.contract.json \
+            --profile "$PROFILE" \
+            --vault-name "$AZURE_KEY_VAULT_NAME" \
+            --secret-mode "$SECRET_MODE" \
+            --settings-out "$settings_file" \
+            --vault-secrets-out "$vault_secrets_file" \
+            --evidence-out "$evidence_file"
+          echo "settings_file=$settings_file" >> "$GITHUB_OUTPUT"
+          echo "vault_secrets_file=$vault_secrets_file" >> "$GITHUB_OUTPUT"
+          echo "evidence_file=$evidence_file" >> "$GITHUB_OUTPUT"
+
+      - name: Validate Azure OIDC binding
+        if: inputs.apply
+        shell: bash
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          SECRET_MODE: ${{ inputs.secret_mode }}
+        run: |
+          set -euo pipefail
+          test -n "${AZURE_CLIENT_ID:-}" || { echo '::error::Missing AZURE_CLIENT_ID'; exit 1; }
+          test -n "${AZURE_TENANT_ID:-}" || { echo '::error::Missing AZURE_TENANT_ID'; exit 1; }
+          test -n "${AZURE_SUBSCRIPTION_ID:-}" || { echo '::error::Missing AZURE_SUBSCRIPTION_ID'; exit 1; }
+          if [[ "$SECRET_MODE" == 'seed' ]]; then
+            test -n "${AZURE_OIDC_PRINCIPAL_OBJECT_ID:-}" || { echo '::error::seed mode requires AZURE_OIDC_PRINCIPAL_OBJECT_ID'; exit 1; }
+          fi
+
+      - name: Login to Azure with GitHub OIDC
+        if: inputs.apply
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Bootstrap Key Vault and Managed Identity
+        if: inputs.apply
+        id: bootstrap
+        shell: bash
+        env:
+          SLOT: ${{ inputs.slot }}
+          SECRET_MODE: ${{ inputs.secret_mode }}
+        run: |
+          set -euo pipefail
+          if ! az keyvault show --name "$AZURE_KEY_VAULT_NAME" --only-show-errors --output none 2>/dev/null; then
+            location="$(az group show --name "$AZURE_RESOURCE_GROUP" --query location --output tsv)"
+            az keyvault create \
+              --name "$AZURE_KEY_VAULT_NAME" \
+              --resource-group "$AZURE_RESOURCE_GROUP" \
+              --location "$location" \
+              --enable-rbac-authorization true \
+              --enable-purge-protection true \
+              --only-show-errors --output none
+          fi
+          vault_id="$(az keyvault show --name "$AZURE_KEY_VAULT_NAME" --query id --output tsv)"
+          slot_args=()
+          if [[ "$SLOT" == 'staging' ]]; then slot_args=(--slot staging); fi
+          principal_id="$(az webapp identity assign \
+            --resource-group "$AZURE_RESOURCE_GROUP" --name "$AZURE_WEBAPP_NAME" \
+            "${slot_args[@]}" --query principalId --output tsv)"
+          test -n "$principal_id" || { echo '::error::App Service Managed Identity has no principalId'; exit 1; }
+
+          assign_role() {
+            local object_id="$1" role="$2" assignment_output
+            if ! assignment_output="$(az role assignment create \
+              --assignee-object-id "$object_id" --assignee-principal-type ServicePrincipal \
+              --role "$role" --scope "$vault_id" --only-show-errors --output none 2>&1)"; then
+              if [[ "$assignment_output" != *RoleAssignmentExists* ]]; then
+                echo "::error::Unable to assign $role on Key Vault"
+                exit 1
+              fi
+            fi
+          }
+          assign_role "$principal_id" 'Key Vault Secrets User'
+          if [[ "$SECRET_MODE" == 'seed' ]]; then
+            assign_role "$AZURE_OIDC_PRINCIPAL_OBJECT_ID" 'Key Vault Secrets Officer'
+          fi
+
+          resource_id="$(az webapp show --resource-group "$AZURE_RESOURCE_GROUP" \
+            --name "$AZURE_WEBAPP_NAME" "${slot_args[@]}" --query id --output tsv)"
+          bootstrap_file="$RUNNER_TEMP/dsg-azure-key-vault-bootstrap.json"
+          BOOTSTRAP_FILE="$bootstrap_file" RESOURCE_ID="$resource_id" PRINCIPAL_ID="$principal_id" SLOT="$SLOT" \
+            node --input-type=module <<'NODE'
+          import { writeFile } from 'node:fs/promises';
+          const evidence = {
+            schemaVersion: 'dsg.azure-key-vault-bootstrap.v1',
+            vaultName: process.env.AZURE_KEY_VAULT_NAME,
+            resourceGroup: process.env.AZURE_RESOURCE_GROUP,
+            appService: process.env.AZURE_WEBAPP_NAME,
+            slot: process.env.SLOT,
+            appResourceId: process.env.RESOURCE_ID,
+            managedIdentityPrincipalId: process.env.PRINCIPAL_ID,
+            runtimeRole: 'Key Vault Secrets User',
+          };
+          await writeFile(process.env.BOOTSTRAP_FILE, `${JSON.stringify(evidence, null, 2)}\n`);
+          NODE
+          echo "resource_id=$resource_id" >> "$GITHUB_OUTPUT"
+          echo "bootstrap_file=$bootstrap_file" >> "$GITHUB_OUTPUT"
+
+      - name: Seed or rotate Key Vault secrets
+        if: inputs.apply && inputs.secret_mode == 'seed'
+        shell: bash
+        env:
+          VAULT_SECRETS_FILE: ${{ steps.render.outputs.vault_secrets_file }}
+        run: |
+          set -euo pipefail
+          umask 077
+          seed_dir="$RUNNER_TEMP/dsg-key-vault-seed"
+          mkdir -p "$seed_dir"
+          SEED_DIR="$seed_dir" node --input-type=module <<'NODE'
+          import { mkdir, readFile, writeFile } from 'node:fs/promises';
+          import { join } from 'node:path';
+          const records = JSON.parse(await readFile(process.env.VAULT_SECRETS_FILE, 'utf8'));
+          await mkdir(process.env.SEED_DIR, { recursive: true, mode: 0o700 });
+          const index = [];
+          for (const { secretName, value } of records) {
+            const file = join(process.env.SEED_DIR, `${secretName}.txt`);
+            await writeFile(file, value, { encoding: 'utf8', mode: 0o600 });
+            index.push({ secretName, file });
+          }
+          await writeFile(join(process.env.SEED_DIR, 'index.json'), `${JSON.stringify(index)}\n`, { mode: 0o600 });
+          NODE
+          while IFS=$'\t' read -r secret_name secret_file; do
+            az keyvault secret set --vault-name "$AZURE_KEY_VAULT_NAME" \
+              --name "$secret_name" --file "$secret_file" --encoding utf-8 \
+              --only-show-errors --output none
+          done < <(SEED_DIR="$seed_dir" node --input-type=module <<'NODE'
+          import { readFile } from 'node:fs/promises';
+          import { join } from 'node:path';
+          const index = JSON.parse(await readFile(join(process.env.SEED_DIR, 'index.json'), 'utf8'));
+          for (const { secretName, file } of index) process.stdout.write(`${secretName}\t${file}\n`);
+          NODE
+          )
+
+      - name: Apply references and non-secret App Settings
+        if: inputs.apply
+        shell: bash
+        env:
+          SETTINGS_FILE: ${{ steps.render.outputs.settings_file }}
+          SLOT: ${{ inputs.slot }}
+          RESOURCE_ID: ${{ steps.bootstrap.outputs.resource_id }}
+        run: |
+          set -euo pipefail
+          slot_args=()
+          if [[ "$SLOT" == 'staging' ]]; then slot_args=(--slot staging); fi
+          az webapp config appsettings set \
+            --resource-group "$AZURE_RESOURCE_GROUP" --name "$AZURE_WEBAPP_NAME" \
+            "${slot_args[@]}" --settings @"$SETTINGS_FILE" \
+            --only-show-errors --output none
+          az rest --method post \
+            --uri "https://management.azure.com${RESOURCE_ID}/config/configreferences/appsettings/refresh?api-version=2022-03-01" \
+            --only-show-errors --output none
+
+      - name: Verify settings and resolved Key Vault references
+        if: inputs.apply
+        id: verify
+        shell: bash
+        env:
+          SETTINGS_FILE: ${{ steps.render.outputs.settings_file }}
+          SLOT: ${{ inputs.slot }}
+          RESOURCE_ID: ${{ steps.bootstrap.outputs.resource_id }}
+        run: |
+          set -euo pipefail
+          slot_args=()
+          if [[ "$SLOT" == 'staging' ]]; then slot_args=(--slot staging); fi
+          umask 077
+          actual_file="$RUNNER_TEMP/dsg-azure-appsettings-actual.json"
+          references_file="$RUNNER_TEMP/dsg-azure-key-vault-references.json"
+          verification_file="$RUNNER_TEMP/dsg-azure-env-verification.json"
+          echo "verification_file=$verification_file" >> "$GITHUB_OUTPUT"
+          az webapp config appsettings list --resource-group "$AZURE_RESOURCE_GROUP" \
+            --name "$AZURE_WEBAPP_NAME" "${slot_args[@]}" \
+            --only-show-errors --output json > "$actual_file"
+
+          for attempt in $(seq 1 12); do
+            az rest --method get \
+              --uri "https://management.azure.com${RESOURCE_ID}/config/configreferences/appsettings?api-version=2026-07-15" \
+              --only-show-errors --output json > "$references_file"
+            if SETTINGS_FILE="$SETTINGS_FILE" REFERENCES_FILE="$references_file" node --input-type=module <<'NODE'
+            import { readFile } from 'node:fs/promises';
+            const expected = JSON.parse(await readFile(process.env.SETTINGS_FILE, 'utf8'))
+              .filter(({ value }) => String(value).startsWith('@Microsoft.KeyVault('))
+              .map(({ name }) => name);
+            const payload = JSON.parse(await readFile(process.env.REFERENCES_FILE, 'utf8'));
+            const byName = new Map((payload.value ?? []).map((record) => [
+              record.name ?? decodeURIComponent(String(record.id).split('/').at(-1)),
+              record.properties?.status,
+            ]));
+            process.exit(expected.every((name) => byName.get(name) === 'Resolved') ? 0 : 1);
+          NODE
+            then break; fi
+            if [[ "$attempt" == '12' ]]; then
+              echo '::error::One or more Azure Key Vault references did not resolve'
+              exit 1
+            fi
+            sleep 10
+          done
+
+          SETTINGS_FILE="$SETTINGS_FILE" ACTUAL_FILE="$actual_file" REFERENCES_FILE="$references_file" \
+            VERIFICATION_FILE="$verification_file" SLOT="$SLOT" node --input-type=module <<'NODE'
+          import { readFile, writeFile } from 'node:fs/promises';
+          const expectedRecords = JSON.parse(await readFile(process.env.SETTINGS_FILE, 'utf8'));
+          const actualRecords = JSON.parse(await readFile(process.env.ACTUAL_FILE, 'utf8'));
+          const references = JSON.parse(await readFile(process.env.REFERENCES_FILE, 'utf8'));
+          const actualByName = new Map(actualRecords.map(({ name, value }) => [name, String(value)]));
+          const expectedNames = expectedRecords.map(({ name }) => name).sort();
+          const missing = expectedNames.filter((name) => !actualByName.has(name));
+          const mismatched = expectedRecords
+            .filter(({ name, value }) => actualByName.has(name) && actualByName.get(name) !== String(value))
+            .map(({ name }) => name).sort();
+          const expectedReferenceNames = expectedRecords
+            .filter(({ value }) => String(value).startsWith('@Microsoft.KeyVault('))
+            .map(({ name }) => name).sort();
+          const referenceByName = new Map((references.value ?? []).map((record) => [
+            record.name ?? decodeURIComponent(String(record.id).split('/').at(-1)),
+            record.properties?.status ?? 'MissingStatus',
+          ]));
+          const referenceStatuses = expectedReferenceNames.map((name) => ({
+            name, status: referenceByName.get(name) ?? 'MissingReference',
+          }));
+          const unresolved = referenceStatuses.filter(({ status }) => status !== 'Resolved');
+          const evidence = {
+            schemaVersion: 'dsg.azure-key-vault-env-verification.v1',
+            vaultName: process.env.AZURE_KEY_VAULT_NAME,
+            appService: process.env.AZURE_WEBAPP_NAME,
+            slot: process.env.SLOT,
+            expectedNames,
+            missingNames: missing,
+            mismatchedNames: mismatched,
+            referenceStatuses,
+            verified: missing.length === 0 && mismatched.length === 0 && unresolved.length === 0,
+            truthBoundary: 'Resolved configuration does not prove health, readiness, image digest, promotion authority, or monitoring acceptance.',
+          };
+          await writeFile(process.env.VERIFICATION_FILE, `${JSON.stringify(evidence, null, 2)}\n`);
+          if (!evidence.verified) {
+            console.error(`Azure configuration verification failed. Missing: ${missing.join(', ') || '(none)'}; mismatched: ${mismatched.join(', ') || '(none)'}; unresolved: ${unresolved.map(({ name, status }) => `${name}:${status}`).join(', ') || '(none)'}`);
+            process.exit(1);
+          }
+          console.log(`Verified ${expectedNames.length} settings and ${referenceStatuses.length} resolved Key Vault references; values were not printed.`);
+          NODE
+
+      - name: Delete runner-local value files
+        if: always()
+        shell: bash
+        env:
+          SETTINGS_FILE: ${{ steps.render.outputs.settings_file }}
+          VAULT_SECRETS_FILE: ${{ steps.render.outputs.vault_secrets_file }}
+        run: |
+          for path in "$SETTINGS_FILE" "$VAULT_SECRETS_FILE" \
+            "$RUNNER_TEMP/dsg-azure-appsettings-actual.json" \
+            "$RUNNER_TEMP/dsg-azure-key-vault-references.json"; do
+            if [[ -n "${path:-}" && -f "$path" ]]; then shred -u "$path" 2>/dev/null || rm -f "$path"; fi
+          done
+          seed_dir="$RUNNER_TEMP/dsg-key-vault-seed"
+          if [[ -d "$seed_dir" ]]; then
+            find "$seed_dir" -type f -exec shred -u {} \; 2>/dev/null || true
+            rm -rf "$seed_dir"
+          fi
+
+      - name: Upload names-only evidence
+        if: always() && steps.render.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: azure-runtime-env-${{ inputs.environment }}-${{ inputs.profile }}-${{ github.run_id }}
+          path: |
+            ${{ steps.render.outputs.evidence_file }}
+            ${{ steps.bootstrap.outputs.bootstrap_file }}
+            ${{ steps.verify.outputs.verification_file }}
+          if-no-files-found: warn
+          retention-days: 30

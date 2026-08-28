@@ -233,7 +233,6 @@ jobs:
     environment: ${{ inputs.environment }}
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF || secrets.SUPABASE_PROJECT_ID || 'zeyguilldygozufpgxms' }}
     steps:
       - name: Checkout requested source
@@ -247,28 +246,37 @@ jobs:
         run: |
           set -euo pipefail
           test -n "${SUPABASE_ACCESS_TOKEN:-}" || { echo 'SUPABASE_ACCESS_TOKEN is not configured' >&2; exit 3; }
-          test -n "${SUPABASE_DB_PASSWORD:-}" || { echo 'SUPABASE_DB_PASSWORD is not configured' >&2; exit 3; }
           test -n "${SUPABASE_PROJECT_REF:-}" || { echo 'SUPABASE_PROJECT_REF is not configured' >&2; exit 3; }
           test -f supabase/config.toml || { echo 'supabase/config.toml is missing' >&2; exit 3; }
 
       - name: Install pinned Supabase CLI
         uses: supabase/setup-cli@v2
         with:
-          version: 2.84.2
+          version: 2.116.0
 
-      - name: Link project
+      - name: Link project without a database password
         shell: bash
-        run: supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+        run: supabase link --project-ref "$SUPABASE_PROJECT_REF" --yes
+
+      - name: Stage canonical migration ledger
+        if: ${{ inputs.supabase_mode == 'migrations' || inputs.supabase_mode == 'all' }}
+        shell: bash
+        run: |
+          node scripts/prepare-supabase-canonical-migrations.mjs \
+            --ledger supabase/canonical-migration-ledger.json \
+            --migrations-dir supabase/migrations \
+            --quarantine-dir "$RUNNER_TEMP/dsg-supabase-legacy-local-only" \
+            --evidence-out supabase-ledger-preparation.json
 
       - name: Preflight pending migrations
         if: ${{ inputs.supabase_mode == 'migrations' || inputs.supabase_mode == 'all' }}
         shell: bash
-        run: supabase db push --dry-run | tee supabase-migration-dry-run.txt
+        run: supabase db push --linked --dry-run --yes | tee supabase-migration-dry-run.txt
 
       - name: Apply migrations
         if: ${{ inputs.supabase_mode == 'migrations' || inputs.supabase_mode == 'all' }}
         shell: bash
-        run: supabase db push | tee supabase-migration-push.txt
+        run: supabase db push --linked --yes | tee supabase-migration-push.txt
 
       - name: Deploy Edge Functions
         if: ${{ inputs.supabase_mode == 'functions' || inputs.supabase_mode == 'all' }}
@@ -279,7 +287,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          supabase migration list > supabase-migration-list.txt 2>&1 || true
+          supabase migration list --linked > supabase-migration-list.txt 2>&1 || true
           supabase functions list --project-ref "$SUPABASE_PROJECT_REF" > supabase-functions-list.txt 2>&1 || true
 
       - name: Capture evidence
@@ -294,6 +302,7 @@ jobs:
           import hashlib, json, os, subprocess
           from pathlib import Path
           files = [
+              'supabase-ledger-preparation.json',
               'supabase-migration-dry-run.txt',
               'supabase-migration-push.txt',
               'supabase-functions-deploy.txt',
@@ -325,6 +334,7 @@ jobs:
           name: dsg-deployment-evidence-supabase-${{ inputs.environment }}-${{ inputs.idempotency_key }}
           path: |
             deployment-evidence.json
+            supabase-ledger-preparation.json
             supabase-*.txt
           if-no-files-found: error
           retention-days: 30

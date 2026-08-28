@@ -1,0 +1,219 @@
+{
+  "schemaVersion": "dsg.azure-runtime-env.v1",
+  "target": "dsg-control-plane",
+  "description": "Allowlisted Azure App Service settings. Runtime secrets are stored in Azure Key Vault and resolved through App Service Managed Identity; GitHub OIDC is bootstrap/rotation authority only. .env.example is documentation, not a production-required checklist.",
+  "secretManager": {
+    "provider": "azure-key-vault",
+    "referenceMode": "versionless",
+    "runtimeIdentity": "system-assigned-managed-identity",
+    "bootstrapIdentity": "github-actions-oidc"
+  },
+  "profiles": {
+    "core": 0,
+    "governed": 1,
+    "rollback": 2
+  },
+  "neverSync": [
+    {
+      "name": "GITHUB_TOKEN",
+      "reason": "GitHub issues an ephemeral workflow token; it must never become a runtime App Setting."
+    },
+    {
+      "name": "SUPABASE_ACCESS_TOKEN",
+      "reason": "CI management credential used only by Supabase CLI workflows."
+    },
+    {
+      "name": "SUPABASE_DB_PASSWORD",
+      "reason": "CI migration credential; the application runtime does not need the database password."
+    },
+    {
+      "name": "SUPABASE_PROJECT_REF",
+      "reason": "CI migration metadata; the runtime uses the Supabase URL instead."
+    }
+  ],
+  "settings": [
+    {
+      "name": "APP_URL",
+      "source": "variable",
+      "minimumProfile": "core",
+      "required": true,
+      "phase": "runtime",
+      "slotSetting": true,
+      "default": "https://dsg-control-plane.azurewebsites.net"
+    },
+    {
+      "name": "NEXT_PUBLIC_APP_URL",
+      "source": "variable",
+      "minimumProfile": "core",
+      "required": true,
+      "phase": "buildAndRuntime",
+      "slotSetting": true,
+      "default": "https://dsg-control-plane.azurewebsites.net"
+    },
+    {
+      "name": "DSG_ALLOWED_ORIGINS",
+      "source": "variable",
+      "minimumProfile": "core",
+      "required": true,
+      "phase": "runtime",
+      "slotSetting": true,
+      "default": "https://dsg-control-plane.azurewebsites.net"
+    },
+    {
+      "name": "NEXT_PUBLIC_SUPABASE_URL",
+      "source": "secretOrVariable",
+      "minimumProfile": "core",
+      "required": true,
+      "phase": "buildAndRuntime",
+      "slotSetting": true,
+      "default": "https://zeyguilldygozufpgxms.supabase.co"
+    },
+    {
+      "name": "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+      "source": "secretOrVariable",
+      "minimumProfile": "core",
+      "required": false,
+      "phase": "buildAndRuntime",
+      "slotSetting": true
+    },
+    {
+      "name": "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+      "source": "secretOrVariable",
+      "minimumProfile": "core",
+      "required": false,
+      "phase": "buildAndRuntime",
+      "slotSetting": true
+    },
+    {
+      "name": "SUPABASE_SERVICE_ROLE_KEY",
+      "source": "secret",
+      "minimumProfile": "core",
+      "required": true,
+      "phase": "runtime",
+      "slotSetting": true
+    },
+    {
+      "name": "NEXTAUTH_SECRET",
+      "source": "secret",
+      "minimumProfile": "core",
+      "required": true,
+      "phase": "runtime",
+      "slotSetting": true
+    },
+    {
+      "name": "DSG_CORE_MODE",
+      "source": "variable",
+      "minimumProfile": "core",
+      "required": true,
+      "phase": "runtime",
+      "slotSetting": true,
+      "default": "internal"
+    },
+    {
+      "name": "READINESS_STRICT",
+      "source": "variable",
+      "minimumProfile": "core",
+      "required": true,
+      "phase": "runtime",
+      "slotSetting": true,
+      "default": "true"
+    },
+    {
+      "name": "UPSTASH_REDIS_REST_URL",
+      "source": "secretOrVariable",
+      "minimumProfile": "core",
+      "required": true,
+      "phase": "runtime",
+      "slotSetting": true
+    },
+    {
+      "name": "UPSTASH_REDIS_REST_TOKEN",
+      "source": "secret",
+      "minimumProfile": "core",
+      "required": true,
+      "phase": "runtime",
+      "slotSetting": true
+    },
+    {
+      "name": "DSG_PROMOTION_EVALUATION_SECRET",
+      "source": "secret",
+      "minimumProfile": "governed",
+      "required": true,
+      "phase": "runtime",
+      "slotSetting": true
+    },
+    {
+      "name": "DSG_POST_DEPLOY_FEEDBACK_SECRET",
+      "source": "secret",
+      "minimumProfile": "governed",
+      "required": true,
+      "phase": "runtime",
+      "slotSetting": true
+    },
+    {
+      "name": "DSG_PRODUCTION_ROLLBACK_SECRET",
+      "source": "secret",
+      "minimumProfile": "governed",
+      "required": true,
+      "phase": "runtime",
+      "slotSetting": true
+    },
+    {
+      "name": "DSG_GITHUB_AUTOMATION_TOKEN",
+      "source": "secret",
+      "minimumProfile": "governed",
+      "required": true,
+      "phase": "runtime",
+      "slotSetting": true
+    },
+    {
+      "name": "AZURE_TENANT_ID",
+      "source": "secretOrVariable",
+      "minimumProfile": "rollback",
+      "required": true,
+      "phase": "runtime",
+      "slotSetting": true
+    },
+    {
+      "name": "AZURE_CLIENT_ID",
+      "source": "secretOrVariable",
+      "minimumProfile": "rollback",
+      "required": true,
+      "phase": "runtime",
+      "slotSetting": true
+    },
+    {
+      "name": "AZURE_CLIENT_SECRET",
+      "source": "secret",
+      "minimumProfile": "rollback",
+      "required": true,
+      "phase": "runtime",
+      "slotSetting": true
+    },
+    {
+      "name": "AZURE_SUBSCRIPTION_ID",
+      "source": "secretOrVariable",
+      "minimumProfile": "rollback",
+      "required": true,
+      "phase": "runtime",
+      "slotSetting": true
+    },
+    {
+      "name": "AZURE_RESOURCE_GROUP",
+      "source": "variable",
+      "minimumProfile": "rollback",
+      "required": true,
+      "phase": "runtime",
+      "slotSetting": true,
+      "default": "rg-t.dealer01-0468"
+    },
+    {
+      "name": "DSG_AZURE_APP_SERVICE_MAP",
+      "source": "secretOrVariable",
+      "minimumProfile": "rollback",
+      "required": true,
+      "phase": "runtime",
+      "slotSetting": true
+    }
+  ]
+}
