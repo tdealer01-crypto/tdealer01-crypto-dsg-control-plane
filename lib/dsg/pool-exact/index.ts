@@ -387,13 +387,13 @@ export const mcpTool = {
     const opt = new z3.Optimize();
     const xs = candidates.map((_, i) => z3.Bool.const(`x${i}`));
 
-    let countExpr = z3.Int.val(0);
+    let countExpr: any = z3.Int.val(0);
     for (const x of xs) {
       countExpr = countExpr.add(z3.If(x, z3.Int.val(1), z3.Int.val(0)));
     }
     opt.add(countExpr.eq(k));
 
-    let realObj = z3.Real.val(0);
+    let realObj: any = z3.Real.val(0);
     for (let i = 0; i < candidates.length; i++) {
       const c = candidates[i]!;
       const x = xs[i]!;
@@ -408,7 +408,7 @@ export const mcpTool = {
     const idRank = new Map<string, number>();
     sortedById.forEach((item, rank) => idRank.set(item.id, rank));
 
-    let secondary = z3.Int.val(0);
+    let secondary: any = z3.Int.val(0);
     for (let i = 0; i < candidates.length; i++) {
       const c = candidates[i]!;
       const x = xs[i]!;
