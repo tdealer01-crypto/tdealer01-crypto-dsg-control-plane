@@ -1,22 +1,23 @@
 {
   "schemaVersion": "dsg.production-target.v1",
-  "provider": "UNBOUND",
-  "status": "BLOCKED_UNTIL_BOUND",
-  "productionDeployEnabled": false,
+  "provider": "AZURE",
+  "status": "BOUND_CANDIDATE_PIPELINE_ONLY",
+  "productionDeployEnabled": true,
   "autoDeployOnPromotedMerge": true,
   "promotionStatusContext": "dsg/promotion",
-  "deploymentAdapter": null,
-  "healthProbe": null,
-  "rollbackTarget": null,
-  "rollbackAdapterEndpoint": null,
-  "boundAt": null,
+  "deploymentAdapter": "AZURE",
+  "healthProbe": "/api/agent/status",
+  "rollbackTarget": "staging",
+  "rollbackAdapterEndpoint": "https://tdealer01-crypto-dsg-control-plane.azurewebsites.net/api/dsg/agentic-org/rollback-adapters/azure",
+  "boundAt": "2026-08-28",
   "notes": [
     "Vercel is not an active DSG production target.",
     "Render is not an active DSG production target.",
+    "Azure App Service is the bound adapter. Forward deploy publishes the candidate to the deployment slot named by rollbackTarget, then swaps that slot into production; rollback swaps it back. The slot therefore always holds the immediately-previous build.",
+    "This binding scopes the governed self-evolution candidate pipeline only (promotion evaluate -> deploy-candidate -> post-deploy control -> rollback). It does NOT enable production deploys of this control-plane app itself: promoted-production-deploy.yml still exits non-zero on every path, and its agent_workspace_promotions + GitHub environment approval gate is unchanged.",
     "A merged PR may auto-deploy only when its candidate head commit has a successful dsg/promotion status emitted after Cinema VERIFIED_RAW_EVIDENCE and Control Plane ALLOW.",
     "Supported deployment adapters are allowlisted; arbitrary commands from configuration are never executed.",
     "Rollback execution requires a bound HTTPS rollback adapter endpoint plus DSG_PRODUCTION_ROLLBACK_SECRET; config never becomes shell authority.",
-    "Build, test, evidence, Cinema verification, and promotion evaluation may proceed while deployment remains unbound.",
-    "Production mutation must remain fail-closed until an approved provider adapter, health probe, rollback/recovery path, credential binding, and deployment evidence contract are configured."
+    "Not verified live: no rollback or forward deploy has yet been executed against a real Azure subscription from this binding."
   ]
 }

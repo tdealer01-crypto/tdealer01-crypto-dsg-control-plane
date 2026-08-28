@@ -11,6 +11,7 @@ import {
   type PromotionReceipt,
 } from '@/lib/agent-governance/agentic-org/post-deploy-control';
 import { executeGovernedRollback } from '@/lib/agent-governance/agentic-org/rollback-executor';
+import { deploymentRecordMatchesReceipt } from '@/lib/agent-governance/agentic-org/deployment-record';
 
 export const dynamic = 'force-dynamic';
 
@@ -102,6 +103,26 @@ export async function POST(request: NextRequest) {
 
   if (!submittedReceiptMatches) {
     return NextResponse.json({ status: 'BLOCK', reason: 'CANONICAL_PROMOTION_RECEIPT_MISMATCH' }, { status: 409 });
+  }
+
+  // The submitted deployment binding is caller-supplied. Require the deploy
+  // step to have recorded this exact deployment against this exact promotion
+  // first, so canary evidence cannot be attributed to a deploy that never ran.
+  const { data: deploymentRecord, error: deploymentRecordError } = await supabase
+    .from('agentic_deployment_records')
+    .select('deployment_id,promotion_id,target_repository,baseline_commit,candidate_commit,provider')
+    .eq('deployment_id', parsed.deployment.deploymentId)
+    .maybeSingle();
+
+  if (deploymentRecordError) {
+    return NextResponse.json({ status: 'BLOCK', reason: 'DEPLOYMENT_RECORD_LOOKUP_FAILED' }, { status: 503 });
+  }
+  if (!deploymentRecord) {
+    return NextResponse.json({ status: 'BLOCK', reason: 'DEPLOYMENT_RECORD_NOT_FOUND' }, { status: 409 });
+  }
+
+  if (!deploymentRecordMatchesReceipt(deploymentRecord, canonicalReceipt, parsed.deployment.provider)) {
+    return NextResponse.json({ status: 'BLOCK', reason: 'DEPLOYMENT_RECORD_BINDING_MISMATCH' }, { status: 409 });
   }
 
   const productionTarget = productionTargetJson as ProductionTargetSnapshot;
