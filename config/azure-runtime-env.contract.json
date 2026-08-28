@@ -1,7 +1,13 @@
 {
   "schemaVersion": "dsg.azure-runtime-env.v1",
   "target": "dsg-control-plane",
-  "description": "Allowlisted Azure App Service settings sourced from GitHub Actions. .env.example is documentation, not a production-required checklist.",
+  "description": "Allowlisted Azure App Service settings. Runtime secrets are stored in Azure Key Vault and resolved through App Service Managed Identity; GitHub OIDC is bootstrap/rotation authority only. .env.example is documentation, not a production-required checklist.",
+  "secretManager": {
+    "provider": "azure-key-vault",
+    "referenceMode": "versionless",
+    "runtimeIdentity": "system-assigned-managed-identity",
+    "bootstrapIdentity": "github-actions-oidc"
+  },
   "profiles": {
     "core": 0,
     "governed": 1,
