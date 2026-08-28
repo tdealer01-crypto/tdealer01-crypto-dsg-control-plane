@@ -1,5 +1,11 @@
 # Secret Management Guide
 
+> [!IMPORTANT]
+> Azure App Service is the active production target. Use
+> [Azure Runtime Environment Sync](./ops/azure-runtime-env-sync.md) for the
+> current GitHub-to-Azure contract. The AWS/Vercel material below is retained
+> only as legacy reference and must not be used as production authority.
+
 Enterprise-grade secret management for DSG ONE control plane.
 
 ## Overview
