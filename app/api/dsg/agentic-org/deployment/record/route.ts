@@ -5,6 +5,8 @@ import productionTargetJson from '@/config/production-deployment-target.json';
 import type { ProductionTargetSnapshot } from '@/lib/agent-governance/agentic-org/post-deploy-control';
 import {
   bindDeploymentToPromotion,
+  DEPLOYMENT_PREFLIGHT_MESSAGE,
+  evaluateDeploymentPreflightTarget,
   isDeploymentRecordRequest,
 } from '@/lib/agent-governance/agentic-org/deployment-record';
 
@@ -22,6 +24,74 @@ function verifySignature(rawBody: string, header: string | null, secret: string)
   const supplied = header.replace(/^sha256=/i, '').trim();
   const expected = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
   return safeEqualHex(supplied, expected);
+}
+
+/**
+ * Read-only deployment preflight.
+ *
+ * The deployment workflow must call this before authenticating to the cloud or
+ * mutating a deployment slot. It proves the live Control Plane has the shared
+ * HMAC secret, Supabase service binding, a bound production provider and
+ * rollback target, and access to the promotion/deployment record stores.
+ */
+export async function GET(request: NextRequest) {
+  const secret = process.env.DSG_PROMOTION_EVALUATION_SECRET;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!secret || !supabaseUrl || !serviceRoleKey) {
+    return NextResponse.json({
+      status: 'BLOCK',
+      reason: 'DEPLOYMENT_PREFLIGHT_NOT_CONFIGURED',
+      missing: [
+        ...(!secret ? ['DSG_PROMOTION_EVALUATION_SECRET'] : []),
+        ...(!supabaseUrl ? ['NEXT_PUBLIC_SUPABASE_URL'] : []),
+        ...(!serviceRoleKey ? ['SUPABASE_SERVICE_ROLE_KEY'] : []),
+      ],
+    }, { status: 503 });
+  }
+
+  if (!verifySignature(DEPLOYMENT_PREFLIGHT_MESSAGE, request.headers.get('x-dsg-signature'), secret)) {
+    return NextResponse.json({ status: 'BLOCK', reason: 'DEPLOYMENT_PREFLIGHT_SIGNATURE_INVALID' }, { status: 401 });
+  }
+
+  const target = productionTargetJson as ProductionTargetSnapshot;
+  const targetFailures = evaluateDeploymentPreflightTarget(target);
+  if (targetFailures.length > 0) {
+    return NextResponse.json({
+      status: 'BLOCK',
+      reason: targetFailures[0],
+      failures: targetFailures,
+      provider: target.provider,
+      deploymentSlot: target.rollbackTarget,
+    }, { status: 409 });
+  }
+
+  const supabase = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  const [receiptProbe, deploymentProbe] = await Promise.all([
+    supabase.from('agentic_promotion_receipts').select('promotion_id').limit(1),
+    supabase.from('agentic_deployment_records').select('deployment_id').limit(1),
+  ]);
+  if (receiptProbe.error || deploymentProbe.error) {
+    return NextResponse.json({
+      status: 'BLOCK',
+      reason: 'DEPLOYMENT_PREFLIGHT_STORE_UNAVAILABLE',
+      stores: {
+        promotionReceipts: receiptProbe.error ? 'BLOCKED' : 'READY',
+        deploymentRecords: deploymentProbe.error ? 'BLOCKED' : 'READY',
+      },
+    }, { status: 503 });
+  }
+
+  return NextResponse.json({
+    status: 'PASS',
+    reason: 'DEPLOYMENT_PREFLIGHT_READY',
+    provider: target.provider,
+    deploymentSlot: target.rollbackTarget,
+    productionDeployEnabled: true,
+  });
 }
 
 /**
@@ -69,8 +139,9 @@ export async function POST(request: NextRequest) {
   }
 
   const target = productionTargetJson as ProductionTargetSnapshot;
-  if (target.provider === 'UNBOUND' || target.productionDeployEnabled !== true) {
-    return NextResponse.json({ status: 'BLOCK', reason: 'PRODUCTION_TARGET_UNBOUND' }, { status: 409 });
+  const targetFailures = evaluateDeploymentPreflightTarget(target);
+  if (targetFailures.length > 0) {
+    return NextResponse.json({ status: 'BLOCK', reason: targetFailures[0], failures: targetFailures }, { status: 409 });
   }
 
   const supabase = createClient(supabaseUrl, serviceRoleKey, {
