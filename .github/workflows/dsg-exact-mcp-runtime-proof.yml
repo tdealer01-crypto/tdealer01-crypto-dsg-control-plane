@@ -1,0 +1,168 @@
+name: DSG Exact MCP Runtime Proof
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/dsg-exact-mcp-runtime-proof
+    paths:
+      - .github/workflows/dsg-exact-mcp-runtime-proof.yml
+
+permissions:
+  contents: read
+
+env:
+  BASE_URL: https://dsg-exact-mcp-runtime-wniyu0.v2.appdeploy.ai
+  MCP_VERSION: '2026-07-28'
+
+jobs:
+  external-runtime-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Prepare evidence directory
+        run: mkdir -p evidence/dsg-exact-mcp-runtime
+
+      - name: Verify health endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT=evidence/dsg-exact-mcp-runtime/health.json
+          curl --fail --silent --show-error --retry 3 --retry-all-errors --connect-timeout 15 --max-time 60 \
+            "$BASE_URL/health" | tee "$OUT"
+          jq -e '.status == "ok" and .publicTool == "dsg_exact_select" and .mcp == "/mcp"' "$OUT"
+
+      - name: Verify MCP 2026 discovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          REQ=evidence/dsg-exact-mcp-runtime/discover-request.json
+          OUT=evidence/dsg-exact-mcp-runtime/discover-response.json
+          cat > "$REQ" <<'JSON'
+          {"jsonrpc":"2.0","id":1,"method":"server/discover","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientInfo":{"name":"github-external-proof","version":"1.0"}}}}
+          JSON
+          curl --fail --silent --show-error --retry 3 --retry-all-errors --connect-timeout 15 --max-time 60 \
+            -H 'Content-Type: application/json' \
+            -H 'Accept: application/json' \
+            -H "MCP-Protocol-Version: $MCP_VERSION" \
+            -H 'Mcp-Method: server/discover' \
+            --data-binary @"$REQ" "$BASE_URL/mcp" | tee "$OUT"
+          jq -e '.result.supportedVersions | index("2026-07-28") != null' "$OUT"
+          jq -e '.result.capabilities.tools.listChanged == false' "$OUT"
+
+      - name: Verify tool discovery and safety annotations
+        shell: bash
+        run: |
+          set -euo pipefail
+          REQ=evidence/dsg-exact-mcp-runtime/tools-list-request.json
+          OUT=evidence/dsg-exact-mcp-runtime/tools-list-response.json
+          printf '%s\n' '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' > "$REQ"
+          curl --fail --silent --show-error --retry 3 --retry-all-errors --connect-timeout 15 --max-time 60 \
+            -H 'Content-Type: application/json' \
+            -H 'Accept: application/json' \
+            -H "MCP-Protocol-Version: $MCP_VERSION" \
+            -H 'Mcp-Method: tools/list' \
+            --data-binary @"$REQ" "$BASE_URL/mcp" | tee "$OUT"
+          jq -e '.result.tools | length == 1' "$OUT"
+          jq -e '.result.tools[0].name == "dsg_exact_select"' "$OUT"
+          jq -e '.result.tools[0].annotations.readOnlyHint == true and .result.tools[0].annotations.openWorldHint == false and .result.tools[0].annotations.destructiveHint == false and .result.tools[0].annotations.idempotentHint == true' "$OUT"
+          jq -e '.result.tools[0].inputSchema.properties.candidates.maxItems == 24 and .result.tools[0].inputSchema.properties.k.maximum == 12 and .result.tools[0].inputSchema.properties.candidates.items.properties.composite.maxLength == 240' "$OUT"
+
+      - name: Verify exact comparator tool call
+        shell: bash
+        run: |
+          set -euo pipefail
+          REQ=evidence/dsg-exact-mcp-runtime/exact-request.json
+          OUT=evidence/dsg-exact-mcp-runtime/exact-response.json
+          cat > "$REQ" <<'JSON'
+          {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"dsg_exact_select","arguments":{"candidates":[{"id":"a","composite":"0.50003"},{"id":"b","composite":"0.50004"},{"id":"c","composite":"0.50004"}],"k":2,"minComposite":"0","useZ3":false}}}
+          JSON
+          curl --fail --silent --show-error --retry 3 --retry-all-errors --connect-timeout 15 --max-time 90 \
+            -H 'Content-Type: application/json' \
+            -H 'Accept: application/json' \
+            -H "MCP-Protocol-Version: $MCP_VERSION" \
+            -H 'Mcp-Method: tools/call' \
+            -H 'Mcp-Name: dsg_exact_select' \
+            --data-binary @"$REQ" "$BASE_URL/mcp" | tee "$OUT"
+          jq -e '.result.structuredContent.status == "PASSED" and .result.structuredContent.success == true' "$OUT"
+          jq -e '.result.structuredContent.selectedCount == 2 and .result.structuredContent.selected[0].id == "b" and .result.structuredContent.selected[1].id == "c"' "$OUT"
+          jq -e '.result.structuredContent.evidenceHash | test("^[0-9a-f]{64}$")' "$OUT"
+
+      - name: Verify real Z3 execution path
+        shell: bash
+        run: |
+          set -euo pipefail
+          REQ=evidence/dsg-exact-mcp-runtime/z3-request.json
+          OUT=evidence/dsg-exact-mcp-runtime/z3-response.json
+          cat > "$REQ" <<'JSON'
+          {"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"dsg_exact_select","arguments":{"candidates":[{"id":"a","composite":"0.50003"},{"id":"b","composite":"0.50004"},{"id":"c","composite":"0.50004"}],"k":2,"minComposite":"0","useZ3":true}}}
+          JSON
+          curl --fail --silent --show-error --retry 2 --retry-all-errors --connect-timeout 15 --max-time 120 \
+            -H 'Content-Type: application/json' \
+            -H 'Accept: application/json' \
+            -H "MCP-Protocol-Version: $MCP_VERSION" \
+            -H 'Mcp-Method: tools/call' \
+            -H 'Mcp-Name: dsg_exact_select' \
+            --data-binary @"$REQ" "$BASE_URL/mcp" | tee "$OUT"
+          jq -e '.result.structuredContent.status == "PASSED" and .result.structuredContent.success == true' "$OUT"
+          jq -e '.result.structuredContent.solver | contains("z3-wasm")' "$OUT"
+          jq -e '.result.structuredContent.solverResult == "sat"' "$OUT"
+          jq -e '.result.structuredContent.selected[0].id == "b" and .result.structuredContent.selected[1].id == "c"' "$OUT"
+          EXACT_HASH=$(jq -r '.result.structuredContent.evidenceHash' evidence/dsg-exact-mcp-runtime/exact-response.json)
+          Z3_HASH=$(jq -r '.result.structuredContent.evidenceHash' "$OUT")
+          test "$EXACT_HASH" = "$Z3_HASH"
+
+      - name: Verify legacy initialize compatibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          REQ=evidence/dsg-exact-mcp-runtime/legacy-initialize-request.json
+          OUT=evidence/dsg-exact-mcp-runtime/legacy-initialize-response.json
+          cat > "$REQ" <<'JSON'
+          {"jsonrpc":"2.0","id":5,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"github-legacy-proof","version":"1.0"}}}
+          JSON
+          curl --fail --silent --show-error --retry 3 --retry-all-errors --connect-timeout 15 --max-time 60 \
+            -H 'Content-Type: application/json' -H 'Accept: application/json' \
+            --data-binary @"$REQ" "$BASE_URL/mcp" | tee "$OUT"
+          jq -e '.result.protocolVersion == "2025-11-25" and .result.serverInfo.name == "dsg-exact-selector"' "$OUT"
+
+      - name: Verify modern header mismatch fails closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT=evidence/dsg-exact-mcp-runtime/header-mismatch-response.json
+          curl --fail --silent --show-error --connect-timeout 15 --max-time 60 \
+            -H 'Content-Type: application/json' \
+            -H 'Accept: application/json' \
+            -H "MCP-Protocol-Version: $MCP_VERSION" \
+            -H 'Mcp-Method: tools/list' \
+            --data '{"jsonrpc":"2.0","id":6,"method":"ping","params":{}}' \
+            "$BASE_URL/mcp" | tee "$OUT"
+          jq -e '.error.code == -32600' "$OUT"
+
+      - name: Seal evidence and write summary
+        if: always()
+        shell: bash
+        run: |
+          set -u
+          cd evidence/dsg-exact-mcp-runtime
+          sha256sum *.json > SHA256SUMS.txt 2>/dev/null || true
+          {
+            echo '## DSG Exact MCP external runtime proof'
+            echo
+            echo "Endpoint: $BASE_URL/mcp"
+            echo
+            if [ -f exact-response.json ]; then echo "- Exact: $(jq -r '.result.structuredContent.status // .error.message // "NO_RESULT"' exact-response.json)"; fi
+            if [ -f z3-response.json ]; then echo "- Z3: $(jq -r '.result.structuredContent.status // .error.message // "NO_RESULT"' z3-response.json)"; fi
+            if [ -f z3-response.json ]; then echo "- Solver: $(jq -r '.result.structuredContent.solver // .result.structuredContent.reason // "NO_SOLVER"' z3-response.json)"; fi
+            echo '- Evidence: evidence/dsg-exact-mcp-runtime/'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload runtime proof artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dsg-exact-mcp-runtime-proof
+          path: evidence/dsg-exact-mcp-runtime/
+          if-no-files-found: warn
+          retention-days: 30
