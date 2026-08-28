@@ -1,0 +1,271 @@
+name: Sync Azure Runtime Environment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: GitHub Environment containing the canonical values
+        required: true
+        type: choice
+        options:
+          - staging
+          - prod
+        default: prod
+      profile:
+        description: Smallest runtime contract to enforce
+        required: true
+        type: choice
+        options:
+          - core
+          - governed
+          - rollback
+        default: governed
+      slot:
+        description: Azure App Service slot to configure
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+        default: production
+      apply:
+        description: Apply after fail-closed preflight (false renders names-only evidence)
+        required: true
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      profile:
+        required: true
+        type: string
+      slot:
+        required: true
+        type: string
+      apply:
+        required: true
+        type: boolean
+    secrets:
+      AZURE_CLIENT_ID:
+        required: false
+      AZURE_TENANT_ID:
+        required: false
+      AZURE_SUBSCRIPTION_ID:
+        required: false
+      AZURE_CLIENT_SECRET:
+        required: false
+      APP_URL:
+        required: false
+      NEXT_PUBLIC_APP_URL:
+        required: false
+      DSG_ALLOWED_ORIGINS:
+        required: false
+      NEXT_PUBLIC_SUPABASE_URL:
+        required: false
+      NEXT_PUBLIC_SUPABASE_ANON_KEY:
+        required: false
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
+        required: false
+      SUPABASE_SERVICE_ROLE_KEY:
+        required: false
+      NEXTAUTH_SECRET:
+        required: false
+      DSG_CORE_MODE:
+        required: false
+      READINESS_STRICT:
+        required: false
+      UPSTASH_REDIS_REST_URL:
+        required: false
+      UPSTASH_REDIS_REST_TOKEN:
+        required: false
+      DSG_PROMOTION_EVALUATION_SECRET:
+        required: false
+      DSG_POST_DEPLOY_FEEDBACK_SECRET:
+        required: false
+      DSG_PRODUCTION_ROLLBACK_SECRET:
+        required: false
+      DSG_GITHUB_AUTOMATION_TOKEN:
+        required: false
+      DSG_AZURE_APP_SERVICE_MAP:
+        required: false
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: azure-runtime-env-${{ inputs.environment }}-${{ inputs.slot }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: ${{ inputs.apply && 'Apply' || 'Preflight' }} ${{ inputs.profile }} ENV
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    timeout-minutes: 15
+    env:
+      AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP || 'rg-t.dealer01-0468' }}
+      AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME || 'dsg-control-plane' }}
+    steps:
+      - name: Checkout exact source
+        uses: actions/checkout@v4
+
+      - name: Render fail-closed App Settings contract
+        id: render
+        shell: bash
+        env:
+          PROFILE: ${{ inputs.profile }}
+          DSG_ENV_APP_URL: ${{ secrets.APP_URL || vars.APP_URL }}
+          DSG_ENV_NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL || vars.NEXT_PUBLIC_APP_URL }}
+          DSG_ENV_DSG_ALLOWED_ORIGINS: ${{ secrets.DSG_ALLOWED_ORIGINS || vars.DSG_ALLOWED_ORIGINS }}
+          DSG_ENV_NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL }}
+          DSG_ENV_NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          DSG_ENV_NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          DSG_ENV_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DSG_ENV_NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          DSG_ENV_DSG_CORE_MODE: ${{ secrets.DSG_CORE_MODE || vars.DSG_CORE_MODE }}
+          DSG_ENV_READINESS_STRICT: ${{ secrets.READINESS_STRICT || vars.READINESS_STRICT }}
+          DSG_ENV_UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL || vars.UPSTASH_REDIS_REST_URL }}
+          DSG_ENV_UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+          DSG_ENV_DSG_PROMOTION_EVALUATION_SECRET: ${{ secrets.DSG_PROMOTION_EVALUATION_SECRET }}
+          DSG_ENV_DSG_POST_DEPLOY_FEEDBACK_SECRET: ${{ secrets.DSG_POST_DEPLOY_FEEDBACK_SECRET }}
+          DSG_ENV_DSG_PRODUCTION_ROLLBACK_SECRET: ${{ secrets.DSG_PRODUCTION_ROLLBACK_SECRET }}
+          DSG_ENV_DSG_GITHUB_AUTOMATION_TOKEN: ${{ secrets.DSG_GITHUB_AUTOMATION_TOKEN }}
+          DSG_ENV_AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID || vars.AZURE_TENANT_ID }}
+          DSG_ENV_AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID || vars.AZURE_CLIENT_ID }}
+          DSG_ENV_AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          DSG_ENV_AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID || vars.AZURE_SUBSCRIPTION_ID }}
+          DSG_ENV_AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP || 'rg-t.dealer01-0468' }}
+          DSG_ENV_DSG_AZURE_APP_SERVICE_MAP: ${{ secrets.DSG_AZURE_APP_SERVICE_MAP || vars.DSG_AZURE_APP_SERVICE_MAP }}
+        run: |
+          set -euo pipefail
+          settings_file="$RUNNER_TEMP/dsg-azure-appsettings.json"
+          evidence_file="$RUNNER_TEMP/dsg-azure-env-evidence.json"
+          node scripts/render-azure-app-settings.mjs \
+            --contract config/azure-runtime-env.contract.json \
+            --profile "$PROFILE" \
+            --settings-out "$settings_file" \
+            --evidence-out "$evidence_file"
+          echo "settings_file=$settings_file" >> "$GITHUB_OUTPUT"
+          echo "evidence_file=$evidence_file" >> "$GITHUB_OUTPUT"
+
+      - name: Validate Azure OIDC binding
+        if: inputs.apply
+        shell: bash
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        run: |
+          set -euo pipefail
+          test -n "${AZURE_CLIENT_ID:-}" || { echo '::error::Missing AZURE_CLIENT_ID'; exit 1; }
+          test -n "${AZURE_TENANT_ID:-}" || { echo '::error::Missing AZURE_TENANT_ID'; exit 1; }
+          test -n "${AZURE_SUBSCRIPTION_ID:-}" || { echo '::error::Missing AZURE_SUBSCRIPTION_ID'; exit 1; }
+
+      - name: Login to Azure with GitHub OIDC
+        if: inputs.apply
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Apply App Settings without printing values
+        if: inputs.apply
+        shell: bash
+        env:
+          SETTINGS_FILE: ${{ steps.render.outputs.settings_file }}
+          SLOT: ${{ inputs.slot }}
+        run: |
+          set -euo pipefail
+          slot_args=()
+          if [[ "$SLOT" == 'staging' ]]; then
+            slot_args=(--slot staging)
+          fi
+          az webapp config appsettings set \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --name "$AZURE_WEBAPP_NAME" \
+            "${slot_args[@]}" \
+            --settings @"$SETTINGS_FILE" \
+            --only-show-errors \
+            --output none
+
+      - name: Verify applied values without printing them
+        if: inputs.apply
+        id: verify
+        shell: bash
+        env:
+          SETTINGS_FILE: ${{ steps.render.outputs.settings_file }}
+          SLOT: ${{ inputs.slot }}
+        run: |
+          set -euo pipefail
+          slot_args=()
+          if [[ "$SLOT" == 'staging' ]]; then
+            slot_args=(--slot staging)
+          fi
+          umask 077
+          actual_file="$RUNNER_TEMP/dsg-azure-appsettings-actual.json"
+          verification_file="$RUNNER_TEMP/dsg-azure-env-verification.json"
+          echo "verification_file=$verification_file" >> "$GITHUB_OUTPUT"
+          az webapp config appsettings list \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --name "$AZURE_WEBAPP_NAME" \
+            "${slot_args[@]}" \
+            --only-show-errors \
+            --output json > "$actual_file"
+          SETTINGS_FILE="$SETTINGS_FILE" ACTUAL_FILE="$actual_file" VERIFICATION_FILE="$verification_file" \
+            AZURE_WEBAPP_NAME="$AZURE_WEBAPP_NAME" SLOT="$SLOT" node --input-type=module <<'NODE'
+          import { readFile, writeFile } from 'node:fs/promises';
+          const expectedRecords = JSON.parse(await readFile(process.env.SETTINGS_FILE, 'utf8'));
+          const actualRecords = JSON.parse(await readFile(process.env.ACTUAL_FILE, 'utf8'));
+          const actualByName = new Map(actualRecords.map(({ name, value }) => [name, String(value)]));
+          const expectedNames = expectedRecords.map(({ name }) => name).sort();
+          const missing = expectedNames.filter((name) => !actualByName.has(name));
+          const mismatched = expectedRecords
+            .filter(({ name, value }) => actualByName.has(name) && actualByName.get(name) !== String(value))
+            .map(({ name }) => name)
+            .sort();
+          const evidence = {
+            schemaVersion: 'dsg.azure-runtime-env-verification.v1',
+            appService: process.env.AZURE_WEBAPP_NAME,
+            slot: process.env.SLOT,
+            expectedNames,
+            missingNames: missing,
+            mismatchedNames: mismatched,
+            verified: missing.length === 0 && mismatched.length === 0,
+            truthBoundary: 'Value parity at Azure configuration readback does not prove application readiness or build-time NEXT_PUBLIC bundle parity.',
+          };
+          await writeFile(process.env.VERIFICATION_FILE, `${JSON.stringify(evidence, null, 2)}\n`);
+          if (!evidence.verified) {
+            console.error(`Azure App Setting verification failed. Missing: ${missing.join(', ') || '(none)'}; mismatched: ${mismatched.join(', ') || '(none)'}`);
+            process.exit(1);
+          }
+          console.log(`Verified ${expectedNames.length} Azure App Setting values; values were not printed.`);
+          NODE
+
+      - name: Delete runner-local settings file
+        if: always()
+        shell: bash
+        env:
+          SETTINGS_FILE: ${{ steps.render.outputs.settings_file }}
+        run: |
+          if [[ -n "${SETTINGS_FILE:-}" && -f "$SETTINGS_FILE" ]]; then
+            shred -u "$SETTINGS_FILE" 2>/dev/null || rm -f "$SETTINGS_FILE"
+          fi
+          actual_file="$RUNNER_TEMP/dsg-azure-appsettings-actual.json"
+          if [[ -f "$actual_file" ]]; then
+            shred -u "$actual_file" 2>/dev/null || rm -f "$actual_file"
+          fi
+
+      - name: Upload names-only evidence
+        if: always() && steps.render.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: azure-runtime-env-${{ inputs.environment }}-${{ inputs.profile }}-${{ github.run_id }}
+          path: |
+            ${{ steps.render.outputs.evidence_file }}
+            ${{ steps.verify.outputs.verification_file }}
+          if-no-files-found: warn
+          retention-days: 30
