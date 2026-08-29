@@ -1,10 +1,6 @@
-import {
-  buildQuboMatrix,
-  solveQubo,
-  toIsingModel,
-  type FormalConstraint,
-  type PolicyControl,
-} from '../../lib/ising/qubo';
+import { solveQubo } from '../../lib/ising/qubo/annealer';
+import { buildQuboMatrix, toIsingModel } from '../../lib/ising/qubo/matrix';
+import type { FormalConstraint, PolicyControl } from '../../lib/ising/qubo/types';
 
 type Decision = 'ALLOW' | 'DENY' | 'ESCALATE';
 
