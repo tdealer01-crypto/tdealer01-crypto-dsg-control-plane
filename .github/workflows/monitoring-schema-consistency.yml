@@ -72,6 +72,20 @@ jobs:
           provider="$(jq -r '.productionTarget.provider' schema-check.json)"
           deploy_enabled="$(jq -r '.productionTarget.productionDeployEnabled' schema-check.json)"
 
+          # A pull request represents a proposed target, not a deployed runtime.
+          # Live monitoring proof is therefore deferred until the same config is
+          # on main (push/schedule/workflow_dispatch), where it remains fail-closed.
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "PR mode: live production monitoring is not claimed before deployment."
+            jq '.externalMonitoringVerification = {
+              status: "NOT_RUN_PR_UNDEPLOYED",
+              verified: false,
+              reason: "Pull request has not been deployed to the canonical production target."
+            }' schema-check.json > schema-check.tmp
+            mv schema-check.tmp schema-check.json
+            exit 0
+          fi
+
           if [ "$provider" = "UNBOUND" ] || [ "$deploy_enabled" != "true" ]; then
             echo "Production target is unbound/disabled; live monitoring verification is not claimed."
             jq '.externalMonitoringVerification = {

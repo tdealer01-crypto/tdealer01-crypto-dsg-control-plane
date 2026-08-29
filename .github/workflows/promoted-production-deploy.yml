@@ -1,32 +1,25 @@
-name: Promoted Production Deployment (Provider Unbound)
+name: Promoted Production Deployment (Azure App Service)
 
 on:
   workflow_call:
     inputs:
-      operation:
-        description: Protected production operation selected by the trusted caller
-        required: true
-        type: string
-      commit_sha:
-        description: Exact current main commit
-        required: true
-        type: string
-      migration_request_id:
-        required: false
-        default: ''
-        type: string
-      destination_team_id:
-        required: false
-        default: ''
-        type: string
-      destination_project_id:
-        required: false
-        default: ''
-        type: string
+      operation: { required: true, type: string }
+      commit_sha: { required: true, type: string }
+      migration_request_id: { required: false, default: '', type: string }
+      destination_team_id: { required: false, default: '', type: string }
+      destination_project_id: { required: false, default: '', type: string }
+    secrets:
+      AZURE_CLIENT_ID: { required: false }
+      AZURE_TENANT_ID: { required: false }
+      AZURE_SUBSCRIPTION_ID: { required: false }
+      E2E_PAID_API_KEY: { required: false }
+      NEXT_PUBLIC_SUPABASE_URL: { required: false }
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: { required: false }
+      SUPABASE_SERVICE_ROLE_KEY: { required: false }
     outputs:
       bootstrap_url:
-        description: Empty while no production provider is bound
-        value: ${{ jobs.deployment-target.outputs.bootstrap_url }}
+        description: Verified production URL
+        value: ${{ jobs.deploy.outputs.bootstrap_url }}
   workflow_dispatch:
     inputs:
       promotion_id:
@@ -49,27 +42,278 @@ concurrency:
 
 permissions:
   contents: read
+  id-token: write
+
+env:
+  AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP || 'rg-t.dealer01-0468' }}
+  AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME || 'dsg-control-plane' }}
+  AZURE_ACR_NAME: ${{ vars.AZURE_ACR_NAME }}
+  AZURE_IMAGE_REPOSITORY: ${{ vars.AZURE_CONTROL_PLANE_IMAGE_REPOSITORY || 'dsg-control-plane' }}
+  AZURE_STAGING_SLOT: ${{ vars.AZURE_STAGING_SLOT || 'staging' }}
 
 jobs:
-  deployment-target:
+  deploy:
+    name: Governed Azure App Service promotion
     runs-on: ubuntu-latest
+    environment: prod
+    timeout-minutes: 45
     outputs:
-      bootstrap_url: ${{ steps.block.outputs.bootstrap_url }}
+      bootstrap_url: ${{ steps.production.outputs.production_url }}
     steps:
-      - uses: actions/checkout@v4
-      - id: block
-        name: Fail closed until a production provider is bound
+      - name: Checkout exact promoted commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit_sha }}
+          fetch-depth: 0
+
+      - name: Fail-closed deployment preflight
         shell: bash
+        env:
+          COMMIT_SHA: ${{ inputs.commit_sha }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          E2E_PAID_API_KEY: ${{ secrets.E2E_PAID_API_KEY }}
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          echo 'bootstrap_url=' >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          [[ "$COMMIT_SHA" =~ ^[0-9a-fA-F]{40}$ ]] || { echo '::error::commit_sha must be full SHA'; exit 1; }
+          test "$(git rev-parse HEAD)" = "$COMMIT_SHA" || { echo '::error::checkout SHA mismatch'; exit 1; }
+          git fetch origin main --depth=1
+          test "$(git rev-parse origin/main)" = "$COMMIT_SHA" || { echo '::error::promotion is not current main'; exit 1; }
+          for value in AZURE_RESOURCE_GROUP AZURE_WEBAPP_NAME AZURE_ACR_NAME AZURE_IMAGE_REPOSITORY AZURE_STAGING_SLOT AZURE_CLIENT_ID AZURE_TENANT_ID AZURE_SUBSCRIPTION_ID E2E_PAID_API_KEY SUPABASE_URL SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY; do
+            test -n "${!value:-}" || { echo "::error::Missing protected production binding: $value"; exit 1; }
+          done
           node --input-type=module <<'NODE'
           import { readFile } from 'node:fs/promises';
           const target = JSON.parse(await readFile('config/production-deployment-target.json', 'utf8'));
-          console.log(JSON.stringify(target, null, 2));
-          if (target.provider === 'UNBOUND' || target.productionDeployEnabled !== true) {
-            console.error('BLOCK: no production deployment provider is currently bound. Vercel and Render are retired targets.');
+          if (target.provider !== 'AZURE_APP_SERVICE' || target.productionDeployEnabled !== true) {
+            console.error('BLOCK: production target is not explicitly bound to AZURE_APP_SERVICE');
             process.exit(1);
           }
-          console.error('BLOCK: a provider is declared but no approved provider adapter is wired into this sentinel workflow yet.');
-          process.exit(1);
           NODE
+
+      - name: Login to Azure with GitHub OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Verify Azure target and staging slot
+        shell: bash
+        run: |
+          set -euo pipefail
+          az acr show -n "$AZURE_ACR_NAME" --only-show-errors --output none
+          az webapp show -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" --only-show-errors --output none
+          az webapp deployment slot list -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" \
+            --query "[?name=='$AZURE_STAGING_SLOT'].name | [0]" -o tsv | grep -Fx "$AZURE_STAGING_SLOT" >/dev/null || {
+              echo "::error::Required staging slot '$AZURE_STAGING_SLOT' does not exist"; exit 1;
+            }
+
+      - name: Build SHA image, resolve digest and lock artifact
+        id: artifact
+        shell: bash
+        env:
+          COMMIT_SHA: ${{ inputs.commit_sha }}
+        run: |
+          set -euo pipefail
+          BUILD_TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          IMAGE_TAG="$AZURE_IMAGE_REPOSITORY:$COMMIT_SHA"
+          az acr build -r "$AZURE_ACR_NAME" -t "$IMAGE_TAG" \
+            --build-arg "DSG_GIT_SHA=$COMMIT_SHA" \
+            --build-arg "DSG_BUILD_TIMESTAMP=$BUILD_TS" .
+          DIGEST="$(az acr manifest show-metadata -r "$AZURE_ACR_NAME" -n "$IMAGE_TAG" --query digest -o tsv)"
+          [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo '::error::ACR digest resolution failed'; exit 1; }
+          LOGIN_SERVER="$(az acr show -n "$AZURE_ACR_NAME" --query loginServer -o tsv)"
+          test -n "$LOGIN_SERVER" || { echo '::error::ACR login server resolution failed'; exit 1; }
+          IMMUTABLE_IMAGE="$LOGIN_SERVER/$AZURE_IMAGE_REPOSITORY@$DIGEST"
+          az acr repository update -n "$AZURE_ACR_NAME" --image "$IMAGE_TAG" \
+            --write-enabled false --delete-enabled false --only-show-errors --output none
+          echo "build_ts=$BUILD_TS" >> "$GITHUB_OUTPUT"
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+          echo "image=$IMMUTABLE_IMAGE" >> "$GITHUB_OUTPUT"
+          {
+            echo '### Immutable artifact identity'
+            echo "- git SHA: $COMMIT_SHA"
+            echo "- ACR digest: $DIGEST"
+            echo "- immutable image: $IMMUTABLE_IMAGE"
+            echo "- discoverability tag: $LOGIN_SERVER/$IMAGE_TAG (write/delete locked)"
+            echo "- built UTC: $BUILD_TS"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Deploy immutable artifact to staging slot
+        shell: bash
+        env:
+          COMMIT_SHA: ${{ inputs.commit_sha }}
+          IMAGE: ${{ steps.artifact.outputs.image }}
+          DIGEST: ${{ steps.artifact.outputs.digest }}
+          BUILD_TS: ${{ steps.artifact.outputs.build_ts }}
+        run: |
+          set -euo pipefail
+          [[ "$IMAGE" == *@sha256:* ]] || { echo '::error::Refusing mutable container reference'; exit 1; }
+          az webapp config appsettings set -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" --slot "$AZURE_STAGING_SLOT" \
+            --settings "DSG_GIT_SHA=$COMMIT_SHA" "DSG_IMAGE_DIGEST=$DIGEST" "DSG_BUILD_TIMESTAMP=$BUILD_TS" \
+            --only-show-errors --output none
+          az webapp config container set -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" --slot "$AZURE_STAGING_SLOT" \
+            --container-image-name "$IMAGE" --only-show-errors --output none
+          CONFIGURED_IMAGE="$(az webapp config container show -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" --slot "$AZURE_STAGING_SLOT" --query '[?name==`DOCKER_CUSTOM_IMAGE_NAME`].value | [0]' -o tsv)"
+          EFFECTIVE_IMAGE="$(az webapp config show -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" --slot "$AZURE_STAGING_SLOT" --query linuxFxVersion -o tsv)"
+          CONFIGURED_IMAGE="${CONFIGURED_IMAGE#DOCKER|}"
+          EFFECTIVE_IMAGE="${EFFECTIVE_IMAGE#DOCKER|}"
+          test "$CONFIGURED_IMAGE" = "$IMAGE" || { echo '::error::Staging DOCKER_CUSTOM_IMAGE_NAME readback mismatch'; exit 1; }
+          test "$EFFECTIVE_IMAGE" = "$IMAGE" || { echo '::error::Staging effective LinuxFxVersion readback mismatch'; exit 1; }
+          az webapp restart -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" --slot "$AZURE_STAGING_SLOT" --only-show-errors
+
+      - name: Verify staging provenance and health
+        id: staging
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ inputs.commit_sha }}
+          EXPECTED_DIGEST: ${{ steps.artifact.outputs.digest }}
+        run: |
+          set -euo pipefail
+          HOST="$(az webapp show -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" --slot "$AZURE_STAGING_SLOT" --query defaultHostName -o tsv)"
+          BASE="https://$HOST"
+          test -n "$HOST"
+          rm -f /tmp/runtime.json
+          for attempt in $(seq 1 24); do
+            if curl -fsS --max-time 15 "$BASE/api/dsg/v1/runtime" -o /tmp/runtime.json; then break; fi
+            sleep 5
+          done
+          test -s /tmp/runtime.json || { echo '::error::Staging runtime provenance endpoint never became available'; exit 1; }
+          jq -e --arg sha "$EXPECTED_SHA" --arg digest "$EXPECTED_DIGEST" \
+            '.service == "dsg-control-plane" and .gitSha == $sha and .imageDigest == $digest' /tmp/runtime.json >/dev/null || {
+              echo '::error::Staging runtime provenance mismatch'; cat /tmp/runtime.json; exit 1;
+            }
+          curl -fsS --max-time 15 "$BASE/api/health" >/tmp/health.json
+          echo "base_url=$BASE" >> "$GITHUB_OUTPUT"
+
+      - name: Run staging proof E2E and live DB verification
+        shell: bash
+        env:
+          BASE_URL: ${{ steps.staging.outputs.base_url }}
+          API_KEY: ${{ secrets.E2E_PAID_API_KEY }}
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          NONCE="live-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-staging"
+          IDEM="idem-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-staging"
+          jq -n --arg nonce "$NONCE" --arg idem "$IDEM" '{problemId:"azure-live-e2e-staging",encodingType:"qubo-v1",encoding:{kind:"qubo-v1",variableCount:2,objective:"min",constant:0,linear:[{index:0,weight:1},{index:1,weight:"-0.5"}],quadratic:[{i:0,j:1,weight:"0.25"}]},nonce:$nonce,idempotencyKey:$idem}' >/tmp/proof-staging.json
+          unauth="$(curl -sS -o /tmp/staging-unauth.json -w '%{http_code}' -X POST "$BASE_URL/api/dsg/v1/encoding/prove" -H 'Content-Type: application/json' --data @/tmp/proof-staging.json)"
+          test "$unauth" = 401 || { echo "::error::Staging unauthenticated proof expected 401, got $unauth"; exit 1; }
+          status="$(curl -sS -D /tmp/staging-proof.headers -o /tmp/staging-proof.response -w '%{http_code}' -X POST "$BASE_URL/api/dsg/v1/encoding/prove" -H "Authorization: Bearer $API_KEY" -H 'Content-Type: application/json' --data @/tmp/proof-staging.json)"
+          test "$status" = 200 || { echo "::error::Staging positive proof expected 200, got $status"; jq . /tmp/staging-proof.response || cat /tmp/staging-proof.response; exit 1; }
+          PROOF_ID="$(jq -r '.proofId // empty' /tmp/staging-proof.response)"
+          test -n "$PROOF_ID"
+          lookup="$(curl -sS -o /tmp/staging-proof.lookup -w '%{http_code}' "$BASE_URL/api/dsg/v1/encoding/proofs/$PROOF_ID" -H "Authorization: Bearer $API_KEY")"
+          test "$lookup" = 200 || { echo "::error::Staging downstream proof lookup/validation failed: $lookup"; exit 1; }
+          replay="$(curl -sS -D /tmp/staging-replay.headers -o /tmp/staging-replay.json -w '%{http_code}' -X POST "$BASE_URL/api/dsg/v1/encoding/prove" -H "Authorization: Bearer $API_KEY" -H 'Content-Type: application/json' --data @/tmp/proof-staging.json)"
+          test "$replay" = 200 && grep -qi '^x-idempotent-replay: true' /tmp/staging-replay.headers || { echo '::error::Staging exact retry did not resolve as idempotent replay'; exit 1; }
+          jq --arg idem "${IDEM}-conflict" '.idempotencyKey=$idem' /tmp/proof-staging.json >/tmp/staging-proof-conflict.json
+          conflict="$(curl -sS -o /tmp/staging-conflict.json -w '%{http_code}' -X POST "$BASE_URL/api/dsg/v1/encoding/prove" -H "Authorization: Bearer $API_KEY" -H 'Content-Type: application/json' --data @/tmp/staging-proof-conflict.json)"
+          test "$conflict" = 409 || { echo "::error::Staging nonce reuse expected 409, got $conflict"; exit 1; }
+          ADMIN_ROWS="$(curl -fsS --get "$SUPABASE_URL/rest/v1/dsg_encoding_proofs" -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" --data-urlencode 'select=proof_id,nonce' --data-urlencode "proof_id=eq.$PROOF_ID")"
+          test "$(jq 'length' <<<"$ADMIN_ROWS")" -eq 1 || { echo '::error::Staging just-created proof row was not persisted'; exit 1; }
+          test "$(jq -r '.[0].nonce' <<<"$ADMIN_ROWS")" = "$NONCE" || { echo '::error::Staging persisted nonce does not match executed request'; exit 1; }
+          ANON_ROWS="$(curl -fsS --get "$SUPABASE_URL/rest/v1/dsg_encoding_proofs" -H "apikey: $SUPABASE_ANON_KEY" --data-urlencode 'select=proof_id' --data-urlencode "proof_id=eq.$PROOF_ID")"
+          test "$(jq 'length' <<<"$ANON_ROWS")" -eq 0 || { echo '::error::Unauthorized anonymous DB read exposed staging proof row'; exit 1; }
+
+      - name: Swap verified staging slot to production
+        shell: bash
+        run: |
+          set -euo pipefail
+          az webapp deployment slot swap -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" \
+            --slot "$AZURE_STAGING_SLOT" --target-slot production --only-show-errors
+
+      - name: Verify production provenance or rollback
+        id: production
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ inputs.commit_sha }}
+          EXPECTED_DIGEST: ${{ steps.artifact.outputs.digest }}
+        run: |
+          set -euo pipefail
+          HOST="$(az webapp show -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" --query defaultHostName -o tsv)"
+          BASE="https://$HOST"
+          ok=false
+          for attempt in $(seq 1 24); do
+            if curl -fsS --max-time 15 "$BASE/api/dsg/v1/runtime" -o /tmp/production-runtime.json && \
+               jq -e --arg sha "$EXPECTED_SHA" --arg digest "$EXPECTED_DIGEST" '.service == "dsg-control-plane" and .gitSha == $sha and .imageDigest == $digest' /tmp/production-runtime.json >/dev/null && \
+               curl -fsS --max-time 15 "$BASE/api/health" >/tmp/production-health.json; then
+              ok=true; break
+            fi
+            sleep 5
+          done
+          if [[ "$ok" != true ]]; then
+            echo '::error::Production provenance/health verification failed; reversing slot swap'
+            az webapp deployment slot swap -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" --slot "$AZURE_STAGING_SLOT" --target-slot production --only-show-errors || true
+            exit 1
+          fi
+          echo "production_url=$BASE" >> "$GITHUB_OUTPUT"
+
+      - name: Run production proof E2E and live DB verification
+        shell: bash
+        env:
+          BASE_URL: ${{ steps.production.outputs.production_url }}
+          API_KEY: ${{ secrets.E2E_PAID_API_KEY }}
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          rollback() {
+            echo '::error::Production proof E2E failed; reversing slot swap'
+            az webapp deployment slot swap -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" --slot "$AZURE_STAGING_SLOT" --target-slot production --only-show-errors || true
+          }
+          trap rollback ERR
+
+          NONCE="live-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-production"
+          IDEM="idem-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-production"
+          jq -n --arg nonce "$NONCE" --arg idem "$IDEM" '{problemId:"azure-live-e2e-production",encodingType:"qubo-v1",encoding:{kind:"qubo-v1",variableCount:2,objective:"min",constant:0,linear:[{index:0,weight:1},{index:1,weight:"-0.5"}],quadratic:[{i:0,j:1,weight:"0.25"}]},nonce:$nonce,idempotencyKey:$idem}' >/tmp/proof-production.json
+
+          unauth="$(curl -sS -o /tmp/production-unauth.json -w '%{http_code}' -X POST "$BASE_URL/api/dsg/v1/encoding/prove" -H 'Content-Type: application/json' --data @/tmp/proof-production.json)"
+          test "$unauth" = 401 || { echo "::error::Production unauthenticated proof expected 401, got $unauth"; false; }
+
+          status="$(curl -sS -D /tmp/production-proof.headers -o /tmp/production-proof.response -w '%{http_code}' -X POST "$BASE_URL/api/dsg/v1/encoding/prove" -H "Authorization: Bearer $API_KEY" -H 'Content-Type: application/json' --data @/tmp/proof-production.json)"
+          test "$status" = 200 || { echo "::error::Production positive proof expected 200, got $status"; jq . /tmp/production-proof.response || cat /tmp/production-proof.response; false; }
+          PROOF_ID="$(jq -r '.proofId // empty' /tmp/production-proof.response)"
+          test -n "$PROOF_ID"
+
+          lookup="$(curl -sS -o /tmp/production-proof.lookup -w '%{http_code}' "$BASE_URL/api/dsg/v1/encoding/proofs/$PROOF_ID" -H "Authorization: Bearer $API_KEY")"
+          test "$lookup" = 200 || { echo "::error::Production downstream proof lookup/validation failed: $lookup"; false; }
+
+          replay="$(curl -sS -D /tmp/production-replay.headers -o /tmp/production-replay.json -w '%{http_code}' -X POST "$BASE_URL/api/dsg/v1/encoding/prove" -H "Authorization: Bearer $API_KEY" -H 'Content-Type: application/json' --data @/tmp/proof-production.json)"
+          test "$replay" = 200 && grep -qi '^x-idempotent-replay: true' /tmp/production-replay.headers || { echo '::error::Production exact retry did not resolve as idempotent replay'; false; }
+
+          jq --arg idem "${IDEM}-conflict" '.idempotencyKey=$idem' /tmp/proof-production.json >/tmp/production-proof-conflict.json
+          conflict="$(curl -sS -o /tmp/production-conflict.json -w '%{http_code}' -X POST "$BASE_URL/api/dsg/v1/encoding/prove" -H "Authorization: Bearer $API_KEY" -H 'Content-Type: application/json' --data @/tmp/production-proof-conflict.json)"
+          test "$conflict" = 409 || { echo "::error::Production nonce reuse expected 409, got $conflict"; false; }
+
+          ADMIN_ROWS="$(curl -fsS --get "$SUPABASE_URL/rest/v1/dsg_encoding_proofs" -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" --data-urlencode 'select=proof_id,nonce' --data-urlencode "proof_id=eq.$PROOF_ID")"
+          test "$(jq 'length' <<<"$ADMIN_ROWS")" -eq 1 || { echo '::error::Production just-created proof row was not persisted'; false; }
+          test "$(jq -r '.[0].nonce' <<<"$ADMIN_ROWS")" = "$NONCE" || { echo '::error::Production persisted nonce does not match executed request'; false; }
+
+          ANON_ROWS="$(curl -fsS --get "$SUPABASE_URL/rest/v1/dsg_encoding_proofs" -H "apikey: $SUPABASE_ANON_KEY" --data-urlencode 'select=proof_id' --data-urlencode "proof_id=eq.$PROOF_ID")"
+          test "$(jq 'length' <<<"$ANON_ROWS")" -eq 0 || { echo '::error::Unauthorized anonymous DB read exposed production proof row'; false; }
+
+          trap - ERR
+          {
+            echo '### FULL LIVE E2E verification gates'
+            echo "- production URL: $BASE_URL"
+            echo "- production proof ID: $PROOF_ID"
+            echo '- runtime provenance: PASS'
+            echo '- health: PASS'
+            echo '- unauthenticated proof: 401 PASS'
+            echo '- authenticated production proof: 200 PASS'
+            echo '- just-created proof persistence + nonce match: PASS'
+            echo '- downstream proof lookup/validation: PASS'
+            echo '- exact idempotent replay: PASS'
+            echo '- nonce conflict: 409 PASS'
+            echo '- anonymous DB read isolation: PASS'
+            echo '- This summary is evidence only when the entire governed workflow concludes success.'
+          } >> "$GITHUB_STEP_SUMMARY"
