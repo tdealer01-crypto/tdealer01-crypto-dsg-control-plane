@@ -20,7 +20,6 @@ import {
   persistEncodingProof,
 } from '@/lib/dsg/deterministic/encoding-proof-store';
 import { canonicalHash, type CanonicalInput } from '@/lib/runtime/canonical';
-import { handleApiError } from '@/lib/security/api-error';
 import {
   applyRateLimit,
   buildRateLimitHeaders,
@@ -45,6 +44,15 @@ import type {
 
 export const dynamic = 'force-dynamic';
 
+type ProofFailureStage =
+  | 'auth'
+  | 'validation'
+  | 'supabase_client'
+  | 'proof_lookup'
+  | 'proof_insert'
+  | 'chain_head'
+  | 'response';
+
 function canonical(value: unknown): CanonicalInput {
   return value as CanonicalInput;
 }
@@ -57,6 +65,38 @@ function addCors(req: Request, response: NextResponse): NextResponse {
 
 function responseHeaders(req: Request, base?: HeadersInit): Headers {
   return buildCorsHeaders(req, base);
+}
+
+function failureStage(error: unknown): ProofFailureStage {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes('encoding_proof_store:supabase_client:')) return 'supabase_client';
+  if (message.includes('encoding_proof_store:insert:')) return 'proof_insert';
+  if (
+    message.includes('encoding_proof_store:lookup_chain_head:') ||
+    message.includes('encoding_proof_store:chain_or_replay_conflict')
+  ) {
+    return 'chain_head';
+  }
+  if (message.includes('encoding_proof_store:')) return 'proof_lookup';
+  return 'response';
+}
+
+function logFailure(
+  requestId: string,
+  stage: ProofFailureStage,
+  error: unknown,
+  fields: Record<string, unknown> = {},
+): void {
+  const safeError =
+    error instanceof Error
+      ? { name: error.name, message: error.message }
+      : { name: 'Error', message: String(error) };
+  console.error('dsg.encoding.prove.failed', {
+    requestId,
+    stage,
+    ...fields,
+    error: safeError,
+  });
 }
 
 function usageFailure(error?: string) {
@@ -167,8 +207,21 @@ export async function OPTIONS(req: NextRequest): Promise<NextResponse> {
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  const caller = await requireDsgAuth(req);
+  const requestId = crypto.randomUUID();
+  let caller: Awaited<ReturnType<typeof requireDsgAuth>>;
+
+  try {
+    caller = await requireDsgAuth(req);
+  } catch (error) {
+    logFailure(requestId, 'auth', error);
+    return NextResponse.json(
+      { ok: false, error: 'proof_failed', requestId, status: 'BLOCK' },
+      { status: 500, headers: responseHeaders(req) },
+    );
+  }
+
   if (!caller.ok) {
+    console.warn('dsg.encoding.prove.denied', { requestId, stage: 'auth' });
     return addCors(req, dsgAuthError(caller as typeof caller & { ok: false }));
   }
 
@@ -208,6 +261,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     const parsedBody = await readJsonBody(req, { maxBytes: 32_000 });
     if (!parsedBody.ok) {
+      console.warn('dsg.encoding.prove.denied', {
+        requestId,
+        stage: 'validation',
+        reason: parsedBody.error,
+      });
       return NextResponse.json(
         {
           ok: false,
@@ -221,6 +279,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     const requestValidation = validateRequest(parsedBody.value);
     if ('error' in requestValidation) {
+      console.warn('dsg.encoding.prove.denied', {
+        requestId,
+        stage: 'validation',
+        reason: requestValidation.error,
+      });
       return NextResponse.json(
         {
           ok: false,
@@ -235,6 +298,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const data = requestValidation.value;
     const runtimeShape = validateEncodingRuntimeShape(data.encoding, data.encodingType);
     if ('error' in runtimeShape) {
+      console.warn('dsg.encoding.prove.denied', {
+        requestId,
+        stage: 'validation',
+        reason: runtimeShape.error,
+      });
       return NextResponse.json(
         {
           ok: false,
@@ -265,8 +333,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     if (replay.kind === 'replay') {
       if (!validateProofHash(replay.proof)) {
+        logFailure(requestId, 'response', new Error('stored_proof_integrity_failure'));
         return NextResponse.json(
-          { ok: false, error: 'stored_proof_integrity_failure', status: 'BLOCK' },
+          { ok: false, error: 'stored_proof_integrity_failure', status: 'BLOCK', requestId },
           { status: 500, headers: responseHeaders(req, rateLimitHeaders) },
         );
       }
@@ -354,28 +423,33 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     return proofResponse(req, proof, rateLimitHeaders);
   } catch (error) {
-    const message = String(error);
+    const message = error instanceof Error ? error.message : String(error);
+    const stage = failureStage(error);
+    logFailure(requestId, stage, error);
+
     if (message.includes('encoding_proof_store:chain_or_replay_conflict')) {
       return NextResponse.json(
         {
           ok: false,
           error: 'proof_chain_conflict',
           status: 'BLOCK',
+          requestId,
           failureReasons: [
             'The proof-chain head changed concurrently. Retry the same canonical request and idempotencyKey.',
           ],
-        } satisfies EncodingProveErrorResponse,
+        },
         { status: 409, headers: responseHeaders(req, rateLimitHeaders) },
       );
     }
     if (message.includes('encoding_proof_store:')) {
       return NextResponse.json(
-        { ok: false, error: 'proof_store_unavailable', status: 'BLOCK' },
+        { ok: false, error: 'proof_store_unavailable', status: 'BLOCK', requestId },
         { status: 503, headers: responseHeaders(req, rateLimitHeaders) },
       );
     }
-    return handleApiError('api/dsg/v1/encoding/prove', error, {
-      headers: responseHeaders(req, rateLimitHeaders),
-    });
+    return NextResponse.json(
+      { ok: false, error: 'proof_failed', requestId, status: 'BLOCK' },
+      { status: 500, headers: responseHeaders(req, rateLimitHeaders) },
+    );
   }
 }
