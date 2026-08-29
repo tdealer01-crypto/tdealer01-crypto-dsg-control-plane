@@ -32,9 +32,6 @@ env:
   AZURE_ACR_NAME: ${{ vars.AZURE_ACR_NAME || 'dsgcp50aaef839' }}
   AZURE_IMAGE_REPOSITORY: ${{ vars.AZURE_CONTROL_PLANE_IMAGE_REPOSITORY || 'dsg-control-plane' }}
   AZURE_STAGING_SLOT: ${{ vars.AZURE_STAGING_SLOT || 'staging' }}
-  AZURE_CLIENT_ID_RESOLVED: ${{ secrets.AZURE_CLIENT_ID || vars.AZURE_CLIENT_ID }}
-  AZURE_TENANT_ID_RESOLVED: ${{ secrets.AZURE_TENANT_ID || vars.AZURE_TENANT_ID }}
-  AZURE_SUBSCRIPTION_ID_RESOLVED: ${{ secrets.AZURE_SUBSCRIPTION_ID || vars.AZURE_SUBSCRIPTION_ID }}
 
 jobs:
   deploy:
@@ -52,10 +49,38 @@ jobs:
           ref: ${{ inputs.commit_sha }}
           fetch-depth: 0
 
+      - name: Resolve Azure identity after prod environment load
+        id: azure_identity
+        shell: bash
+        env:
+          AZURE_CLIENT_ID_CANDIDATE: ${{ secrets.AZURE_CLIENT_ID || vars.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID_CANDIDATE: ${{ secrets.AZURE_TENANT_ID || vars.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID_CANDIDATE: ${{ secrets.AZURE_SUBSCRIPTION_ID || vars.AZURE_SUBSCRIPTION_ID }}
+        run: |
+          set -euo pipefail
+          missing=()
+          test -n "$AZURE_CLIENT_ID_CANDIDATE" || missing+=(AZURE_CLIENT_ID)
+          test -n "$AZURE_TENANT_ID_CANDIDATE" || missing+=(AZURE_TENANT_ID)
+          test -n "$AZURE_SUBSCRIPTION_ID_CANDIDATE" || missing+=(AZURE_SUBSCRIPTION_ID)
+          if (( ${#missing[@]} > 0 )); then
+            printf '::error::Missing Azure prod environment identity binding(s): %s\n' "${missing[*]}"
+            exit 1
+          fi
+          echo "::add-mask::$AZURE_CLIENT_ID_CANDIDATE"
+          echo "::add-mask::$AZURE_TENANT_ID_CANDIDATE"
+          echo "::add-mask::$AZURE_SUBSCRIPTION_ID_CANDIDATE"
+          echo "client_id=$AZURE_CLIENT_ID_CANDIDATE" >> "$GITHUB_OUTPUT"
+          echo "tenant_id=$AZURE_TENANT_ID_CANDIDATE" >> "$GITHUB_OUTPUT"
+          echo "subscription_id=$AZURE_SUBSCRIPTION_ID_CANDIDATE" >> "$GITHUB_OUTPUT"
+          echo 'Azure identity bindings resolved after prod environment load.'
+
       - name: Fail-closed deployment preflight
         shell: bash
         env:
           COMMIT_SHA: ${{ inputs.commit_sha }}
+          AZURE_CLIENT_ID_RESOLVED: ${{ steps.azure_identity.outputs.client_id }}
+          AZURE_TENANT_ID_RESOLVED: ${{ steps.azure_identity.outputs.tenant_id }}
+          AZURE_SUBSCRIPTION_ID_RESOLVED: ${{ steps.azure_identity.outputs.subscription_id }}
           E2E_PAID_API_KEY: ${{ secrets.E2E_PAID_API_KEY }}
           SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
@@ -82,9 +107,9 @@ jobs:
       - name: Login to Azure with GitHub OIDC
         uses: azure/login@v2
         with:
-          client-id: ${{ env.AZURE_CLIENT_ID_RESOLVED }}
-          tenant-id: ${{ env.AZURE_TENANT_ID_RESOLVED }}
-          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID_RESOLVED }}
+          client-id: ${{ steps.azure_identity.outputs.client_id }}
+          tenant-id: ${{ steps.azure_identity.outputs.tenant_id }}
+          subscription-id: ${{ steps.azure_identity.outputs.subscription_id }}
 
       - name: Verify Azure target and staging slot
         shell: bash
