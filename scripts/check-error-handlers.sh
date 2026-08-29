@@ -20,7 +20,10 @@ for f in app/api/**/route.ts; do
     missings=$((missings + 1))
   fi
 
-  if grep -Eq "error\s*:\s*(err|error)\.message|instanceof Error \? (err|error)\.message" "$f"; then
+  # Block direct exception-message disclosure in response-shaped `error:` fields.
+  # Do not flag internal-only classification/logging expressions such as
+  # `const message = error instanceof Error ? error.message : String(error)`.
+  if grep -Eq "error\s*:\s*(err|error)\.message|error\s*:[^,}]*instanceof Error \? (err|error)\.message" "$f"; then
     echo "ERROR: potential error-message leakage in $f"
     leaks=$((leaks + 1))
   fi
