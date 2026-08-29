@@ -1,23 +1,26 @@
 {
   "schemaVersion": "dsg.production-target.v1",
-  "provider": "UNBOUND",
-  "status": "BLOCKED_UNTIL_BOUND",
-  "productionDeployEnabled": false,
+  "provider": "AZURE_APP_SERVICE",
+  "status": "BOUND_FAIL_CLOSED_LIVE_VERIFICATION_REQUIRED",
+  "productionDeployEnabled": true,
   "autoDeployOnPromotedMerge": true,
   "promotionStatusContext": "dsg/promotion",
-  "deploymentAdapter": null,
-  "healthProbe": null,
-  "rollbackTarget": null,
+  "deploymentAdapter": ".github/workflows/promoted-production-deploy.yml#azure-app-service",
+  "healthProbe": {
+    "path": "/api/health",
+    "provenancePath": "/api/dsg/v1/runtime"
+  },
+  "rollbackTarget": "staging-slot-reverse-swap",
   "rollbackAdapterEndpoint": null,
-  "boundAt": null,
+  "boundAt": "2026-08-29",
   "notes": [
     "Vercel is not an active DSG production target.",
     "Render is not an active DSG production target.",
-    "A merged PR may auto-deploy only when its candidate head commit has a successful dsg/promotion status emitted after Cinema VERIFIED_RAW_EVIDENCE and Control Plane ALLOW.",
-    "Supported deployment adapters are allowlisted; arbitrary commands from configuration are never executed.",
-    "Rollback execution requires a bound HTTPS rollback adapter endpoint plus DSG_PRODUCTION_ROLLBACK_SECRET; config never becomes shell authority.",
-    "Build, test, evidence, Cinema verification, and promotion evaluation may proceed while deployment remains unbound.",
-    "Production mutation must remain fail-closed until an approved provider adapter, health probe, rollback/recovery path, credential binding, and deployment evidence contract are configured.",
-    "Binding this target is not a config-only edit. monitoring-schema-consistency.yml fails closed with BLOCKED_MISSING_BINDING unless secrets PRODUCTION_URL, MONITORING_API_KEY and MONITORING_ORG_ID are set AND the live endpoint GET $PRODUCTION_URL/api/dsg/v1/monitoring/data-sync?check=metrics returns real metrics. Set provider only together with that evidence: a bound target asserts verified live monitoring, and CI checks the assertion."
+    "The bound provider is Azure App Service Linux custom container with Azure Container Registry and a required staging deployment slot.",
+    "A merged PR may auto-deploy only through the governed promotion path and exact current-main commit identity.",
+    "The deployment adapter builds a full-SHA image, resolves its ACR digest, write/delete-locks the SHA tag, stamps DSG_GIT_SHA/DSG_IMAGE_DIGEST/DSG_BUILD_TIMESTAMP, verifies staging provenance, health, authenticated proof persistence, downstream proof lookup, idempotent replay, nonce conflict, and anonymous DB isolation before slot swap.",
+    "Production verification rechecks exact SHA/digest and health after swap. A mismatch fails closed and attempts the reverse slot swap.",
+    "Binding this adapter does not assert that a deployment has passed. FULL LIVE E2E PASS may be claimed only from an actually green governed production workflow with live runtime and database evidence.",
+    "monitoring-schema-consistency.yml remains an independent fail-closed gate and must verify the configured live monitoring endpoint with its protected credentials."
   ]
 }
