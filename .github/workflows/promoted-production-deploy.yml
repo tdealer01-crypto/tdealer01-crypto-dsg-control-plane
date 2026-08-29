@@ -160,7 +160,11 @@ jobs:
           az webapp config container set -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" --slot "$AZURE_STAGING_SLOT" \
             --container-image-name "$IMAGE" --only-show-errors --output none
           CONFIGURED_IMAGE="$(az webapp config container show -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" --slot "$AZURE_STAGING_SLOT" --query '[?name==`DOCKER_CUSTOM_IMAGE_NAME`].value | [0]' -o tsv)"
-          test "$CONFIGURED_IMAGE" = "$IMAGE" || { echo '::error::Staging App Service image readback mismatch'; exit 1; }
+          EFFECTIVE_IMAGE="$(az webapp config show -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" --slot "$AZURE_STAGING_SLOT" --query linuxFxVersion -o tsv)"
+          CONFIGURED_IMAGE="${CONFIGURED_IMAGE#DOCKER|}"
+          EFFECTIVE_IMAGE="${EFFECTIVE_IMAGE#DOCKER|}"
+          test "$CONFIGURED_IMAGE" = "$IMAGE" || { echo '::error::Staging DOCKER_CUSTOM_IMAGE_NAME readback mismatch'; exit 1; }
+          test "$EFFECTIVE_IMAGE" = "$IMAGE" || { echo '::error::Staging effective LinuxFxVersion readback mismatch'; exit 1; }
           az webapp restart -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" --slot "$AZURE_STAGING_SLOT" --only-show-errors
 
       - name: Verify staging provenance and health
