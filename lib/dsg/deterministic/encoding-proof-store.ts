@@ -25,18 +25,22 @@ export type ReplayLookup =
   | { kind: 'idempotency_conflict'; message: string }
   | { kind: 'nonce_replay'; message: string };
 
-function admin() {
-  // The generated Database type is updated separately by db:types after the
-  // migration is applied. The runtime contract is defined by the migration.
-  return getSupabaseAdmin() as any;
-}
-
 function storeError(stage: string, error: unknown): Error {
   const detail =
     error && typeof error === 'object' && 'message' in error
       ? String((error as { message?: unknown }).message)
       : String(error ?? 'unknown_error');
   return new Error(`encoding_proof_store:${stage}:${detail}`);
+}
+
+function admin() {
+  // The generated Database type is updated separately by db:types after the
+  // migration is applied. The runtime contract is defined by the migration.
+  try {
+    return getSupabaseAdmin() as any;
+  } catch (error) {
+    throw storeError('supabase_client', error);
+  }
 }
 
 export async function inspectEncodingProofRequest(input: {
