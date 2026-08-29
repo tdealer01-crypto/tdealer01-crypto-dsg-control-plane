@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import subprocess
 from dataclasses import asdict, dataclass
 from decimal import Decimal, getcontext
 from typing import Any
@@ -9,6 +11,7 @@ from typing import Any
 getcontext().prec = 50
 
 DECISIONS = ("ALLOW", "DENY", "ESCALATE")
+_PR1180_SOLVER_VERSION = "dsg-qubo-anneal/1.0.0"
 
 
 def canonical_json(value: Any) -> str:
@@ -43,7 +46,7 @@ class PolicySignals:
 
 
 class Mulberry32:
-    """32-bit deterministic PRNG used only by the advisory QUBO search."""
+    """32-bit deterministic PRNG retained as a compatibility fallback for tests."""
 
     def __init__(self, seed: int = 42) -> None:
         self._state = seed & 0xFFFFFFFF
@@ -82,10 +85,7 @@ def _decision_biases(signals: PolicySignals) -> dict[str, int]:
 
 
 def build_qubo(signals: PolicySignals, one_hot_penalty: int = 12) -> list[list[int]]:
-    """Build a 3x3 upper-triangular QUBO over ALLOW/DENY/ESCALATE.
-
-    QUBO is advisory only. Z3 is the execution authority.
-    """
+    """Compatibility QUBO used only when the PR1180 native bridge is not configured."""
 
     biases = _decision_biases(signals)
     n = len(DECISIONS)
@@ -154,8 +154,6 @@ def deterministic_anneal(
         trajectory.append({**core, "hash": step_hash})
         previous_hash = step_hash
 
-    # Enforce a deterministic one-hot advisory candidate by selecting the
-    # minimum-energy one-hot state after the annealing trajectory.
     one_hot = []
     for idx in range(len(DECISIONS)):
         bits = [0] * len(DECISIONS)
@@ -164,6 +162,7 @@ def deterministic_anneal(
     _, selected_idx, selected_bits = min(one_hot, key=lambda item: (item[0], item[1]))
 
     return {
+        "engine": "python-compat-advisory/v1",
         "seed": seed,
         "steps": steps,
         "candidate": DECISIONS[selected_idx],
@@ -173,6 +172,54 @@ def deterministic_anneal(
         "trajectory_head": previous_hash,
         "trajectory_hash": sha256_json(trajectory),
     }
+
+
+def _native_qubo_bridge() -> str | None:
+    value = os.getenv("DSG_QUBO_BRIDGE", "").strip()
+    return value or None
+
+
+def _run_pr1180_qubo(signals: PolicySignals) -> tuple[list[list[Any]], dict[str, Any]]:
+    bridge = _native_qubo_bridge()
+    if bridge is None:
+        q = build_qubo(signals)
+        return q, deterministic_anneal(q)
+
+    node_binary = os.getenv("NODE_BINARY", "node").strip() or "node"
+    completed = subprocess.run(
+        [node_binary, bridge],
+        input=canonical_json(asdict(signals)),
+        text=True,
+        capture_output=True,
+        timeout=5,
+        check=False,
+    )
+    if completed.returncode != 0:
+        detail = completed.stderr.strip()[:500] or f"exit={completed.returncode}"
+        raise RuntimeError(f"PR1180 QUBO bridge failed: {detail}")
+
+    try:
+        payload = json.loads(completed.stdout)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("PR1180 QUBO bridge returned invalid JSON") from exc
+
+    if not isinstance(payload, dict):
+        raise RuntimeError("PR1180 QUBO bridge returned non-object payload")
+    if payload.get("engine") != _PR1180_SOLVER_VERSION:
+        raise RuntimeError("PR1180 QUBO bridge solver version mismatch")
+    if payload.get("seed") != 42:
+        raise RuntimeError("PR1180 QUBO bridge seed mismatch")
+    if payload.get("feasible") is not True:
+        raise RuntimeError("PR1180 QUBO bridge returned infeasible advisory candidate")
+    if payload.get("candidate") not in DECISIONS:
+        raise RuntimeError("PR1180 QUBO bridge returned invalid decision candidate")
+    matrix = payload.get("matrix")
+    if not isinstance(matrix, dict) or not isinstance(matrix.get("matrix"), list):
+        raise RuntimeError("PR1180 QUBO bridge omitted matrix evidence")
+    if not isinstance(payload.get("provenance_hash"), str) or not payload["provenance_hash"]:
+        raise RuntimeError("PR1180 QUBO bridge omitted provenance hash")
+
+    return matrix["matrix"], payload
 
 
 def z3_authority(signals: PolicySignals) -> dict[str, Any]:
@@ -249,13 +296,13 @@ def z3_authority(signals: PolicySignals) -> dict[str, Any]:
 
 
 def solve_policy(signals: PolicySignals) -> dict[str, Any]:
-    q = build_qubo(signals)
-    qubo = deterministic_anneal(q)
+    q, qubo = _run_pr1180_qubo(signals)
     z3 = z3_authority(signals)
     return {
         "signals_hash": sha256_json(asdict(signals)),
         "qubo_matrix": q,
         "qubo": qubo,
         "z3": z3,
+        "advisory_matches_authority": qubo.get("candidate") == z3.get("decision"),
         "decision": z3["decision"],
     }
