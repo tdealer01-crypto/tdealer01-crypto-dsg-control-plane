@@ -12,7 +12,7 @@ permissions:
 jobs:
   promote-production:
     if: contains(github.event.head_commit.message, '[prod-e2e]')
-    uses: ./.github/workflows/promoted-production-deploy.yml
+    uses: ./.github/workflows/promoted-production-deploy-v2.yml
     with:
       operation: control-plane-live-e2e
       commit_sha: ${{ github.sha }}
