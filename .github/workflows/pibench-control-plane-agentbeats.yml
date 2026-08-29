@@ -4,11 +4,17 @@ on:
   pull_request:
     paths:
       - 'benchmarks/pibench_control_plane/**'
+      - 'lib/ising/qubo/**'
+      - 'lib/gateway/audit.ts'
       - '.github/workflows/pibench-control-plane-agentbeats.yml'
   push:
-    branches: [main]
+    branches:
+      - main
+      - 'claude/pi-bench-score-increase-k1z3pt'
     paths:
       - 'benchmarks/pibench_control_plane/**'
+      - 'lib/ising/qubo/**'
+      - 'lib/gateway/audit.ts'
       - '.github/workflows/pibench-control-plane-agentbeats.yml'
   workflow_dispatch:
 
@@ -30,6 +36,11 @@ jobs:
           cache: pip
           cache-dependency-path: benchmarks/pibench_control_plane/requirements.txt
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
       - name: Install benchmark dependencies
         run: python -m pip install -r benchmarks/pibench_control_plane/requirements.txt
 
@@ -44,10 +55,49 @@ jobs:
       - name: Compile check
         run: python -m compileall -q benchmarks/pibench_control_plane
 
+      - name: Bundle PR1180 native QUBO bridge
+        run: |
+          npx --yes esbuild@0.25.12 \
+            benchmarks/pibench_control_plane/qubo_bridge.ts \
+            --bundle \
+            --platform=node \
+            --format=esm \
+            --target=node18 \
+            --outfile=benchmark-evidence/qubo-bridge-ci.mjs
+
+      - name: PR1180 native QUBO smoke
+        run: |
+          cat > benchmark-evidence/native-signals.json <<'JSON'
+          {
+            "explicit_deny": false,
+            "requires_escalation": false,
+            "authorization_verified": true,
+            "mandatory_preconditions_satisfied": true,
+            "privacy_release_allowed": true,
+            "operational_action_requested": true,
+            "confidence": 1.0
+          }
+          JSON
+          node benchmark-evidence/qubo-bridge-ci.mjs \
+            < benchmark-evidence/native-signals.json \
+            > benchmark-evidence/pr1180-native-qubo.json
+          python - <<'PY'
+          import json
+          data = json.load(open('benchmark-evidence/pr1180-native-qubo.json'))
+          assert data['schema'] == 'dsg-pr1180-qubo-advisory/v1'
+          assert data['engine'] == 'dsg-qubo-anneal/1.0.0'
+          assert data['seed'] == 42
+          assert data['candidate'] == 'ALLOW'
+          assert data['feasible'] is True
+          assert data['provenance_hash']
+          assert data['matrix']['decision_count'] == 3
+          PY
+
       - name: Formal authority smoke
         run: |
-          PYTHONPATH=benchmarks/pibench_control_plane python - <<'PY' \
-            | tee benchmark-evidence/formal-authority.json
+          DSG_QUBO_BRIDGE="$PWD/benchmark-evidence/qubo-bridge-ci.mjs" \
+          PYTHONPATH=benchmarks/pibench_control_plane \
+          python - <<'PY' | tee benchmark-evidence/formal-authority.json
           import json
           from formal_gate import PolicySignals, solve_policy
 
@@ -61,6 +111,9 @@ jobs:
           assert out["deny"]["decision"] == "DENY"
           assert out["escalate"]["decision"] == "ESCALATE"
           assert all(item["z3"]["status"] == "SAT" for item in out.values())
+          assert all(item["qubo"]["engine"] == "dsg-qubo-anneal/1.0.0" for item in out.values())
+          assert all(item["qubo"]["feasible"] is True for item in out.values())
+          assert all(item["advisory_matches_authority"] is True for item in out.values())
           print(json.dumps(out, sort_keys=True))
           PY
 
@@ -71,6 +124,23 @@ jobs:
             -t dsg-control-plane-pibench:${GITHUB_SHA} .
           docker image inspect dsg-control-plane-pibench:${GITHUB_SHA} \
             --format '{{json .}}' > benchmark-evidence/docker-image.json
+
+      - name: Container PR1180 QUBO smoke
+        run: |
+          docker run --rm -i \
+            --entrypoint node \
+            dsg-control-plane-pibench:${GITHUB_SHA} \
+            /app/qubo-bridge.mjs \
+            < benchmark-evidence/native-signals.json \
+            > benchmark-evidence/container-pr1180-native-qubo.json
+          python - <<'PY'
+          import json
+          data = json.load(open('benchmark-evidence/container-pr1180-native-qubo.json'))
+          assert data['engine'] == 'dsg-qubo-anneal/1.0.0'
+          assert data['candidate'] == 'ALLOW'
+          assert data['feasible'] is True
+          assert data['provenance_hash']
+          PY
 
       - name: A2A card and bootstrap smoke
         run: |
@@ -170,7 +240,9 @@ jobs:
           if-no-files-found: error
 
   publish:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: >-
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/claude/pi-bench-score-increase-k1z3pt')
     needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -191,7 +263,7 @@ jobs:
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build and publish immutable AgentBeats image
+      - name: Build and publish AgentBeats image
         id: build
         uses: docker/build-push-action@v6
         with:
@@ -200,8 +272,8 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: |
-            ghcr.io/tdealer01-crypto/dsg-control-plane-pibench-agent:latest
             ghcr.io/tdealer01-crypto/dsg-control-plane-pibench-agent:${{ github.sha }}
+            ${{ github.ref == 'refs/heads/main' && 'ghcr.io/tdealer01-crypto/dsg-control-plane-pibench-agent:latest' || 'ghcr.io/tdealer01-crypto/dsg-control-plane-pibench-agent:pr1180' }}
           labels: |
             org.opencontainers.image.source=https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane
             org.opencontainers.image.revision=${{ github.sha }}
@@ -214,6 +286,7 @@ jobs:
           {
             "repository": "ghcr.io/tdealer01-crypto/dsg-control-plane-pibench-agent",
             "commit": "${GITHUB_SHA}",
+            "ref": "${GITHUB_REF}",
             "digest": "${{ steps.build.outputs.digest }}",
             "platform": "linux/amd64",
             "source": "https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane"

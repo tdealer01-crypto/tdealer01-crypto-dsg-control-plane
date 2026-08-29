@@ -1,0 +1,56 @@
+{
+  manifest_version: "0.1.0",
+
+  config_schema: {
+    type: "object",
+    properties: {
+      openai_api_key: { type: "string", secret: true },
+      openai_model: { type: "string", default: "gpt-5" },
+      policy_analyzer_model: { type: "string", default: "gpt-5" },
+      reasoning_effort: {
+        type: "string",
+        enum: ["low", "medium", "high"],
+        default: "medium",
+      },
+      policy_reasoning_effort: {
+        type: "string",
+        enum: ["low", "medium", "high"],
+        default: "low",
+      },
+    },
+    required: ["openai_api_key"],
+    additionalProperties: false,
+  },
+
+  slots: {},
+
+  program: {
+    image: "ghcr.io/tdealer01-crypto/dsg-control-plane-pibench-agent:pr1180",
+    entrypoint: [
+      "python",
+      "/app/server.py",
+      "--host",
+      "0.0.0.0",
+      "--port",
+      "9010"
+    ],
+    env: {
+      OPENAI_API_KEY: "${config.openai_api_key}",
+      OPENAI_MODEL: "${config.openai_model}",
+      POLICY_ANALYZER_MODEL: "${config.policy_analyzer_model}",
+      REASONING_EFFORT: "${config.reasoning_effort}",
+      POLICY_REASONING_EFFORT: "${config.policy_reasoning_effort}",
+    },
+    network: {
+      endpoints: [
+        { name: "a2a_endpoint", port: 9010 },
+      ],
+    },
+  },
+
+  provides: {
+    a2a: { kind: "a2a", endpoint: "a2a_endpoint" },
+  },
+
+  exports: { a2a: "a2a" },
+}
