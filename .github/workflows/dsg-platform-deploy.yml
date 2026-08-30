@@ -1,11 +1,11 @@
-name: DSG Governed Platform Deploy
+name: DSG Platform Deploy (Governed Compatibility)
 run-name: DSG Platform ${{ inputs.target }} ${{ inputs.environment }} ${{ inputs.idempotency_key }}
 
 on:
   workflow_dispatch:
     inputs:
       target:
-        description: Governed deployment target
+        description: Legacy deployment target
         required: true
         type: choice
         options:
@@ -30,7 +30,7 @@ on:
         default: ''
         type: string
       supabase_mode:
-        description: Supabase mutation surface
+        description: Retained for legacy dispatch compatibility; direct Supabase mutation is disabled
         required: false
         default: all
         type: choice
@@ -48,11 +48,16 @@ concurrency:
 
 jobs:
   validate-plan:
-    name: Validate governed deployment plan
+    name: Enforce governed deployment boundary
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+    outputs:
+      allow_netlify_nonprod: ${{ steps.gate.outputs.allow_netlify_nonprod }}
     steps:
-      - name: Validate inputs
+      - name: Checkout canonical deployment state
+        uses: actions/checkout@v4
+
+      - id: gate
+        name: Validate inputs and authority
         shell: bash
         env:
           TARGET: ${{ inputs.target }}
@@ -62,6 +67,7 @@ jobs:
           SUPABASE_MODE: ${{ inputs.supabase_mode }}
         run: |
           set -euo pipefail
+
           case "$TARGET" in
             netlify|render|supabase) ;;
             *) echo "Unsupported deployment target" >&2; exit 2 ;;
@@ -82,17 +88,40 @@ jobs:
             migrations|functions|all) ;;
             *) echo "Unsupported Supabase mode" >&2; exit 2 ;;
           esac
+
+          if [[ "$ENVIRONMENT" == "prod" ]]; then
+            node --input-type=module <<'NODE'
+          import { readFile } from 'node:fs/promises';
+          const target = JSON.parse(await readFile('config/production-deployment-target.json', 'utf8'));
+          console.error(`BLOCK: legacy platform workflow has no production authority (provider=${target.provider}, enabled=${target.productionDeployEnabled === true}).`);
+          console.error('Production mutation must use promoted-production-deploy.yml with canonical promotion/deployment evidence.');
+          process.exit(1);
+          NODE
+          fi
+
+          if [[ "$TARGET" == "render" ]]; then
+            echo "BLOCK: Render is a retired DSG deployment target." >&2
+            exit 1
+          fi
+
+          if [[ "$TARGET" == "supabase" ]]; then
+            echo "BLOCK: direct Supabase migration/function mutation is retired from this legacy workflow." >&2
+            echo "Database/function mutation must be wired into the governed promoted-production path or an explicitly bound non-production project contract." >&2
+            exit 1
+          fi
+
+          echo "allow_netlify_nonprod=true" >> "$GITHUB_OUTPUT"
           printf '%s\n' \
+            "ALLOW_NONPROD_COMPATIBILITY" \
             "target=$TARGET" \
             "environment=$ENVIRONMENT" \
             "idempotency_key=$IDEMPOTENCY_KEY" \
-            "ref=${REF:-<provider-default>}" \
-            "supabase_mode=$SUPABASE_MODE"
+            "ref=${REF:-<provider-default>}"
 
-  deploy-netlify:
-    name: Trigger Netlify deploy
+  deploy-netlify-nonprod:
+    name: Trigger Netlify non-production deploy
     needs: validate-plan
-    if: ${{ inputs.target == 'netlify' }}
+    if: needs.validate-plan.outputs.allow_netlify_nonprod == 'true'
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     steps:
@@ -141,7 +170,8 @@ jobs:
               'dispatchHttpStatus': int(os.environ['HTTP_CODE']),
               'providerResponseSha256': hashlib.sha256(response).hexdigest(),
               'verdict': 'REVIEW',
-              'truthBoundary': 'A successful build-hook request proves dispatch only, not a successful production deployment.'
+              'productionAuthority': 'NONE',
+              'truthBoundary': 'This compatibility path is non-production only. Successful hook dispatch is not a production deployment claim.'
           }
           Path('deployment-evidence.json').write_text(json.dumps(evidence, indent=2, sort_keys=True) + '\n')
           PY
@@ -153,178 +183,5 @@ jobs:
           path: |
             deployment-evidence.json
             provider-response.txt
-          if-no-files-found: error
-          retention-days: 30
-
-  deploy-render:
-    name: Trigger Render deploy
-    needs: validate-plan
-    if: ${{ inputs.target == 'render' }}
-    runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
-    steps:
-      - name: Trigger deploy hook
-        id: trigger
-        shell: bash
-        env:
-          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
-        run: |
-          set -euo pipefail
-          if [[ -z "${RENDER_DEPLOY_HOOK_URL:-}" ]]; then
-            echo "RENDER_DEPLOY_HOOK_URL is not configured" >&2
-            exit 3
-          fi
-          http_code=$(curl --silent --show-error --output provider-response.txt --write-out '%{http_code}' \
-            --request POST \
-            "$RENDER_DEPLOY_HOOK_URL")
-          if [[ "$http_code" != "200" && "$http_code" != "202" ]]; then
-            echo "Render deploy hook returned HTTP $http_code" >&2
-            cat provider-response.txt >&2 || true
-            exit 4
-          fi
-          echo "http_code=$http_code" >> "$GITHUB_OUTPUT"
-
-      - name: Capture evidence
-        shell: bash
-        env:
-          HTTP_CODE: ${{ steps.trigger.outputs.http_code }}
-          IDEMPOTENCY_KEY: ${{ inputs.idempotency_key }}
-          ENVIRONMENT: ${{ inputs.environment }}
-        run: |
-          set -euo pipefail
-          python - <<'PY'
-          import hashlib, json, os
-          from pathlib import Path
-          response = Path('provider-response.txt').read_bytes() if Path('provider-response.txt').exists() else b''
-          deploy_id = None
-          try:
-              parsed = json.loads(response.decode() or '{}')
-              deploy_id = parsed.get('id') or parsed.get('deploy', {}).get('id')
-          except Exception:
-              pass
-          evidence = {
-              'provider': 'render',
-              'environment': os.environ['ENVIRONMENT'],
-              'idempotencyKey': os.environ['IDEMPOTENCY_KEY'],
-              'dispatchHttpStatus': int(os.environ['HTTP_CODE']),
-              'deployId': deploy_id,
-              'providerResponseSha256': hashlib.sha256(response).hexdigest(),
-              'verdict': 'REVIEW',
-              'truthBoundary': 'A successful deploy-hook request proves dispatch only. Provider deployment state must still be verified.'
-          }
-          Path('deployment-evidence.json').write_text(json.dumps(evidence, indent=2, sort_keys=True) + '\n')
-          PY
-
-      - name: Upload deployment evidence
-        uses: actions/upload-artifact@v4
-        with:
-          name: dsg-deployment-evidence-render-${{ inputs.environment }}-${{ inputs.idempotency_key }}
-          path: |
-            deployment-evidence.json
-            provider-response.txt
-          if-no-files-found: error
-          retention-days: 30
-
-  deploy-supabase:
-    name: Deploy Supabase changes
-    needs: validate-plan
-    if: ${{ inputs.target == 'supabase' }}
-    runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
-    env:
-      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF || secrets.SUPABASE_PROJECT_ID || 'zeyguilldygozufpgxms' }}
-    steps:
-      - name: Checkout requested source
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.ref || github.ref_name }}
-          fetch-depth: 1
-
-      - name: Verify Supabase secret bindings
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -n "${SUPABASE_ACCESS_TOKEN:-}" || { echo 'SUPABASE_ACCESS_TOKEN is not configured' >&2; exit 3; }
-          test -n "${SUPABASE_DB_PASSWORD:-}" || { echo 'SUPABASE_DB_PASSWORD is not configured' >&2; exit 3; }
-          test -n "${SUPABASE_PROJECT_REF:-}" || { echo 'SUPABASE_PROJECT_REF is not configured' >&2; exit 3; }
-          test -f supabase/config.toml || { echo 'supabase/config.toml is missing' >&2; exit 3; }
-
-      - name: Install pinned Supabase CLI
-        uses: supabase/setup-cli@v2
-        with:
-          version: 2.84.2
-
-      - name: Link project
-        shell: bash
-        run: supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
-
-      - name: Preflight pending migrations
-        if: ${{ inputs.supabase_mode == 'migrations' || inputs.supabase_mode == 'all' }}
-        shell: bash
-        run: supabase db push --dry-run | tee supabase-migration-dry-run.txt
-
-      - name: Apply migrations
-        if: ${{ inputs.supabase_mode == 'migrations' || inputs.supabase_mode == 'all' }}
-        shell: bash
-        run: supabase db push | tee supabase-migration-push.txt
-
-      - name: Deploy Edge Functions
-        if: ${{ inputs.supabase_mode == 'functions' || inputs.supabase_mode == 'all' }}
-        shell: bash
-        run: supabase functions deploy --project-ref "$SUPABASE_PROJECT_REF" --use-api | tee supabase-functions-deploy.txt
-
-      - name: Capture provider state
-        shell: bash
-        run: |
-          set -euo pipefail
-          supabase migration list > supabase-migration-list.txt 2>&1 || true
-          supabase functions list --project-ref "$SUPABASE_PROJECT_REF" > supabase-functions-list.txt 2>&1 || true
-
-      - name: Capture evidence
-        shell: bash
-        env:
-          IDEMPOTENCY_KEY: ${{ inputs.idempotency_key }}
-          ENVIRONMENT: ${{ inputs.environment }}
-          SUPABASE_MODE: ${{ inputs.supabase_mode }}
-        run: |
-          set -euo pipefail
-          python - <<'PY'
-          import hashlib, json, os, subprocess
-          from pathlib import Path
-          files = [
-              'supabase-migration-dry-run.txt',
-              'supabase-migration-push.txt',
-              'supabase-functions-deploy.txt',
-              'supabase-migration-list.txt',
-              'supabase-functions-list.txt',
-          ]
-          hashes = {}
-          for name in files:
-              path = Path(name)
-              if path.exists():
-                  hashes[name] = hashlib.sha256(path.read_bytes()).hexdigest()
-          commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
-          evidence = {
-              'provider': 'supabase',
-              'environment': os.environ['ENVIRONMENT'],
-              'idempotencyKey': os.environ['IDEMPOTENCY_KEY'],
-              'mode': os.environ['SUPABASE_MODE'],
-              'sourceCommit': commit,
-              'evidenceSha256': hashes,
-              'verdict': 'REVIEW',
-              'truthBoundary': 'CLI success proves requested mutations completed, but final PASS still requires application-level verification.'
-          }
-          Path('deployment-evidence.json').write_text(json.dumps(evidence, indent=2, sort_keys=True) + '\n')
-          PY
-
-      - name: Upload deployment evidence
-        uses: actions/upload-artifact@v4
-        with:
-          name: dsg-deployment-evidence-supabase-${{ inputs.environment }}-${{ inputs.idempotency_key }}
-          path: |
-            deployment-evidence.json
-            supabase-*.txt
           if-no-files-found: error
           retention-days: 30

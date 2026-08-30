@@ -1,5 +1,5 @@
-# CospinDSG / DSG ONE Cloud Run container
-# Runtime boundary: this image contains app code only. Secrets must be mounted through Cloud Run env or Secret Manager.
+# CospinDSG / DSG ONE production container
+# Runtime boundary: this image contains app code only. Secrets must be mounted through the target runtime or Secret Manager.
 
 FROM node:24-bookworm-slim AS deps
 WORKDIR /app
@@ -16,10 +16,14 @@ RUN npm run build
 RUN npm prune --omit=dev
 
 FROM node:24-bookworm-slim AS runner
+ARG DSG_GIT_SHA=unknown
+ARG DSG_BUILD_TIMESTAMP=unknown
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=8080
+LABEL org.opencontainers.image.revision="${DSG_GIT_SHA}"
+LABEL org.opencontainers.image.created="${DSG_BUILD_TIMESTAMP}"
 
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/package-lock.json ./package-lock.json

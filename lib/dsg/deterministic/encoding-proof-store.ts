@@ -25,18 +25,22 @@ export type ReplayLookup =
   | { kind: 'idempotency_conflict'; message: string }
   | { kind: 'nonce_replay'; message: string };
 
-function admin() {
-  // The generated Database type is updated separately by db:types after the
-  // migration is applied. The runtime contract is defined by the migration.
-  return getSupabaseAdmin() as any;
-}
-
 function storeError(stage: string, error: unknown): Error {
   const detail =
     error && typeof error === 'object' && 'message' in error
       ? String((error as { message?: unknown }).message)
       : String(error ?? 'unknown_error');
   return new Error(`encoding_proof_store:${stage}:${detail}`);
+}
+
+function admin() {
+  // The generated Database type is updated separately by db:types after the
+  // migration is applied. The runtime contract is defined by the migration.
+  try {
+    return getSupabaseAdmin() as any;
+  } catch (error) {
+    throw storeError('supabase_client', error);
+  }
 }
 
 export async function inspectEncodingProofRequest(input: {
@@ -129,6 +133,43 @@ export async function persistEncodingProof(input: {
     throw new Error('encoding_proof_store:chain_or_replay_conflict');
   }
   throw storeError('insert', error);
+}
+
+/**
+ * Read one proof by its public proof id, scoped to the authenticated
+ * organization. The duplicated relational columns are cross-checked against
+ * the persisted JSON proof so a corrupted/inconsistent row never becomes an
+ * authority response.
+ */
+export async function getPersistedEncodingProof(input: {
+  organizationId: string;
+  proofId: string;
+}): Promise<EncodingProof | null> {
+  const db = admin();
+  const { data, error } = await db
+    .from('dsg_encoding_proofs')
+    .select('problem_id,encoding_type,encoding_hash,proof_id,proof_hash,proof')
+    .eq('organization_id', input.organizationId)
+    .eq('proof_id', input.proofId)
+    .maybeSingle();
+
+  if (error) throw storeError('lookup_proof_id', error);
+  if (!data) return null;
+
+  const proof = data.proof as EncodingProof;
+  const rowMatchesProof =
+    String(data.proof_id) === input.proofId &&
+    proof?.proofId === String(data.proof_id) &&
+    proof?.proofHash === String(data.proof_hash) &&
+    proof?.encodingHash === String(data.encoding_hash) &&
+    proof?.subject?.problemId === String(data.problem_id) &&
+    proof?.subject?.encodingType === String(data.encoding_type);
+
+  if (!rowMatchesProof) {
+    throw new Error('encoding_proof_store:lookup_integrity:row_proof_mismatch');
+  }
+
+  return proof;
 }
 
 export async function getEncodingProofChainHead(

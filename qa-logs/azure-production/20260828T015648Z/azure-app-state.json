@@ -1,0 +1,7 @@
+{
+  "availabilityState": "Normal",
+  "host": "dsg-control-plane.azurewebsites.net",
+  "name": "dsg-control-plane",
+  "resourceGroup": "rg-t.dealer01-0468",
+  "state": "Running"
+}

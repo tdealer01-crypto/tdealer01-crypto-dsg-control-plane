@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.4"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
@@ -958,6 +958,201 @@ export type Database = {
           workspace_key?: string
         }
         Relationships: []
+      }
+      agentic_evolution_baselines: {
+        Row: {
+          baseline_commit: string
+          control_evidence_hash: string
+          monitoring_evidence_hash: string
+          promoted_at: string
+          promotion_id: string
+          source_deployment_id: string
+          target_repository: string
+        }
+        Insert: {
+          baseline_commit: string
+          control_evidence_hash: string
+          monitoring_evidence_hash: string
+          promoted_at?: string
+          promotion_id: string
+          source_deployment_id: string
+          target_repository: string
+        }
+        Update: {
+          baseline_commit?: string
+          control_evidence_hash?: string
+          monitoring_evidence_hash?: string
+          promoted_at?: string
+          promotion_id?: string
+          source_deployment_id?: string
+          target_repository?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agentic_evolution_baselines_promotion_id_fkey"
+            columns: ["promotion_id"]
+            isOneToOne: false
+            referencedRelation: "agentic_promotion_receipts"
+            referencedColumns: ["promotion_id"]
+          },
+        ]
+      }
+      agentic_post_deploy_receipts: {
+        Row: {
+          baseline_commit: string
+          candidate_commit: string
+          control_action: string
+          control_evidence_hash: string
+          created_at: string
+          deployment_id: string
+          id: string
+          monitoring_evidence_hash: string
+          monitoring_status: string
+          promotion_id: string
+          receipt_payload: Json
+          recommended_action: string
+          target_repository: string
+        }
+        Insert: {
+          baseline_commit: string
+          candidate_commit: string
+          control_action: string
+          control_evidence_hash: string
+          created_at?: string
+          deployment_id: string
+          id?: string
+          monitoring_evidence_hash: string
+          monitoring_status: string
+          promotion_id: string
+          receipt_payload: Json
+          recommended_action: string
+          target_repository: string
+        }
+        Update: {
+          baseline_commit?: string
+          candidate_commit?: string
+          control_action?: string
+          control_evidence_hash?: string
+          created_at?: string
+          deployment_id?: string
+          id?: string
+          monitoring_evidence_hash?: string
+          monitoring_status?: string
+          promotion_id?: string
+          receipt_payload?: Json
+          recommended_action?: string
+          target_repository?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agentic_post_deploy_receipts_promotion_id_fkey"
+            columns: ["promotion_id"]
+            isOneToOne: false
+            referencedRelation: "agentic_promotion_receipts"
+            referencedColumns: ["promotion_id"]
+          },
+        ]
+      }
+      agentic_promotion_receipts: {
+        Row: {
+          approved_plan_hash: string
+          baseline_commit: string
+          candidate_commit: string
+          candidate_id: string
+          cinema_proof_hash: string
+          cinema_proof_id: string
+          created_at: string
+          gate_evaluated_at: string
+          goal_id: string
+          metric_delta: number
+          promotion_hash: string
+          promotion_id: string
+          receipt_payload: Json
+          target_repository: string
+        }
+        Insert: {
+          approved_plan_hash: string
+          baseline_commit: string
+          candidate_commit: string
+          candidate_id: string
+          cinema_proof_hash: string
+          cinema_proof_id: string
+          created_at?: string
+          gate_evaluated_at: string
+          goal_id: string
+          metric_delta: number
+          promotion_hash: string
+          promotion_id: string
+          receipt_payload: Json
+          target_repository: string
+        }
+        Update: {
+          approved_plan_hash?: string
+          baseline_commit?: string
+          candidate_commit?: string
+          candidate_id?: string
+          cinema_proof_hash?: string
+          cinema_proof_id?: string
+          created_at?: string
+          gate_evaluated_at?: string
+          goal_id?: string
+          metric_delta?: number
+          promotion_hash?: string
+          promotion_id?: string
+          receipt_payload?: Json
+          target_repository?: string
+        }
+        Relationships: []
+      }
+      agentic_rollback_evidence: {
+        Row: {
+          adapter_evidence_hash: string
+          candidate_commit: string
+          control_evidence_hash: string
+          deployment_id: string
+          evidence_payload: Json
+          health_passed: boolean
+          promotion_id: string
+          rollback_adapter: string
+          rollback_target: string
+          rolled_back_at: string
+          target_repository: string
+        }
+        Insert: {
+          adapter_evidence_hash: string
+          candidate_commit: string
+          control_evidence_hash: string
+          deployment_id: string
+          evidence_payload: Json
+          health_passed: boolean
+          promotion_id: string
+          rollback_adapter: string
+          rollback_target: string
+          rolled_back_at?: string
+          target_repository: string
+        }
+        Update: {
+          adapter_evidence_hash?: string
+          candidate_commit?: string
+          control_evidence_hash?: string
+          deployment_id?: string
+          evidence_payload?: Json
+          health_passed?: boolean
+          promotion_id?: string
+          rollback_adapter?: string
+          rollback_target?: string
+          rolled_back_at?: string
+          target_repository?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agentic_rollback_evidence_promotion_id_fkey"
+            columns: ["promotion_id"]
+            isOneToOne: false
+            referencedRelation: "agentic_promotion_receipts"
+            referencedColumns: ["promotion_id"]
+          },
+        ]
       }
       agents: {
         Row: {
@@ -3091,6 +3286,66 @@ export type Database = {
           },
         ]
       }
+      dsg_audit_events: {
+        Row: {
+          action_kind: string
+          adapter_kind: string
+          agent_id: string
+          attempt_number: number
+          created_at: string
+          current_hash: string
+          decision: string
+          event_type: string
+          evidence_hash: string | null
+          execution_id: string
+          id: string
+          metadata: Json
+          occurred_at: string
+          owner_open_id: string
+          policy_version: string
+          previous_hash: string | null
+          status: string
+        }
+        Insert: {
+          action_kind: string
+          adapter_kind: string
+          agent_id: string
+          attempt_number?: number
+          created_at?: string
+          current_hash: string
+          decision: string
+          event_type: string
+          evidence_hash?: string | null
+          execution_id: string
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          owner_open_id: string
+          policy_version: string
+          previous_hash?: string | null
+          status: string
+        }
+        Update: {
+          action_kind?: string
+          adapter_kind?: string
+          agent_id?: string
+          attempt_number?: number
+          created_at?: string
+          current_hash?: string
+          decision?: string
+          event_type?: string
+          evidence_hash?: string | null
+          execution_id?: string
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          owner_open_id?: string
+          policy_version?: string
+          previous_hash?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       dsg_audit_exports: {
         Row: {
           created_at: string
@@ -4104,6 +4359,92 @@ export type Database = {
         }
         Relationships: []
       }
+      dsg_guarded_evidence: {
+        Row: {
+          action: string
+          action_hash: string
+          agent_identity: string
+          channel: string
+          control_hash: string
+          created_at: string
+          decision: string
+          evidence_hash: string
+          evidence_id: string
+          finished_at: string | null
+          idempotency_key: string
+          label: string
+          mutation_status: string
+          output_sha256: string | null
+          outputs: string
+          parameters: string
+          plan_hash: string
+          plan_id: string
+          recorded_at: string
+          started_at: string | null
+          step_id: string | null
+          target: string
+          tenant_id: string
+        }
+        Insert: {
+          action: string
+          action_hash: string
+          agent_identity: string
+          channel: string
+          control_hash: string
+          created_at?: string
+          decision: string
+          evidence_hash: string
+          evidence_id: string
+          finished_at?: string | null
+          idempotency_key: string
+          label: string
+          mutation_status: string
+          output_sha256?: string | null
+          outputs?: string
+          parameters?: string
+          plan_hash: string
+          plan_id: string
+          recorded_at: string
+          started_at?: string | null
+          step_id?: string | null
+          target: string
+          tenant_id: string
+        }
+        Update: {
+          action?: string
+          action_hash?: string
+          agent_identity?: string
+          channel?: string
+          control_hash?: string
+          created_at?: string
+          decision?: string
+          evidence_hash?: string
+          evidence_id?: string
+          finished_at?: string | null
+          idempotency_key?: string
+          label?: string
+          mutation_status?: string
+          output_sha256?: string | null
+          outputs?: string
+          parameters?: string
+          plan_hash?: string
+          plan_id?: string
+          recorded_at?: string
+          started_at?: string | null
+          step_id?: string | null
+          target?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dsg_guarded_evidence_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_revenue_accounts"
+            referencedColumns: ["account_id"]
+          },
+        ]
+      }
       dsg_input_locks: {
         Row: {
           canonical_input: Json
@@ -4944,6 +5285,152 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      dsg_revenue_accounts: {
+        Row: {
+          account_id: string
+          activation_ref: string | null
+          channel: string
+          created_at: string
+          display_name: string
+          hard_cap_units: number | null
+          key_id: string
+          mode: string
+          payment_linked: boolean
+          plan: string
+          secret_hash: string
+          status: string
+          stripe_customer_id: string | null
+          stripe_field_event_created: Json
+          stripe_paid_amounts_micros: Json
+          stripe_paid_invoice_ids: Json
+          stripe_processed_event_ids: Json
+          stripe_subscription_id: string | null
+          unit_price_micros: number | null
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          activation_ref?: string | null
+          channel: string
+          created_at: string
+          display_name: string
+          hard_cap_units?: number | null
+          key_id: string
+          mode: string
+          payment_linked?: boolean
+          plan: string
+          secret_hash: string
+          status: string
+          stripe_customer_id?: string | null
+          stripe_field_event_created?: Json
+          stripe_paid_amounts_micros?: Json
+          stripe_paid_invoice_ids?: Json
+          stripe_processed_event_ids?: Json
+          stripe_subscription_id?: string | null
+          unit_price_micros?: number | null
+          updated_at: string
+        }
+        Update: {
+          account_id?: string
+          activation_ref?: string | null
+          channel?: string
+          created_at?: string
+          display_name?: string
+          hard_cap_units?: number | null
+          key_id?: string
+          mode?: string
+          payment_linked?: boolean
+          plan?: string
+          secret_hash?: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_field_event_created?: Json
+          stripe_paid_amounts_micros?: Json
+          stripe_paid_invoice_ids?: Json
+          stripe_processed_event_ids?: Json
+          stripe_subscription_id?: string | null
+          unit_price_micros?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      dsg_revenue_ledger_entries: {
+        Row: {
+          account_id: string
+          amount_micros: number
+          channel: string
+          context_hash: string
+          entry_hash: string
+          idempotency_key: string
+          period: string
+          previous_hash: string
+          proof_hash: string
+          quantity: number
+          recorded_at: string
+          sequence: number
+          sku: string
+          unit_price_micros: number
+          units_before: number
+        }
+        Insert: {
+          account_id: string
+          amount_micros: number
+          channel: string
+          context_hash: string
+          entry_hash: string
+          idempotency_key: string
+          period: string
+          previous_hash: string
+          proof_hash: string
+          quantity: number
+          recorded_at: string
+          sequence: number
+          sku: string
+          unit_price_micros: number
+          units_before: number
+        }
+        Update: {
+          account_id?: string
+          amount_micros?: number
+          channel?: string
+          context_hash?: string
+          entry_hash?: string
+          idempotency_key?: string
+          period?: string
+          previous_hash?: string
+          proof_hash?: string
+          quantity?: number
+          recorded_at?: string
+          sequence?: number
+          sku?: string
+          unit_price_micros?: number
+          units_before?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dsg_revenue_ledger_entries_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_revenue_accounts"
+            referencedColumns: ["account_id"]
+          },
+        ]
+      }
+      dsg_revenue_schema_migrations: {
+        Row: {
+          applied_at: string
+          version: number
+        }
+        Insert: {
+          applied_at?: string
+          version: number
+        }
+        Update: {
+          applied_at?: string
+          version?: number
+        }
+        Relationships: []
       }
       dsg_reviewer_allowlist: {
         Row: {
@@ -10156,6 +10643,134 @@ export type Database = {
         }
         Relationships: []
       }
+      trinity_revenue_agents: {
+        Row: {
+          agent_cost_usd: number
+          agent_name: string
+          cpu_usage: number | null
+          created_at: string
+          id: string
+          jobs_processed: number | null
+          trinity_revenue_record_id: string | null
+        }
+        Insert: {
+          agent_cost_usd: number
+          agent_name: string
+          cpu_usage?: number | null
+          created_at?: string
+          id?: string
+          jobs_processed?: number | null
+          trinity_revenue_record_id?: string | null
+        }
+        Update: {
+          agent_cost_usd?: number
+          agent_name?: string
+          cpu_usage?: number | null
+          created_at?: string
+          id?: string
+          jobs_processed?: number | null
+          trinity_revenue_record_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trinity_revenue_agents_trinity_revenue_record_id_fkey"
+            columns: ["trinity_revenue_record_id"]
+            isOneToOne: false
+            referencedRelation: "trinity_revenue_records"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trinity_revenue_records: {
+        Row: {
+          agent_count: number
+          context_sharing: number | null
+          created_at: string
+          fragmentation_risk: number | null
+          healthy_agents: number | null
+          id: string
+          metrics_json: Json | null
+          organization_id: string
+          period_end: string
+          period_start: string
+          source: string
+          status: string
+          total_amount_usd: number
+          updated_at: string
+        }
+        Insert: {
+          agent_count: number
+          context_sharing?: number | null
+          created_at?: string
+          fragmentation_risk?: number | null
+          healthy_agents?: number | null
+          id?: string
+          metrics_json?: Json | null
+          organization_id: string
+          period_end: string
+          period_start: string
+          source?: string
+          status?: string
+          total_amount_usd: number
+          updated_at?: string
+        }
+        Update: {
+          agent_count?: number
+          context_sharing?: number | null
+          created_at?: string
+          fragmentation_risk?: number | null
+          healthy_agents?: number | null
+          id?: string
+          metrics_json?: Json | null
+          organization_id?: string
+          period_end?: string
+          period_start?: string
+          source?: string
+          status?: string
+          total_amount_usd?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      trinity_revenue_sync_state: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          last_successful_sync: string | null
+          last_sync_attempt: string | null
+          last_sync_period: string | null
+          last_sync_record_count: number | null
+          last_sync_total_cost: number | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          last_successful_sync?: string | null
+          last_sync_attempt?: string | null
+          last_sync_period?: string | null
+          last_sync_record_count?: number | null
+          last_sync_total_cost?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          last_successful_sync?: string | null
+          last_sync_attempt?: string | null
+          last_sync_period?: string | null
+          last_sync_record_count?: number | null
+          last_sync_total_cost?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       trinity_settlements: {
         Row: {
           created_at: string
@@ -10836,6 +11451,18 @@ export type Database = {
           uses_mock_state: boolean
         }
         Returns: Json
+      }
+      dsg_commit_evolution_baseline: {
+        Args: {
+          p_control_evidence_hash: string
+          p_expected_baseline: string
+          p_monitoring_evidence_hash: string
+          p_next_baseline: string
+          p_promotion_id: string
+          p_source_deployment_id: string
+          p_target_repository: string
+        }
+        Returns: string
       }
       dsg_compute_audit_hash: {
         Args: {

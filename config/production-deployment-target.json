@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "dsg.production-target.v1",
+  "provider": "AZURE_APP_SERVICE",
+  "status": "BOUND_FAIL_CLOSED_LIVE_VERIFICATION_REQUIRED",
+  "productionDeployEnabled": true,
+  "autoDeployOnPromotedMerge": true,
+  "promotionStatusContext": "dsg/promotion",
+  "deploymentAdapter": ".github/workflows/promoted-production-deploy.yml#azure-app-service",
+  "healthProbe": "/api/health",
+  "rollbackTarget": "staging-slot-reverse-swap",
+  "rollbackAdapterEndpoint": null,
+  "boundAt": "2026-08-29",
+  "notes": [
+    "Vercel is not an active DSG production target.",
+    "Render is not an active DSG production target.",
+    "The bound provider is Azure App Service Linux custom container with Azure Container Registry and a required staging deployment slot.",
+    "A merged PR may auto-deploy only through the governed promotion path and exact current-main commit identity.",
+    "The deployment adapter builds a full-SHA image, resolves its ACR digest, write/delete-locks the SHA tag, stamps DSG_GIT_SHA/DSG_IMAGE_DIGEST/DSG_BUILD_TIMESTAMP, verifies /api/dsg/v1/runtime plus the configured healthProbe, authenticated proof persistence, downstream proof lookup, idempotent replay, nonce conflict, and anonymous DB isolation before slot swap.",
+    "Production verification rechecks exact SHA/digest and health after swap. A mismatch fails closed and attempts the reverse slot swap.",
+    "Binding this adapter does not assert that a deployment has passed. FULL LIVE E2E PASS may be claimed only from an actually green governed production workflow with live runtime and database evidence.",
+    "monitoring-schema-consistency.yml remains an independent fail-closed gate and must verify the configured live monitoring endpoint with its protected credentials."
+  ]
+}

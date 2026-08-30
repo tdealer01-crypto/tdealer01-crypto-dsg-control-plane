@@ -1,43 +1,33 @@
-name: Promoted Production Deployment
+name: Promoted Production Deployment (Azure App Service)
 
 on:
   workflow_call:
     inputs:
-      operation:
-        description: Protected production operation selected by the trusted caller
-        required: true
-        type: string
-      commit_sha:
-        description: Exact current main commit to verify and deploy
-        required: true
-        type: string
-      migration_request_id:
-        description: Audited Vercel account migration request ID
-        required: false
-        default: ''
-        type: string
-      destination_team_id:
-        description: Verified destination Vercel team ID
-        required: false
-        default: ''
-        type: string
-      destination_project_id:
-        description: Verified destination Vercel project ID
-        required: false
-        default: ''
-        type: string
+      operation: { required: true, type: string }
+      commit_sha: { required: true, type: string }
+      migration_request_id: { required: false, default: '', type: string }
+      destination_team_id: { required: false, default: '', type: string }
+      destination_project_id: { required: false, default: '', type: string }
+    secrets:
+      AZURE_CLIENT_ID: { required: false }
+      AZURE_TENANT_ID: { required: false }
+      AZURE_SUBSCRIPTION_ID: { required: false }
+      E2E_PAID_API_KEY: { required: false }
+      NEXT_PUBLIC_SUPABASE_URL: { required: false }
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: { required: false }
+      SUPABASE_SERVICE_ROLE_KEY: { required: false }
     outputs:
       bootstrap_url:
-        description: Verified READY destination production bootstrap URL
-        value: ${{ jobs.bootstrap_vercel_account.outputs.bootstrap_url }}
+        description: Verified production URL
+        value: ${{ jobs.deploy.outputs.bootstrap_url }}
   workflow_dispatch:
     inputs:
       promotion_id:
-        description: Pending agent workspace promotion UUID
+        description: Pending governed promotion UUID
         required: true
         type: string
       commit_sha:
-        description: Exact current main commit to verify and deploy
+        description: Exact current main commit
         required: true
         type: string
       workspace_key:
@@ -52,306 +42,278 @@ concurrency:
 
 permissions:
   contents: read
+  id-token: write
 
 env:
-  VERCEL_CLI_VERSION: 58.0.0
-  NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-  AGENT_WORKSPACE_SUPABASE_URL: ${{ secrets.AGENT_WORKSPACE_SUPABASE_URL }}
-  AGENT_WORKSPACE_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.AGENT_WORKSPACE_SUPABASE_SERVICE_ROLE_KEY }}
-  AGENT_WORKSPACE_RELEASE_AGENT_ID: ${{ secrets.AGENT_WORKSPACE_RELEASE_AGENT_ID }}
-  PROMOTION_ID: ${{ inputs.promotion_id }}
-  COMMIT_SHA: ${{ inputs.commit_sha }}
-  WORKSPACE_KEY: ${{ inputs.workspace_key }}
-  GITHUB_RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+  AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP || 'rg-t.dealer01-0468' }}
+  AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME || 'dsg-control-plane' }}
+  AZURE_ACR_NAME: ${{ vars.AZURE_ACR_NAME }}
+  AZURE_IMAGE_REPOSITORY: ${{ vars.AZURE_CONTROL_PLANE_IMAGE_REPOSITORY || 'dsg-control-plane' }}
+  AZURE_STAGING_SLOT: ${{ vars.AZURE_STAGING_SLOT || 'staging' }}
 
 jobs:
-  verify-approve-deploy:
-    name: Verify Evidence, Approve Once, Deploy Exact Commit
-    if: inputs.operation != 'vercel-account-bootstrap'
+  deploy:
+    name: Governed Azure App Service promotion
     runs-on: ubuntu-latest
+    environment: prod
     timeout-minutes: 45
-    environment: "Production – dsg-qubo-api"
+    outputs:
+      bootstrap_url: ${{ steps.production.outputs.production_url }}
     steps:
-      - name: Validate dispatch inputs
-        shell: bash
-        run: |
-          [[ "$COMMIT_SHA" =~ ^[0-9a-fA-F]{7,64}$ ]] || { echo "Invalid commit SHA"; exit 1; }
-          [[ "$PROMOTION_ID" =~ ^[0-9a-fA-F-]{36}$ ]] || { echo "Invalid promotion UUID"; exit 1; }
-          [[ "$WORKSPACE_KEY" =~ ^[A-Za-z0-9][A-Za-z0-9_-]{2,63}$ ]] || { echo "Invalid workspace key"; exit 1; }
-
-      - uses: actions/checkout@v4
+      - name: Checkout exact promoted commit
+        uses: actions/checkout@v4
         with:
           ref: ${{ inputs.commit_sha }}
           fetch-depth: 0
 
-      - name: Require exact current main commit
+      - name: Fail-closed deployment preflight
         shell: bash
-        run: |
-          git fetch origin main --depth=1
-          CHECKED_OUT=$(git rev-parse HEAD)
-          MAIN_HEAD=$(git rev-parse origin/main)
-          test "${CHECKED_OUT,,}" = "${COMMIT_SHA,,}" || { echo "Checked-out commit mismatch"; exit 1; }
-          test "$CHECKED_OUT" = "$MAIN_HEAD" || { echo "Commit is not current main head"; exit 1; }
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: npm
-
-      - name: Resolve audited Vercel routing
         env:
-          LEGACY_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          NEW_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW || secrets.VERCEL_TOKEN }}
-          NEW_VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID_NEW }}
-          NEW_VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_NEW }}
-        run: node scripts/resolve-vercel-routing.mjs
-
-      - name: Verify required release configuration
-        shell: bash
+          COMMIT_SHA: ${{ inputs.commit_sha }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          E2E_PAID_API_KEY: ${{ secrets.E2E_PAID_API_KEY }}
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          for name in \
-            VERCEL_TOKEN \
-            NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY \
-            AGENT_WORKSPACE_SUPABASE_URL AGENT_WORKSPACE_SUPABASE_SERVICE_ROLE_KEY \
-            AGENT_WORKSPACE_RELEASE_AGENT_ID; do
-            test -n "${!name}" || { echo "Missing required configuration: $name"; exit 1; }
+          set -euo pipefail
+          [[ "$COMMIT_SHA" =~ ^[0-9a-fA-F]{40}$ ]] || { echo '::error::commit_sha must be full SHA'; exit 1; }
+          test "$(git rev-parse HEAD)" = "$COMMIT_SHA" || { echo '::error::checkout SHA mismatch'; exit 1; }
+          git fetch origin main --depth=1
+          test "$(git rev-parse origin/main)" = "$COMMIT_SHA" || { echo '::error::promotion is not current main'; exit 1; }
+          for value in AZURE_RESOURCE_GROUP AZURE_WEBAPP_NAME AZURE_ACR_NAME AZURE_IMAGE_REPOSITORY AZURE_STAGING_SLOT AZURE_CLIENT_ID AZURE_TENANT_ID AZURE_SUBSCRIPTION_ID E2E_PAID_API_KEY SUPABASE_URL SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY; do
+            test -n "${!value:-}" || { echo "::error::Missing protected production binding: $value"; exit 1; }
           done
-          [[ "$VERCEL_ORG_ID" =~ ^[A-Za-z0-9_-]{3,128}$ ]] || { echo "Invalid Vercel account ID"; exit 1; }
-          [[ "$VERCEL_PROJECT_ID" =~ ^prj_[A-Za-z0-9]+$ ]] || { echo "Invalid Vercel project ID"; exit 1; }
-          if test "$VERCEL_USE_NEW_ACCOUNT" = "true"; then
-            test "$VERCEL_ORG_ID" != "team_n189mlAdVHR6cGGiaAwsKzQ0" || { echo "New-account routing has the legacy account ID"; exit 1; }
-            test "$VERCEL_PROJECT_ID" != "prj_k02PTNzCJRBN5CcRtg6hFdd0HjuW" || { echo "New-account routing has the legacy project ID"; exit 1; }
-          fi
+          node --input-type=module <<'NODE'
+          import { readFile } from 'node:fs/promises';
+          const target = JSON.parse(await readFile('config/production-deployment-target.json', 'utf8'));
+          if (target.provider !== 'AZURE_APP_SERVICE' || target.productionDeployEnabled !== true) {
+            console.error('BLOCK: production target is not explicitly bound to AZURE_APP_SERVICE');
+            process.exit(1);
+          }
+          NODE
 
-      - name: Install dependencies
-        run: npm ci --ignore-scripts
+      - name: Login to Azure with GitHub OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Check release scripts
-        run: |
-          node --check scripts/lib/agent-workspace-release.mjs
-          node --check scripts/approve-agent-workspace-promotion.mjs
-          node --check scripts/finalize-agent-workspace-promotion.mjs
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Unit tests
-        run: npm run test:unit
-
-      - name: Migration tests
-        run: npm run test:migrations
-
-      - name: Dependency security gate
-        run: npm audit --audit-level=high
-
-      - name: Production build
-        run: npm run build
-
-      - name: Pull Vercel preview configuration
-        run: npx --yes "vercel@$VERCEL_CLI_VERSION" pull --yes --environment=preview --token="$VERCEL_TOKEN"
-
-      - name: Deploy exact commit to preview
-        id: preview
+      - name: Verify Azure target and staging slot
         shell: bash
         run: |
           set -euo pipefail
-          cp vercel.json "$RUNNER_TEMP/vercel.production.json"
-          trap 'cp "$RUNNER_TEMP/vercel.production.json" vercel.json' EXIT
-          cp vercel.preview.json vercel.json
+          az acr show -n "$AZURE_ACR_NAME" --only-show-errors --output none
+          az webapp show -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" --only-show-errors --output none
+          az webapp deployment slot list -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" \
+            --query "[?name=='$AZURE_STAGING_SLOT'].name | [0]" -o tsv | grep -Fx "$AZURE_STAGING_SLOT" >/dev/null || {
+              echo "::error::Required staging slot '$AZURE_STAGING_SLOT' does not exist"; exit 1;
+            }
 
-          PREVIEW_URL=$(npx --yes "vercel@$VERCEL_CLI_VERSION" deploy --yes --token="$VERCEL_TOKEN" \
-            --meta=promotion_id="$PROMOTION_ID" \
-            --meta=commit="$COMMIT_SHA" \
-            --meta=release_stage=promotion-preview)
-          test -n "$PREVIEW_URL"
-          echo "preview_url=$PREVIEW_URL" >> "$GITHUB_OUTPUT"
+      - name: Build SHA image, resolve digest and lock artifact
+        id: artifact
+        shell: bash
+        env:
+          COMMIT_SHA: ${{ inputs.commit_sha }}
+        run: |
+          set -euo pipefail
+          BUILD_TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          IMAGE_TAG="$AZURE_IMAGE_REPOSITORY:$COMMIT_SHA"
+          az acr build -r "$AZURE_ACR_NAME" -t "$IMAGE_TAG" \
+            --build-arg "DSG_GIT_SHA=$COMMIT_SHA" \
+            --build-arg "DSG_BUILD_TIMESTAMP=$BUILD_TS" .
+          DIGEST="$(az acr manifest show-metadata -r "$AZURE_ACR_NAME" -n "$IMAGE_TAG" --query digest -o tsv)"
+          [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo '::error::ACR digest resolution failed'; exit 1; }
+          LOGIN_SERVER="$(az acr show -n "$AZURE_ACR_NAME" --query loginServer -o tsv)"
+          test -n "$LOGIN_SERVER" || { echo '::error::ACR login server resolution failed'; exit 1; }
+          IMMUTABLE_IMAGE="$LOGIN_SERVER/$AZURE_IMAGE_REPOSITORY@$DIGEST"
+          az acr repository update -n "$AZURE_ACR_NAME" --image "$IMAGE_TAG" \
+            --write-enabled false --delete-enabled false --only-show-errors --output none
+          echo "build_ts=$BUILD_TS" >> "$GITHUB_OUTPUT"
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+          echo "image=$IMMUTABLE_IMAGE" >> "$GITHUB_OUTPUT"
+          {
+            echo '### Immutable artifact identity'
+            echo "- git SHA: $COMMIT_SHA"
+            echo "- ACR digest: $DIGEST"
+            echo "- immutable image: $IMMUTABLE_IMAGE"
+            echo "- discoverability tag: $LOGIN_SERVER/$IMAGE_TAG (write/delete locked)"
+            echo "- built UTC: $BUILD_TS"
+          } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Verify preview health behind Vercel Authentication
-        run: bash scripts/verify-vercel-health.sh "${{ steps.preview.outputs.preview_url }}" /api/health
+      - name: Deploy immutable artifact to staging slot
+        shell: bash
+        env:
+          COMMIT_SHA: ${{ inputs.commit_sha }}
+          IMAGE: ${{ steps.artifact.outputs.image }}
+          DIGEST: ${{ steps.artifact.outputs.digest }}
+          BUILD_TS: ${{ steps.artifact.outputs.build_ts }}
+        run: |
+          set -euo pipefail
+          [[ "$IMAGE" == *@sha256:* ]] || { echo '::error::Refusing mutable container reference'; exit 1; }
+          az webapp config appsettings set -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" --slot "$AZURE_STAGING_SLOT" \
+            --settings "DSG_GIT_SHA=$COMMIT_SHA" "DSG_IMAGE_DIGEST=$DIGEST" "DSG_BUILD_TIMESTAMP=$BUILD_TS" \
+            --only-show-errors --output none
+          az webapp config container set -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" --slot "$AZURE_STAGING_SLOT" \
+            --container-image-name "$IMAGE" --only-show-errors --output none
+          CONFIGURED_IMAGE="$(az webapp config container show -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" --slot "$AZURE_STAGING_SLOT" --query '[?name==`DOCKER_CUSTOM_IMAGE_NAME`].value | [0]' -o tsv)"
+          EFFECTIVE_IMAGE="$(az webapp config show -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" --slot "$AZURE_STAGING_SLOT" --query linuxFxVersion -o tsv)"
+          CONFIGURED_IMAGE="${CONFIGURED_IMAGE#DOCKER|}"
+          EFFECTIVE_IMAGE="${EFFECTIVE_IMAGE#DOCKER|}"
+          test "$CONFIGURED_IMAGE" = "$IMAGE" || { echo '::error::Staging DOCKER_CUSTOM_IMAGE_NAME readback mismatch'; exit 1; }
+          test "$EFFECTIVE_IMAGE" = "$IMAGE" || { echo '::error::Staging effective LinuxFxVersion readback mismatch'; exit 1; }
+          az webapp restart -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" --slot "$AZURE_STAGING_SLOT" --only-show-errors
 
-      - name: Locate current READY production rollback target
-        id: rollback
+      - name: Verify staging provenance and health
+        id: staging
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ inputs.commit_sha }}
+          EXPECTED_DIGEST: ${{ steps.artifact.outputs.digest }}
+        run: |
+          set -euo pipefail
+          HOST="$(az webapp show -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" --slot "$AZURE_STAGING_SLOT" --query defaultHostName -o tsv)"
+          BASE="https://$HOST"
+          test -n "$HOST"
+          rm -f /tmp/runtime.json
+          for attempt in $(seq 1 24); do
+            if curl -fsS --max-time 15 "$BASE/api/dsg/v1/runtime" -o /tmp/runtime.json; then break; fi
+            sleep 5
+          done
+          test -s /tmp/runtime.json || { echo '::error::Staging runtime provenance endpoint never became available'; exit 1; }
+          jq -e --arg sha "$EXPECTED_SHA" --arg digest "$EXPECTED_DIGEST" \
+            '.service == "dsg-control-plane" and .gitSha == $sha and .imageDigest == $digest' /tmp/runtime.json >/dev/null || {
+              echo '::error::Staging runtime provenance mismatch'; cat /tmp/runtime.json; exit 1;
+            }
+          curl -fsS --max-time 15 "$BASE/api/health" >/tmp/health.json
+          echo "base_url=$BASE" >> "$GITHUB_OUTPUT"
+
+      - name: Run staging proof E2E and live DB verification
+        shell: bash
+        env:
+          BASE_URL: ${{ steps.staging.outputs.base_url }}
+          API_KEY: ${{ secrets.E2E_PAID_API_KEY }}
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          NONCE="live-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-staging"
+          IDEM="idem-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-staging"
+          jq -n --arg nonce "$NONCE" --arg idem "$IDEM" '{problemId:"azure-live-e2e-staging",encodingType:"qubo-v1",encoding:{kind:"qubo-v1",variableCount:2,objective:"min",constant:0,linear:[{index:0,weight:1},{index:1,weight:"-0.5"}],quadratic:[{i:0,j:1,weight:"0.25"}]},nonce:$nonce,idempotencyKey:$idem}' >/tmp/proof-staging.json
+          unauth="$(curl -sS -o /tmp/staging-unauth.json -w '%{http_code}' -X POST "$BASE_URL/api/dsg/v1/encoding/prove" -H 'Content-Type: application/json' --data @/tmp/proof-staging.json)"
+          test "$unauth" = 401 || { echo "::error::Staging unauthenticated proof expected 401, got $unauth"; exit 1; }
+          status="$(curl -sS -D /tmp/staging-proof.headers -o /tmp/staging-proof.response -w '%{http_code}' -X POST "$BASE_URL/api/dsg/v1/encoding/prove" -H "Authorization: Bearer $API_KEY" -H 'Content-Type: application/json' --data @/tmp/proof-staging.json)"
+          test "$status" = 200 || { echo "::error::Staging positive proof expected 200, got $status"; jq . /tmp/staging-proof.response || cat /tmp/staging-proof.response; exit 1; }
+          PROOF_ID="$(jq -r '.proofId // empty' /tmp/staging-proof.response)"
+          test -n "$PROOF_ID"
+          lookup="$(curl -sS -o /tmp/staging-proof.lookup -w '%{http_code}' "$BASE_URL/api/dsg/v1/encoding/proofs/$PROOF_ID" -H "Authorization: Bearer $API_KEY")"
+          test "$lookup" = 200 || { echo "::error::Staging downstream proof lookup/validation failed: $lookup"; exit 1; }
+          replay="$(curl -sS -D /tmp/staging-replay.headers -o /tmp/staging-replay.json -w '%{http_code}' -X POST "$BASE_URL/api/dsg/v1/encoding/prove" -H "Authorization: Bearer $API_KEY" -H 'Content-Type: application/json' --data @/tmp/proof-staging.json)"
+          test "$replay" = 200 && grep -qi '^x-idempotent-replay: true' /tmp/staging-replay.headers || { echo '::error::Staging exact retry did not resolve as idempotent replay'; exit 1; }
+          jq --arg idem "${IDEM}-conflict" '.idempotencyKey=$idem' /tmp/proof-staging.json >/tmp/staging-proof-conflict.json
+          conflict="$(curl -sS -o /tmp/staging-conflict.json -w '%{http_code}' -X POST "$BASE_URL/api/dsg/v1/encoding/prove" -H "Authorization: Bearer $API_KEY" -H 'Content-Type: application/json' --data @/tmp/staging-proof-conflict.json)"
+          test "$conflict" = 409 || { echo "::error::Staging nonce reuse expected 409, got $conflict"; exit 1; }
+          ADMIN_ROWS="$(curl -fsS --get "$SUPABASE_URL/rest/v1/dsg_encoding_proofs" -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" --data-urlencode 'select=proof_id,nonce' --data-urlencode "proof_id=eq.$PROOF_ID")"
+          test "$(jq 'length' <<<"$ADMIN_ROWS")" -eq 1 || { echo '::error::Staging just-created proof row was not persisted'; exit 1; }
+          test "$(jq -r '.[0].nonce' <<<"$ADMIN_ROWS")" = "$NONCE" || { echo '::error::Staging persisted nonce does not match executed request'; exit 1; }
+          ANON_ROWS="$(curl -fsS --get "$SUPABASE_URL/rest/v1/dsg_encoding_proofs" -H "apikey: $SUPABASE_ANON_KEY" --data-urlencode 'select=proof_id' --data-urlencode "proof_id=eq.$PROOF_ID")"
+          test "$(jq 'length' <<<"$ANON_ROWS")" -eq 0 || { echo '::error::Unauthorized anonymous DB read exposed staging proof row'; exit 1; }
+
+      - name: Swap verified staging slot to production
         shell: bash
         run: |
-          RESPONSE=$(curl --fail --silent --show-error \
-            -H "Authorization: Bearer $VERCEL_TOKEN" \
-            "https://api.vercel.com/v6/deployments?projectId=$VERCEL_PROJECT_ID&target=production&state=READY&limit=20&teamId=$VERCEL_ORG_ID")
-          ROLLBACK_HOST=$(echo "$RESPONSE" | jq -r '.deployments[] | select(.target == "production" and .state == "READY") | .url' | head -n 1)
-          test -n "$ROLLBACK_HOST" && test "$ROLLBACK_HOST" != "null" || { echo "No READY production rollback target"; exit 1; }
-          ROLLBACK_URL="https://$ROLLBACK_HOST"
-          curl --fail --retry 5 --retry-delay 5 "$ROLLBACK_URL/api/health"
-          echo "rollback_url=$ROLLBACK_URL" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          az webapp deployment slot swap -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" \
+            --slot "$AZURE_STAGING_SLOT" --target-slot production --only-show-errors
 
-      - name: Approve exact deployment promotion from trusted CI evidence
-        id: approve
-        env:
-          PREVIEW_URL: ${{ steps.preview.outputs.preview_url }}
-          ROLLBACK_URL: ${{ steps.rollback.outputs.rollback_url }}
-        run: node scripts/approve-agent-workspace-promotion.mjs
-
-      - name: Pull Vercel production configuration
-        run: npx --yes "vercel@$VERCEL_CLI_VERSION" pull --yes --environment=production --token="$VERCEL_TOKEN"
-
-      - name: Build production artifact
-        run: npx --yes "vercel@$VERCEL_CLI_VERSION" build --prod --token="$VERCEL_TOKEN"
-
-      - name: Deploy approved exact commit to production
+      - name: Verify production provenance or rollback
         id: production
         shell: bash
-        run: |
-          PRODUCTION_URL=$(npx --yes "vercel@$VERCEL_CLI_VERSION" deploy --prebuilt --prod --token="$VERCEL_TOKEN" \
-            --meta=promotion_id="$PROMOTION_ID" \
-            --meta=evidence_hash="${{ steps.approve.outputs.evidence_hash }}" \
-            --meta=commit="$COMMIT_SHA")
-          test -n "$PRODUCTION_URL"
-          echo "production_url=$PRODUCTION_URL" >> "$GITHUB_OUTPUT"
-
-      - name: Verify production health
-        id: production_health
-        continue-on-error: true
-        run: curl --fail --retry 10 --retry-delay 6 "${{ steps.production.outputs.production_url }}/api/health"
-
-      - name: Roll back unhealthy production deployment
-        if: steps.production_health.outcome == 'failure'
-        shell: bash
-        run: |
-          npx --yes "vercel@$VERCEL_CLI_VERSION" rollback "${{ steps.rollback.outputs.rollback_url }}" \
-            --token="$VERCEL_TOKEN"
-          npx --yes "vercel@$VERCEL_CLI_VERSION" rollback status \
-            --token="$VERCEL_TOKEN" --timeout=120s
-          curl --fail --retry 10 --retry-delay 6 "${{ steps.rollback.outputs.rollback_url }}/api/health"
-
-      - name: Reject promotion after health-triggered rollback
-        if: steps.production_health.outcome == 'failure'
         env:
-          PROMOTION_OUTCOME: rejected
-          FAILURE_REASON: Production health failed and traffic was rolled back to the verified previous deployment
-        run: node scripts/finalize-agent-workspace-promotion.mjs
+          EXPECTED_SHA: ${{ inputs.commit_sha }}
+          EXPECTED_DIGEST: ${{ steps.artifact.outputs.digest }}
+        run: |
+          set -euo pipefail
+          HOST="$(az webapp show -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" --query defaultHostName -o tsv)"
+          BASE="https://$HOST"
+          ok=false
+          for attempt in $(seq 1 24); do
+            if curl -fsS --max-time 15 "$BASE/api/dsg/v1/runtime" -o /tmp/production-runtime.json && \
+               jq -e --arg sha "$EXPECTED_SHA" --arg digest "$EXPECTED_DIGEST" '.service == "dsg-control-plane" and .gitSha == $sha and .imageDigest == $digest' /tmp/production-runtime.json >/dev/null && \
+               curl -fsS --max-time 15 "$BASE/api/health" >/tmp/production-health.json; then
+              ok=true; break
+            fi
+            sleep 5
+          done
+          if [[ "$ok" != true ]]; then
+            echo '::error::Production provenance/health verification failed; reversing slot swap'
+            az webapp deployment slot swap -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" --slot "$AZURE_STAGING_SLOT" --target-slot production --only-show-errors || true
+            exit 1
+          fi
+          echo "production_url=$BASE" >> "$GITHUB_OUTPUT"
 
-      - name: Fail workflow after rollback
-        if: steps.production_health.outcome == 'failure'
-        run: exit 1
-
-      - name: Consume promotion after successful deployment
-        if: steps.production_health.outcome == 'success'
-        env:
-          PROMOTION_OUTCOME: executed
-          PRODUCTION_URL: ${{ steps.production.outputs.production_url }}
-        run: node scripts/finalize-agent-workspace-promotion.mjs
-
-      - name: Reject pending or approved promotion when workflow fails early
-        if: failure()
-        continue-on-error: true
-        env:
-          PROMOTION_OUTCOME: rejected
-          FAILURE_REASON: Promoted production workflow failed before successful health verification
-        run: node scripts/finalize-agent-workspace-promotion.mjs
-
-  bootstrap_vercel_account:
-    name: Verify and Create Destination Production Bootstrap
-    if: inputs.operation == 'vercel-account-bootstrap'
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    environment: "Production – dsg-qubo-api"
-    outputs:
-      bootstrap_url: ${{ steps.bootstrap.outputs.bootstrap_url }}
-    env:
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW || secrets.VERCEL_TOKEN }}
-      VERCEL_ORG_ID: ${{ inputs.destination_team_id }}
-      VERCEL_PROJECT_ID: ${{ inputs.destination_project_id }}
-      MIGRATION_REQUEST_ID: ${{ inputs.migration_request_id }}
-    steps:
-      - name: Validate protected bootstrap inputs
+      - name: Run production proof E2E and live DB verification
         shell: bash
-        run: |
-          [[ "$COMMIT_SHA" =~ ^[0-9a-fA-F]{40}$ ]] || { echo "Invalid exact commit SHA"; exit 1; }
-          [[ "$MIGRATION_REQUEST_ID" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{2,127}$ ]] || { echo "Invalid migration request ID"; exit 1; }
-          [[ "$VERCEL_ORG_ID" =~ ^[A-Za-z0-9_-]{3,128}$ ]] || { echo "Invalid destination Vercel team ID"; exit 1; }
-          [[ "$VERCEL_PROJECT_ID" =~ ^prj_[A-Za-z0-9]+$ ]] || { echo "Invalid destination Vercel project ID"; exit 1; }
-          test "$VERCEL_ORG_ID" != "team_n189mlAdVHR6cGGiaAwsKzQ0" || { echo "Destination is the legacy Vercel account"; exit 1; }
-          test "$VERCEL_PROJECT_ID" != "prj_k02PTNzCJRBN5CcRtg6hFdd0HjuW" || { echo "Destination is the legacy Vercel project"; exit 1; }
-          test -n "$VERCEL_TOKEN" || { echo "Missing VERCEL_TOKEN_NEW"; exit 1; }
-
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.commit_sha }}
-          fetch-depth: 0
-
-      - name: Require exact current main commit for bootstrap
-        shell: bash
-        run: |
-          git fetch origin main --depth=1
-          CHECKED_OUT=$(git rev-parse HEAD)
-          MAIN_HEAD=$(git rev-parse origin/main)
-          test "${CHECKED_OUT,,}" = "${COMMIT_SHA,,}" || { echo "Checked-out commit mismatch"; exit 1; }
-          test "$CHECKED_OUT" = "$MAIN_HEAD" || { echo "Commit is not current main head"; exit 1; }
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: npm
-
-      - name: Install exact dependencies
-        run: npm ci --ignore-scripts
-
-      - name: Re-run migration and release safety gates
-        run: |
-          node --check scripts/lib/vercel-env-sync.mjs
-          node --check scripts/sync-vercel-envs.mjs
-          node --check scripts/resolve-vercel-routing.mjs
-          npx vitest run \
-            tests/unit/scripts/vercel-destination-auth.test.ts \
-            tests/unit/scripts/vercel-env-sync.test.ts \
-            tests/unit/scripts/vercel-routing.test.ts \
-            tests/unit/scripts/vercel-env-migration-request.test.ts
-          npm audit --audit-level=high --omit=dev
-
-      - name: Pull destination production configuration
-        run: npx --yes "vercel@$VERCEL_CLI_VERSION" pull --yes --environment=production --token="$VERCEL_TOKEN"
-
-      - name: Build exact destination production artifact
-        run: npx --yes "vercel@$VERCEL_CLI_VERSION" build --prod --token="$VERCEL_TOKEN"
-
-      - name: Create destination READY production rollback target
-        id: bootstrap
-        shell: bash
-        run: |
-          BOOTSTRAP_URL=$(npx --yes "vercel@$VERCEL_CLI_VERSION" deploy --prebuilt --prod --token="$VERCEL_TOKEN" \
-            --meta=migration_request="$MIGRATION_REQUEST_ID" \
-            --meta=migration_run="${{ github.run_id }}" \
-            --meta=commit="$COMMIT_SHA" \
-            --meta=release_stage=account-migration-bootstrap)
-          test -n "$BOOTSTRAP_URL"
-          echo "bootstrap_url=$BOOTSTRAP_URL" >> "$GITHUB_OUTPUT"
-
-      - name: Verify destination production rollback target
         env:
-          BOOTSTRAP_URL: ${{ steps.bootstrap.outputs.bootstrap_url }}
-        shell: bash
+          BASE_URL: ${{ steps.production.outputs.production_url }}
+          API_KEY: ${{ secrets.E2E_PAID_API_KEY }}
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          curl --fail --retry 10 --retry-delay 6 "$BOOTSTRAP_URL/api/health"
-          BOOTSTRAP_HOST=${BOOTSTRAP_URL#https://}
-          RESPONSE=$(curl --fail --silent --show-error \
-            -H "Authorization: Bearer $VERCEL_TOKEN" \
-            "https://api.vercel.com/v6/deployments?projectId=$VERCEL_PROJECT_ID&target=production&state=READY&limit=20&teamId=$VERCEL_ORG_ID")
-          MATCH=$(echo "$RESPONSE" | jq -r --arg host "$BOOTSTRAP_HOST" \
-            '.deployments[] | select(.target == "production" and .state == "READY" and .url == $host) | .url' | head -n 1)
-          test "$MATCH" = "$BOOTSTRAP_HOST" || { echo "Bootstrap deployment is not a READY production rollback target"; exit 1; }
+          set -euo pipefail
+          rollback() {
+            echo '::error::Production proof E2E failed; reversing slot swap'
+            az webapp deployment slot swap -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" --slot "$AZURE_STAGING_SLOT" --target-slot production --only-show-errors || true
+          }
+          trap rollback ERR
 
-      - name: Record protected bootstrap evidence
-        env:
-          BOOTSTRAP_URL: ${{ steps.bootstrap.outputs.bootstrap_url }}
-        run: |
+          NONCE="live-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-production"
+          IDEM="idem-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-production"
+          jq -n --arg nonce "$NONCE" --arg idem "$IDEM" '{problemId:"azure-live-e2e-production",encodingType:"qubo-v1",encoding:{kind:"qubo-v1",variableCount:2,objective:"min",constant:0,linear:[{index:0,weight:1},{index:1,weight:"-0.5"}],quadratic:[{i:0,j:1,weight:"0.25"}]},nonce:$nonce,idempotencyKey:$idem}' >/tmp/proof-production.json
+
+          unauth="$(curl -sS -o /tmp/production-unauth.json -w '%{http_code}' -X POST "$BASE_URL/api/dsg/v1/encoding/prove" -H 'Content-Type: application/json' --data @/tmp/proof-production.json)"
+          test "$unauth" = 401 || { echo "::error::Production unauthenticated proof expected 401, got $unauth"; false; }
+
+          status="$(curl -sS -D /tmp/production-proof.headers -o /tmp/production-proof.response -w '%{http_code}' -X POST "$BASE_URL/api/dsg/v1/encoding/prove" -H "Authorization: Bearer $API_KEY" -H 'Content-Type: application/json' --data @/tmp/proof-production.json)"
+          test "$status" = 200 || { echo "::error::Production positive proof expected 200, got $status"; jq . /tmp/production-proof.response || cat /tmp/production-proof.response; false; }
+          PROOF_ID="$(jq -r '.proofId // empty' /tmp/production-proof.response)"
+          test -n "$PROOF_ID"
+
+          lookup="$(curl -sS -o /tmp/production-proof.lookup -w '%{http_code}' "$BASE_URL/api/dsg/v1/encoding/proofs/$PROOF_ID" -H "Authorization: Bearer $API_KEY")"
+          test "$lookup" = 200 || { echo "::error::Production downstream proof lookup/validation failed: $lookup"; false; }
+
+          replay="$(curl -sS -D /tmp/production-replay.headers -o /tmp/production-replay.json -w '%{http_code}' -X POST "$BASE_URL/api/dsg/v1/encoding/prove" -H "Authorization: Bearer $API_KEY" -H 'Content-Type: application/json' --data @/tmp/proof-production.json)"
+          test "$replay" = 200 && grep -qi '^x-idempotent-replay: true' /tmp/production-replay.headers || { echo '::error::Production exact retry did not resolve as idempotent replay'; false; }
+
+          jq --arg idem "${IDEM}-conflict" '.idempotencyKey=$idem' /tmp/proof-production.json >/tmp/production-proof-conflict.json
+          conflict="$(curl -sS -o /tmp/production-conflict.json -w '%{http_code}' -X POST "$BASE_URL/api/dsg/v1/encoding/prove" -H "Authorization: Bearer $API_KEY" -H 'Content-Type: application/json' --data @/tmp/production-proof-conflict.json)"
+          test "$conflict" = 409 || { echo "::error::Production nonce reuse expected 409, got $conflict"; false; }
+
+          ADMIN_ROWS="$(curl -fsS --get "$SUPABASE_URL/rest/v1/dsg_encoding_proofs" -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" --data-urlencode 'select=proof_id,nonce' --data-urlencode "proof_id=eq.$PROOF_ID")"
+          test "$(jq 'length' <<<"$ADMIN_ROWS")" -eq 1 || { echo '::error::Production just-created proof row was not persisted'; false; }
+          test "$(jq -r '.[0].nonce' <<<"$ADMIN_ROWS")" = "$NONCE" || { echo '::error::Production persisted nonce does not match executed request'; false; }
+
+          ANON_ROWS="$(curl -fsS --get "$SUPABASE_URL/rest/v1/dsg_encoding_proofs" -H "apikey: $SUPABASE_ANON_KEY" --data-urlencode 'select=proof_id' --data-urlencode "proof_id=eq.$PROOF_ID")"
+          test "$(jq 'length' <<<"$ANON_ROWS")" -eq 0 || { echo '::error::Unauthorized anonymous DB read exposed production proof row'; false; }
+
+          trap - ERR
           {
-            echo "## Vercel destination production bootstrap"
-            echo ""
-            echo "- Migration request: $MIGRATION_REQUEST_ID"
-            echo "- Exact main commit: $COMMIT_SHA"
-            echo "- Destination team ID: $VERCEL_ORG_ID"
-            echo "- Destination project ID: $VERCEL_PROJECT_ID"
-            echo "- READY and healthy URL: $BOOTSTRAP_URL"
-            echo "- Existing user traffic: **not switched**"
+            echo '### FULL LIVE E2E verification gates'
+            echo "- production URL: $BASE_URL"
+            echo "- production proof ID: $PROOF_ID"
+            echo '- runtime provenance: PASS'
+            echo '- health: PASS'
+            echo '- unauthenticated proof: 401 PASS'
+            echo '- authenticated production proof: 200 PASS'
+            echo '- just-created proof persistence + nonce match: PASS'
+            echo '- downstream proof lookup/validation: PASS'
+            echo '- exact idempotent replay: PASS'
+            echo '- nonce conflict: 409 PASS'
+            echo '- anonymous DB read isolation: PASS'
+            echo '- This summary is evidence only when the entire governed workflow concludes success.'
           } >> "$GITHUB_STEP_SUMMARY"

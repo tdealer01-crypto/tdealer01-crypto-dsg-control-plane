@@ -1,0 +1,161 @@
+name: DSG Agentic Organization Wave Orchestrator
+
+on:
+  push:
+    branches:
+      - feat/agentic-org-orchestrator
+    paths:
+      - 'lib/agent-governance/agentic-org/**'
+      - 'contracts/agentic-improvement/**'
+      - 'config/production-deployment-target.json'
+      - 'evidence/agentic-org/**'
+      - 'tests/unit/agentic-org-*.test.ts'
+      - '.github/workflows/agentic-org-wave-orchestrator.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'lib/agent-governance/agentic-org/**'
+      - 'contracts/agentic-improvement/**'
+      - 'config/production-deployment-target.json'
+      - 'evidence/agentic-org/**'
+      - 'tests/unit/agentic-org-*.test.ts'
+      - '.github/workflows/agentic-org-wave-orchestrator.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  canonical-gate:
+    name: Canonical contract and wave state machine
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Run deterministic agentic organization tests
+        run: >-
+          npx vitest run
+          tests/unit/agentic-org-promotion-gate.test.ts
+          tests/unit/agentic-org-promotion-packet.test.ts
+          tests/unit/agentic-org-orchestrator.test.ts
+          tests/unit/agentic-org-github-branch-bootstrap.test.ts
+          tests/unit/agentic-org-promotion-schema.test.ts
+      - name: Validate canonical JSON schema parses
+        run: node -e "JSON.parse(require('fs').readFileSync('contracts/agentic-improvement/promotion-envelope.v1.schema.json','utf8')); console.log('schema-ok')"
+      - name: Validate provider-neutral deployment state
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFile } from 'node:fs/promises';
+          const target = JSON.parse(await readFile('config/production-deployment-target.json', 'utf8'));
+          if (target.schemaVersion !== 'dsg.production-target.v1') throw new Error('unsupported deployment target schema');
+          if (target.provider === 'UNBOUND') {
+            if (target.status !== 'BLOCKED_UNTIL_BOUND' || target.productionDeployEnabled !== false) {
+              throw new Error('UNBOUND deployment target must remain fail-closed');
+            }
+          }
+          console.log(`deployment-provider=${target.provider} deploy-enabled=${target.productionDeployEnabled}`);
+          NODE
+
+  public-lane-ref-check:
+    name: Lane ${{ matrix.lane }} public ref availability
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - lane: W1-A
+            repo: tdealer01-crypto/dsg-unified-data-monitoring
+            branch: integration/unified-monitoring-e2e
+            required_commit: ''
+          - lane: W1-B
+            repo: tdealer01-crypto/tdealer01-crypto-dsg-control-plane
+            branch: main
+            required_commit: 011cf0b60f85adf273908aa71b929549a18d9c07
+          - lane: W1-C
+            repo: tdealer01-crypto/dsg-one-v1
+            branch: feat/governed-improvement-runtime
+            required_commit: ''
+          - lane: W1-E
+            repo: tdealer01-crypto/DSG-Cinema-Proof-Agent
+            branch: feat/improvement-proof-adapter
+            required_commit: ''
+    steps:
+      - name: Resolve lane ref fail-closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          repo="${{ matrix.repo }}"
+          branch="${{ matrix.branch }}"
+          required_commit="${{ matrix.required_commit }}"
+          url="https://api.github.com/repos/${repo}/git/ref/heads/${branch}"
+          code=$(curl -sS -o ref.json -w '%{http_code}' \
+            -H 'Accept: application/vnd.github+json' "$url")
+          if [ "$code" != "200" ]; then
+            echo "lane=${{ matrix.lane }} status=BLOCKED_REF_OR_ACCESS http=$code" | tee lane-status.txt
+            cat ref.json || true
+            exit 1
+          fi
+          sha=$(node -e "const x=require('./ref.json'); process.stdout.write(x.object.sha)")
+
+          if [ -n "$required_commit" ]; then
+            compare_url="https://api.github.com/repos/${repo}/compare/${required_commit}...${branch}"
+            compare_code=$(curl -sS -o compare.json -w '%{http_code}' \
+              -H 'Accept: application/vnd.github+json' "$compare_url")
+            if [ "$compare_code" != "200" ]; then
+              echo "lane=${{ matrix.lane }} status=BLOCKED_REQUIRED_COMMIT_CHECK http=$compare_code required_commit=$required_commit" | tee lane-status.txt
+              cat compare.json || true
+              exit 1
+            fi
+            compare_status=$(node -e "const x=require('./compare.json'); process.stdout.write(x.status)")
+            if [ "$compare_status" != "ahead" ] && [ "$compare_status" != "identical" ]; then
+              echo "lane=${{ matrix.lane }} status=BLOCKED_REQUIRED_COMMIT_NOT_MERGED compare_status=$compare_status required_commit=$required_commit" | tee lane-status.txt
+              exit 1
+            fi
+            echo "lane=${{ matrix.lane }} status=MERGED_REF_READY sha=$sha required_commit=$required_commit compare_status=$compare_status" | tee lane-status.txt
+          else
+            echo "lane=${{ matrix.lane }} status=REF_READY sha=$sha" | tee lane-status.txt
+          fi
+
+  private-agi-checkpoint:
+    name: W1-D private AGI implementation checkpoint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate pinned lane-local CI evidence
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFile } from 'node:fs/promises';
+          const e = JSON.parse(await readFile('evidence/agentic-org/w1-d-agi-ci.json', 'utf8'));
+          const fail = (m) => { throw new Error(m); };
+          if (e.schemaVersion !== 'dsg.lane-ci-evidence.v1') fail('bad evidence schema');
+          if (e.lane !== 'W1-D') fail('bad lane');
+          if (e.repository !== 'tdealer01-crypto/dsg-agi-simulation') fail('bad repository');
+          if (e.repositoryId !== 1263153975 || e.repositoryPrivate !== true) fail('private repository identity mismatch');
+          if (e.branch !== 'feat/governed-candidate-envelope') fail('bad branch');
+          if (!/^[0-9a-f]{40}$/.test(e.headSha)) fail('invalid head sha');
+          if (e.pullRequest !== 16) fail('unexpected PR');
+          if (e.workflowRunId !== 32803651839) fail('unexpected CI run');
+          if (e.workflowPath !== '.github/workflows/ci.yml') fail('unexpected workflow');
+          if (e.conclusion !== 'success') fail('lane-local CI did not succeed');
+          if (e.source !== 'github-api-observation') fail('untrusted checkpoint source');
+          if (e.implementationJoinEvidence !== true) fail('not implementation join evidence');
+          if (e.rawPromotionAttestationRequired !== true) fail('raw promotion attestation must remain required');
+          if (e.productionAuthority !== false) fail('private AGI checkpoint cannot carry production authority');
+          console.log(`lane=W1-D status=IMPLEMENTATION_EVIDENCE_READY sha=${e.headSha} run=${e.workflowRunId}`);
+          NODE
+
+  wave-1-join:
+    name: Wave 1 implementation join gate
+    runs-on: ubuntu-latest
+    needs: [canonical-gate, public-lane-ref-check, private-agi-checkpoint]
+    steps:
+      - run: |
+          echo 'Wave 1 implementation join PASS: canonical tests, public lane refs, and the pinned private AGI successful CI checkpoint are present.'
+          echo 'This join authorizes no production mutation.'
+          echo 'Runtime candidate promotion still requires Cinema VERIFIED_RAW_EVIDENCE and the Control Plane promotion gate.'
+          echo 'Production deployment remains BLOCKED while config/production-deployment-target.json is UNBOUND.'

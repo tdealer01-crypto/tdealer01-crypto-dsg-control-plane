@@ -1,0 +1,302 @@
+name: PI-Bench Control Plane QUBO Z3
+
+on:
+  pull_request:
+    paths:
+      - 'benchmarks/pibench_control_plane/**'
+      - 'lib/ising/qubo/**'
+      - 'lib/gateway/audit.ts'
+      - '.github/workflows/pibench-control-plane-agentbeats.yml'
+  push:
+    branches:
+      - main
+      - 'claude/pi-bench-score-increase-k1z3pt'
+    paths:
+      - 'benchmarks/pibench_control_plane/**'
+      - 'lib/ising/qubo/**'
+      - 'lib/gateway/audit.ts'
+      - '.github/workflows/pibench-control-plane-agentbeats.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: benchmarks/pibench_control_plane/requirements.txt
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install benchmark dependencies
+        run: python -m pip install -r benchmarks/pibench_control_plane/requirements.txt
+
+      - name: Unit tests
+        run: |
+          mkdir -p benchmark-evidence
+          python -m pip freeze | sort > benchmark-evidence/pip-freeze.txt
+          PYTHONPATH=benchmarks/pibench_control_plane \
+            pytest -q benchmarks/pibench_control_plane/tests \
+            | tee benchmark-evidence/pytest.txt
+
+      - name: Compile check
+        run: python -m compileall -q benchmarks/pibench_control_plane
+
+      - name: Bundle PR1180 native QUBO bridge
+        run: |
+          npx --yes esbuild@0.25.12 \
+            benchmarks/pibench_control_plane/qubo_bridge.ts \
+            --bundle \
+            --platform=node \
+            --format=esm \
+            --target=node18 \
+            --outfile=benchmark-evidence/qubo-bridge-ci.mjs
+
+      - name: PR1180 native QUBO smoke
+        run: |
+          cat > benchmark-evidence/native-signals.json <<'JSON'
+          {
+            "explicit_deny": false,
+            "requires_escalation": false,
+            "authorization_verified": true,
+            "mandatory_preconditions_satisfied": true,
+            "privacy_release_allowed": true,
+            "operational_action_requested": true,
+            "confidence": 1.0
+          }
+          JSON
+          node benchmark-evidence/qubo-bridge-ci.mjs \
+            < benchmark-evidence/native-signals.json \
+            > benchmark-evidence/pr1180-native-qubo.json
+          python - <<'PY'
+          import json
+          data = json.load(open('benchmark-evidence/pr1180-native-qubo.json'))
+          assert data['schema'] == 'dsg-pr1180-qubo-advisory/v1'
+          assert data['engine'] == 'dsg-qubo-anneal/1.0.0'
+          assert data['seed'] == 42
+          assert data['candidate'] == 'ALLOW'
+          assert data['feasible'] is True
+          assert data['provenance_hash']
+          assert data['matrix']['decision_count'] == 3
+          PY
+
+      - name: Formal authority smoke
+        run: |
+          DSG_QUBO_BRIDGE="$PWD/benchmark-evidence/qubo-bridge-ci.mjs" \
+          PYTHONPATH=benchmarks/pibench_control_plane \
+          python - <<'PY' | tee benchmark-evidence/formal-authority.json
+          import json
+          from formal_gate import PolicySignals, solve_policy
+
+          cases = {
+              "allow": PolicySignals(False, False, True, True, True, True, 1.0),
+              "deny": PolicySignals(True, False, True, True, True, True, 1.0),
+              "escalate": PolicySignals(False, True, False, False, True, True, 1.0),
+          }
+          out = {name: solve_policy(signals) for name, signals in cases.items()}
+          assert out["allow"]["decision"] == "ALLOW"
+          assert out["deny"]["decision"] == "DENY"
+          assert out["escalate"]["decision"] == "ESCALATE"
+          assert all(item["z3"]["status"] == "SAT" for item in out.values())
+          assert all(item["qubo"]["engine"] == "dsg-qubo-anneal/1.0.0" for item in out.values())
+          assert all(item["qubo"]["feasible"] is True for item in out.values())
+          assert all(item["advisory_matches_authority"] is True for item in out.values())
+          print(json.dumps(out, sort_keys=True))
+          PY
+
+      - name: Build linux/amd64 AgentBeats image
+        run: |
+          docker build --platform linux/amd64 \
+            -f benchmarks/pibench_control_plane/Dockerfile \
+            -t dsg-control-plane-pibench:${GITHUB_SHA} .
+          docker image inspect dsg-control-plane-pibench:${GITHUB_SHA} \
+            --format '{{json .}}' > benchmark-evidence/docker-image.json
+
+      - name: Container PR1180 QUBO smoke
+        run: |
+          docker run --rm -i \
+            --entrypoint node \
+            dsg-control-plane-pibench:${GITHUB_SHA} \
+            /app/qubo-bridge.mjs \
+            < benchmark-evidence/native-signals.json \
+            > benchmark-evidence/container-pr1180-native-qubo.json
+          python - <<'PY'
+          import json
+          data = json.load(open('benchmark-evidence/container-pr1180-native-qubo.json'))
+          assert data['engine'] == 'dsg-qubo-anneal/1.0.0'
+          assert data['candidate'] == 'ALLOW'
+          assert data['feasible'] is True
+          assert data['provenance_hash']
+          PY
+
+      - name: A2A card and bootstrap smoke
+        run: |
+          set -euo pipefail
+          cid=$(docker run -d --rm -p 9010:9010 dsg-control-plane-pibench:${GITHUB_SHA} \
+            --host 0.0.0.0 --port 9010 --card-url http://127.0.0.1:9010/)
+          trap 'docker logs "$cid" > benchmark-evidence/container.log 2>&1 || true; docker stop "$cid" >/dev/null 2>&1 || true' EXIT
+
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:9010/health > benchmark-evidence/health.json; then
+              break
+            fi
+            sleep 1
+          done
+
+          curl -fsS http://127.0.0.1:9010/.well-known/agent-card.json \
+            > benchmark-evidence/agent-card.json
+
+          cat > benchmark-evidence/bootstrap-request.json <<'JSON'
+          {
+            "jsonrpc": "2.0",
+            "id": "ci-bootstrap",
+            "method": "message/send",
+            "params": {
+              "message": {
+                "parts": [
+                  {
+                    "data": {
+                      "bootstrap": true,
+                      "run_id": "ci",
+                      "domain": "ci",
+                      "benchmark_context": [
+                        {"kind": "policy", "content": "CI bootstrap proof only"}
+                      ],
+                      "tools": [
+                        {
+                          "type": "function",
+                          "function": {
+                            "name": "record_decision",
+                            "parameters": {
+                              "type": "object",
+                              "properties": {
+                                "decision": {
+                                  "type": "string",
+                                  "enum": ["ALLOW", "ALLOW-CONDITIONAL", "DENY", "ESCALATE"]
+                                }
+                              },
+                              "required": ["decision"],
+                              "additionalProperties": false
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+          JSON
+
+          curl -fsS -X POST http://127.0.0.1:9010/ \
+            -H 'content-type: application/json' \
+            --data-binary @benchmark-evidence/bootstrap-request.json \
+            > benchmark-evidence/bootstrap-response.json
+
+          python - <<'PY'
+          import json
+          card = json.load(open('benchmark-evidence/agent-card.json'))
+          health = json.load(open('benchmark-evidence/health.json'))
+          response = json.load(open('benchmark-evidence/bootstrap-response.json'))
+          assert health['status'] == 'ok'
+          assert health['z3'] == 'available'
+          assert health['authority'] == 'z3-fail-closed'
+          assert 'urn:pi-bench:policy-bootstrap:v1' in card['extensions']
+          data = response['result']['status']['message']['parts'][0]['data']
+          assert data['bootstrapped'] is True
+          assert data['context_id']
+          PY
+
+      - name: Evidence checksums
+        if: always()
+        run: |
+          if [ -d benchmark-evidence ]; then
+            find benchmark-evidence -type f ! -name 'SHA256SUMS.txt' -print0 \
+              | sort -z \
+              | xargs -0 sha256sum \
+              > benchmark-evidence/SHA256SUMS.txt || true
+          fi
+
+      - name: Upload verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pibench-control-plane-verification-${{ github.sha }}
+          path: benchmark-evidence
+          if-no-files-found: error
+
+  publish:
+    if: >-
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/claude/pi-bench-score-increase-k1z3pt')
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and publish AgentBeats image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: benchmarks/pibench_control_plane/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ghcr.io/tdealer01-crypto/dsg-control-plane-pibench-agent:${{ github.sha }}
+            ${{ github.ref == 'refs/heads/main' && 'ghcr.io/tdealer01-crypto/dsg-control-plane-pibench-agent:latest' || 'ghcr.io/tdealer01-crypto/dsg-control-plane-pibench-agent:pr1180' }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.title=DSG Control Plane QUBO Z3 PI-Bench Agent
+
+      - name: Record publish evidence
+        run: |
+          mkdir -p publish-evidence
+          cat > publish-evidence/image.json <<JSON
+          {
+            "repository": "ghcr.io/tdealer01-crypto/dsg-control-plane-pibench-agent",
+            "commit": "${GITHUB_SHA}",
+            "ref": "${GITHUB_REF}",
+            "digest": "${{ steps.build.outputs.digest }}",
+            "platform": "linux/amd64",
+            "source": "https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane"
+          }
+          JSON
+          sha256sum publish-evidence/image.json > publish-evidence/SHA256SUMS.txt
+
+      - name: Upload publish evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: pibench-control-plane-publish-${{ github.sha }}
+          path: publish-evidence
+          if-no-files-found: error

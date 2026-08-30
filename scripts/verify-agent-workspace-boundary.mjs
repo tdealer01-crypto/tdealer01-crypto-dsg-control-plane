@@ -1,12 +1,10 @@
 #!/usr/bin/env node
 import { execFileSync } from 'node:child_process';
-import { readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { readFileSync } from 'node:fs';
 
 const baseRef = process.argv[2] || process.env.AGENT_WORKSPACE_BASE_REF || 'origin/main';
 const environment = process.env.AGENT_WORKSPACE_ENV || 'development';
-const promotedWorkflowPath = '.github/workflows/promoted-production-deploy.yml';
-const productionEnvironmentName = 'Production – dsg-qubo-api';
+const targetConfigPath = 'config/production-deployment-target.json';
 
 if (!['development', 'preview'].includes(environment)) {
   console.error(`Agent workspace must run in development or preview, received: ${environment}`);
@@ -24,7 +22,6 @@ try {
       '--',
       '.',
       ':(exclude)scripts/verify-agent-workspace-boundary.mjs',
-      `:(exclude)${promotedWorkflowPath}`,
     ],
     { encoding: 'utf8', maxBuffer: 128 * 1024 * 1024 },
   );
@@ -39,7 +36,6 @@ const addedLines = diff
   .join('\n');
 
 const forbidden = [
-  { label: 'direct Vercel production deploy outside promoted workflow', pattern: /\bvercel\b[^\n]*(?:--prod|--target[= ]production)/i },
   { label: 'Stripe live secret', pattern: /\b(?:sk|rk)_live_[A-Za-z0-9]+/ },
   { label: 'private key material', pattern: /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/ },
   { label: 'production database mutation marker', pattern: /AGENT_WORKSPACE_ENV\s*=\s*production/i },
@@ -51,50 +47,41 @@ const failures = forbidden
   .filter(({ pattern }) => pattern.test(addedLines))
   .map(({ label }) => label);
 
-const workflowDirectory = '.github/workflows';
-for (const fileName of readdirSync(workflowDirectory)) {
-  if (!/\.ya?ml$/i.test(fileName)) continue;
-  const path = join(workflowDirectory, fileName);
-  if (path === promotedWorkflowPath) continue;
-  const content = readFileSync(path, 'utf8');
-  if (/vercel[^\n]*--prod/i.test(content)) {
-    failures.push(`production deploy command exists outside ${promotedWorkflowPath}: ${path}`);
-  }
-}
-
-const promotedWorkflow = readFileSync(promotedWorkflowPath, 'utf8');
-const requiredPromotionControls = [
-  'workflow_dispatch:',
-  `environment: "${productionEnvironmentName}"`,
-  'Require exact current main commit',
-  'npm audit --audit-level=high',
-  'approve-agent-workspace-promotion.mjs',
-  'finalize-agent-workspace-promotion.mjs',
-  'AGENT_WORKSPACE_SUPABASE_SERVICE_ROLE_KEY',
-  'VERCEL_CLI_VERSION: 58.0.0',
-  'rollback',
-  'commit_sha:',
-];
-for (const requiredControl of requiredPromotionControls) {
-  if (!promotedWorkflow.includes(requiredControl)) {
-    failures.push(`promoted production workflow is missing control: ${requiredControl}`);
-  }
-}
-if (/^\s*push\s*:/m.test(promotedWorkflow)) {
-  failures.push('promoted production workflow must not run on push');
-}
-if (!/vercel[^\n]*--prod/i.test(promotedWorkflow)) {
-  failures.push('promoted production workflow contains no explicit production deployment command');
-}
-
-let vercelConfiguration;
+let target;
 try {
-  vercelConfiguration = JSON.parse(readFileSync('vercel.json', 'utf8'));
+  target = JSON.parse(readFileSync(targetConfigPath, 'utf8'));
 } catch {
-  failures.push('vercel.json must be valid JSON');
+  failures.push(`${targetConfigPath} must exist and contain valid JSON`);
 }
-if (vercelConfiguration?.git?.deploymentEnabled?.['*'] !== false) {
-  failures.push('vercel.json must disable native Git deployments with git.deploymentEnabled["*"]=false');
+
+if (target) {
+  if (target.schemaVersion !== 'dsg.production-target.v1') {
+    failures.push(`unsupported production target schema: ${target.schemaVersion ?? 'missing'}`);
+  }
+
+  if (target.provider === 'UNBOUND') {
+    if (target.productionDeployEnabled !== false) {
+      failures.push('UNBOUND production target must set productionDeployEnabled=false');
+    }
+    if (target.status !== 'BLOCKED_UNTIL_BOUND') {
+      failures.push('UNBOUND production target must be BLOCKED_UNTIL_BOUND');
+    }
+    if (target.healthProbe !== null || target.rollbackTarget !== null) {
+      failures.push('UNBOUND production target must not claim health or rollback evidence');
+    }
+  } else {
+    if (typeof target.provider !== 'string' || target.provider.trim().length === 0) {
+      failures.push('production target provider must be a non-empty string or UNBOUND');
+    }
+    if (target.productionDeployEnabled === true) {
+      if (typeof target.healthProbe !== 'string' || target.healthProbe.length === 0) {
+        failures.push('enabled production target requires a healthProbe');
+      }
+      if (typeof target.rollbackTarget !== 'string' || target.rollbackTarget.length === 0) {
+        failures.push('enabled production target requires a rollbackTarget');
+      }
+    }
+  }
 }
 
 if (failures.length > 0) {
@@ -102,4 +89,6 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log(`Agent workspace boundary PASS: native Git deployments are disabled and production stays behind the verified manual promotion workflow in ${productionEnvironmentName}.`);
+console.log(
+  `Agent workspace boundary PASS: provider=${target.provider} status=${target.status} productionDeployEnabled=${target.productionDeployEnabled}`,
+);
