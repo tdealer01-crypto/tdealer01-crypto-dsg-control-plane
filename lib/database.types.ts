@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.17"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -958,6 +958,53 @@ export type Database = {
           workspace_key?: string
         }
         Relationships: []
+      }
+      agentic_deployment_records: {
+        Row: {
+          baseline_commit: string
+          candidate_commit: string
+          deployed_at: string
+          deployment_id: string
+          deployment_slot: string
+          image_digest: string | null
+          promotion_id: string
+          provider: string
+          target_repository: string
+          workflow_run_uri: string
+        }
+        Insert: {
+          baseline_commit: string
+          candidate_commit: string
+          deployed_at?: string
+          deployment_id: string
+          deployment_slot: string
+          image_digest?: string | null
+          promotion_id: string
+          provider: string
+          target_repository: string
+          workflow_run_uri: string
+        }
+        Update: {
+          baseline_commit?: string
+          candidate_commit?: string
+          deployed_at?: string
+          deployment_id?: string
+          deployment_slot?: string
+          image_digest?: string | null
+          promotion_id?: string
+          provider?: string
+          target_repository?: string
+          workflow_run_uri?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agentic_deployment_records_promotion_id_fkey"
+            columns: ["promotion_id"]
+            isOneToOne: false
+            referencedRelation: "agentic_promotion_receipts"
+            referencedColumns: ["promotion_id"]
+          },
+        ]
       }
       agentic_evolution_baselines: {
         Row: {
@@ -3963,6 +4010,62 @@ export type Database = {
           org_id?: string
         }
         Relationships: []
+      }
+      dsg_encoding_proofs: {
+        Row: {
+          created_at: string
+          encoding_hash: string
+          encoding_type: string
+          idempotency_key: string
+          nonce: string
+          organization_id: string
+          previous_proof_hash: string
+          problem_id: string
+          proof: Json
+          proof_hash: string
+          proof_id: string
+          request_hash: string
+          sequence: number
+        }
+        Insert: {
+          created_at?: string
+          encoding_hash: string
+          encoding_type: string
+          idempotency_key: string
+          nonce: string
+          organization_id: string
+          previous_proof_hash: string
+          problem_id: string
+          proof: Json
+          proof_hash: string
+          proof_id: string
+          request_hash: string
+          sequence?: never
+        }
+        Update: {
+          created_at?: string
+          encoding_hash?: string
+          encoding_type?: string
+          idempotency_key?: string
+          nonce?: string
+          organization_id?: string
+          previous_proof_hash?: string
+          problem_id?: string
+          proof?: Json
+          proof_hash?: string
+          proof_id?: string
+          request_hash?: string
+          sequence?: never
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dsg_encoding_proofs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       dsg_evidence_items: {
         Row: {
