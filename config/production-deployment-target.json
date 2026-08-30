@@ -8,7 +8,7 @@
   "deploymentAdapter": ".github/workflows/promoted-production-deploy.yml#azure-app-service",
   "healthProbe": "/api/health",
   "rollbackTarget": "staging-slot-reverse-swap",
-  "rollbackAdapterEndpoint": null,
+  "rollbackAdapterEndpoint": "https://dsg-control-plane.azurewebsites.net/api/dsg/agentic-org/rollback-adapters/azure",
   "boundAt": "2026-08-29",
   "notes": [
     "Vercel is not an active DSG production target.",
@@ -18,6 +18,8 @@
     "The deployment adapter builds a full-SHA image, resolves its ACR digest, write/delete-locks the SHA tag, stamps DSG_GIT_SHA/DSG_IMAGE_DIGEST/DSG_BUILD_TIMESTAMP, verifies /api/dsg/v1/runtime plus the configured healthProbe, authenticated proof persistence, downstream proof lookup, idempotent replay, nonce conflict, and anonymous DB isolation before slot swap.",
     "Production verification rechecks exact SHA/digest and health after swap. A mismatch fails closed and attempts the reverse slot swap.",
     "Binding this adapter does not assert that a deployment has passed. FULL LIVE E2E PASS may be claimed only from an actually green governed production workflow with live runtime and database evidence.",
-    "monitoring-schema-consistency.yml remains an independent fail-closed gate and must verify the configured live monitoring endpoint with its protected credentials."
-  ]
+    "monitoring-schema-consistency.yml remains an independent fail-closed gate and must verify the configured live monitoring endpoint with its protected credentials.",
+    "Rollback execution uses the explicit AZURE adapter contract; deploymentAdapter remains the forward-deployment workflow identifier and is never interpreted as a rollback adapter name."
+  ],
+  "rollbackAdapter": "AZURE"
 }

@@ -29,7 +29,7 @@ function request(overrides: Partial<DeploymentRecordRequest> = {}): DeploymentRe
     targetRepository: REPO,
     baselineCommit: BASELINE,
     candidateCommit: CANDIDATE,
-    provider: 'AZURE',
+    provider: 'AZURE_APP_SERVICE',
     deploymentSlot: 'staging',
     imageDigest: 'sha256:deadbeef',
     workflowRunUri: 'https://github.com/tdealer01-crypto/dsg-agi-simulation/actions/runs/999',
@@ -55,7 +55,7 @@ describe('deployment preflight target', () => {
 
   it('passes only for an enabled bound provider with a rollback slot', () => {
     expect(evaluateDeploymentPreflightTarget({
-      provider: 'AZURE',
+      provider: 'AZURE_APP_SERVICE',
       productionDeployEnabled: true,
       rollbackTarget: 'staging',
     })).toEqual([]);
@@ -73,7 +73,7 @@ describe('deployment preflight target', () => {
 
   it('blocks a nominally enabled target with no rollback slot', () => {
     expect(evaluateDeploymentPreflightTarget({
-      provider: 'AZURE',
+      provider: 'AZURE_APP_SERVICE',
       productionDeployEnabled: true,
       rollbackTarget: '',
     })).toContain('DEPLOYMENT_ROLLBACK_TARGET_MISSING');
@@ -120,26 +120,26 @@ describe('isDeploymentRecordRequest', () => {
 
 describe('bindDeploymentToPromotion', () => {
   it('passes when every field matches the canonical receipt and the bound provider', () => {
-    expect(bindDeploymentToPromotion(request(), receiptRow(), 'AZURE')).toEqual([]);
+    expect(bindDeploymentToPromotion(request(), receiptRow(), 'AZURE_APP_SERVICE')).toEqual([]);
   });
 
   it('blocks a provider that is not the bound production provider', () => {
-    expect(bindDeploymentToPromotion(request({ provider: 'GCLOUD' }), receiptRow(), 'AZURE'))
+    expect(bindDeploymentToPromotion(request({ provider: 'GCLOUD' }), receiptRow(), 'AZURE_APP_SERVICE'))
       .toContain('DEPLOYMENT_PROVIDER_MISMATCH');
   });
 
   it('blocks a deployment claiming a candidate commit the receipt did not approve', () => {
-    expect(bindDeploymentToPromotion(request({ candidateCommit: 'd'.repeat(40) }), receiptRow(), 'AZURE'))
+    expect(bindDeploymentToPromotion(request({ candidateCommit: 'd'.repeat(40) }), receiptRow(), 'AZURE_APP_SERVICE'))
       .toContain('DEPLOYMENT_PROMOTION_BINDING_MISMATCH');
   });
 
   it('blocks a deployment whose promotion hash does not match the persisted receipt', () => {
-    expect(bindDeploymentToPromotion(request(), receiptRow({ promotion_hash: 'e'.repeat(64) }), 'AZURE'))
+    expect(bindDeploymentToPromotion(request(), receiptRow({ promotion_hash: 'e'.repeat(64) }), 'AZURE_APP_SERVICE'))
       .toContain('DEPLOYMENT_PROMOTION_BINDING_MISMATCH');
   });
 
   it('blocks a deployment pointed at another repository', () => {
-    expect(bindDeploymentToPromotion(request({ targetRepository: 'tdealer01-crypto/other' }), receiptRow(), 'AZURE'))
+    expect(bindDeploymentToPromotion(request({ targetRepository: 'tdealer01-crypto/other' }), receiptRow(), 'AZURE_APP_SERVICE'))
       .toContain('DEPLOYMENT_PROMOTION_BINDING_MISMATCH');
   });
 });
@@ -165,21 +165,21 @@ describe('deploymentRecordMatchesReceipt', () => {
       target_repository: REPO,
       baseline_commit: BASELINE,
       candidate_commit: CANDIDATE,
-      provider: 'AZURE',
+      provider: 'AZURE_APP_SERVICE',
       ...overrides,
     };
   }
 
   it('accepts a record bound to the same promotion, commits and provider', () => {
-    expect(deploymentRecordMatchesReceipt(record(), receipt(), 'AZURE')).toBe(true);
+    expect(deploymentRecordMatchesReceipt(record(), receipt(), 'AZURE_APP_SERVICE')).toBe(true);
   });
 
   it('rejects a record written for a different promotion', () => {
-    expect(deploymentRecordMatchesReceipt(record({ promotion_id: 'promotion-other' }), receipt(), 'AZURE')).toBe(false);
+    expect(deploymentRecordMatchesReceipt(record({ promotion_id: 'promotion-other' }), receipt(), 'AZURE_APP_SERVICE')).toBe(false);
   });
 
   it('rejects a record whose candidate commit drifted from the receipt', () => {
-    expect(deploymentRecordMatchesReceipt(record({ candidate_commit: 'd'.repeat(40) }), receipt(), 'AZURE')).toBe(false);
+    expect(deploymentRecordMatchesReceipt(record({ candidate_commit: 'd'.repeat(40) }), receipt(), 'AZURE_APP_SERVICE')).toBe(false);
   });
 
   it('rejects when the submitted provider disagrees with the recorded one', () => {
