@@ -51,6 +51,7 @@ export interface ProductionTargetSnapshot {
   status: string;
   productionDeployEnabled: boolean;
   deploymentAdapter: string | null;
+  rollbackAdapter: string | null;
   healthProbe: string | null;
   rollbackTarget: string | null;
   rollbackAdapterEndpoint: string | null;
@@ -252,14 +253,14 @@ export function evaluatePostDeployControl(input: {
     return { ...core, controlEvidenceHash: stableHash(core) };
   }
 
-  if (!target.deploymentAdapter || !target.rollbackTarget || !target.healthProbe || !target.rollbackAdapterEndpoint) {
+  if (!target.deploymentAdapter || !target.rollbackAdapter || !target.rollbackTarget || !target.healthProbe || !target.rollbackAdapterEndpoint) {
     return fail({
       code: 'ROLLBACK_ADAPTER_UNBOUND',
       message: 'Rollback requires an approved deployment adapter, signed rollback endpoint, rollback target, and health probe.',
     }, monitoring, receipt, deployment);
   }
 
-  const adapter = target.deploymentAdapter.toUpperCase();
+  const adapter = target.rollbackAdapter.toUpperCase();
   if (!ALLOWED_ROLLBACK_ADAPTERS.has(adapter)) {
     return fail({
       code: 'ROLLBACK_ADAPTER_NOT_ALLOWLISTED',
