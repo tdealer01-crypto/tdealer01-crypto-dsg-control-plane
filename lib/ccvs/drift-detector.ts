@@ -24,7 +24,8 @@ export function buildDriftSnapshot(overrides: Partial<DriftSnapshot> = {}): Drif
   const deploymentConfigFields = {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
     DSG_CONTROL_PLANE_BASE_URL: process.env.DSG_CONTROL_PLANE_BASE_URL ?? '',
-    VERCEL_GIT_COMMIT_SHA: process.env.VERCEL_GIT_COMMIT_SHA ?? '',
+    DSG_GIT_SHA: process.env.DSG_GIT_SHA ?? '',
+    DSG_IMAGE_DIGEST: process.env.DSG_IMAGE_DIGEST ?? '',
     GITHUB_SHA: process.env.GITHUB_SHA ?? '',
   };
 
