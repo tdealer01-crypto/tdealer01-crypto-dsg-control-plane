@@ -2,8 +2,6 @@ import './globals.css';
 import './dsg-brand.css';
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
-import { Analytics } from '@vercel/analytics/next';
-import { SpeedInsights } from '@vercel/speed-insights/next';
 import GlobalNav from '../components/GlobalNav';
 import PublicChatWidget from '../components/PublicChatWidget';
 import { ToastProvider } from '../components/ToastProvider';
@@ -15,8 +13,6 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
-  const enableVercelTelemetry = process.env.VERCEL === '1';
-
   return (
     <html lang="en">
       <body className="min-h-screen bg-slate-950 text-slate-100 antialiased">
@@ -25,12 +21,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <GlobalNav />
             {children}
             <PublicChatWidget />
-            {enableVercelTelemetry ? (
-              <>
-                <Analytics />
-                <SpeedInsights />
-              </>
-            ) : null}
           </ToastProvider>
         </LanguageProvider>
       </body>
