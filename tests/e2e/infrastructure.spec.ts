@@ -1,15 +1,16 @@
 /**
  * Infrastructure health check tests
- * Runs first — verifies all production endpoints are alive before other suites
+ * Runs first — verifies all production endpoints are alive before other suites.
+ * Azure App Service is the only production authority.
  */
 import { test, expect, request } from '@playwright/test';
 
-const PROD_BASE = 'https://tdealer01-crypto-dsg-control-plane.vercel.app';
+const PROD_BASE = process.env.PLAYWRIGHT_BASE_URL ?? 'https://dsg-control-plane.azurewebsites.net';
 const TUNNEL_URL = process.env.CLOUDFLARE_TUNNEL_URL ?? 'https://shades-powerseller-guys-opposition.trycloudflare.com';
 
 const ENDPOINTS = [
   {
-    label: 'Production Vercel health',
+    label: 'Production Azure App Service health',
     url: `${PROD_BASE}/api/health`,
     skipEnv: undefined,
   },
@@ -31,9 +32,11 @@ for (const { label, url, skipEnv } of ENDPOINTS) {
     try {
       res = await api.get(url, { timeout: 15_000 });
     } catch (err) {
-      // Tunnel may be offline in CI — skip gracefully with a clear note
-      test.skip(true, `Endpoint unreachable (${String(err)}). Tunnel may be offline.`);
-      return;
+      if (skipEnv) {
+        test.skip(true, `Endpoint unreachable (${String(err)}). Optional tunnel may be offline.`);
+        return;
+      }
+      throw err;
     }
 
     expect(res.status(), `${label} must return HTTP 200`).toBe(200);
@@ -56,14 +59,12 @@ test('production readiness: full health payload is valid', async () => {
   expect(body.core_ok).toBe(true);
   expect(body.db_ok).toBe(true);
 
-  // Validate readiness checks structure
   expect(body.readiness?.ok).toBe(true);
   const checks = body.readiness?.checks ?? {};
   expect(checks.env?.ok).toBe(true);
   expect(checks.nextAuthSecret?.ok).toBe(true);
   expect(checks.supabaseServiceRole?.ok).toBe(true);
 
-  // Rate limiter configured
   expect(body.rateLimiter?.ok).toBe(true);
 
   await api.dispose();
