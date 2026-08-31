@@ -2,11 +2,10 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { SupabaseService } from './services/supabase-service.js';
-import { VercelService } from './services/vercel-service.js';
 import { SpineService } from './services/spine-service.js';
 import { DSGBrainService } from './services/dsg-brain-service.js';
 import { ComplianceService } from './services/compliance-service.js';
-import { ToolRegistry, setupSupabaseTools, setupVercelTools, setupGovernanceTools, setupZ3Tools } from './tools/index.js';
+import { ToolRegistry, setupSupabaseTools, setupGovernanceTools, setupZ3Tools } from './tools/index.js';
 
 async function main() {
   const server = new Server({
@@ -17,7 +16,6 @@ async function main() {
   const registry = new ToolRegistry();
   const services: Record<string, any> = {};
 
-  // Initialize Supabase (required)
   try {
     services.supabase = new SupabaseService({
       url: process.env.SUPABASE_URL || '',
@@ -31,21 +29,6 @@ async function main() {
     process.exit(1);
   }
 
-  // Initialize Vercel (optional)
-  if (process.env.VERCEL_API_TOKEN) {
-    try {
-      services.vercel = new VercelService({
-        apiToken: process.env.VERCEL_API_TOKEN,
-        teamId: process.env.VERCEL_TEAM_ID,
-      });
-      setupVercelTools(registry, services.vercel);
-      console.error('[DSG MCP] Vercel initialized with 2 tools');
-    } catch (error) {
-      console.error('[DSG MCP] Vercel init failed:', error);
-    }
-  }
-
-  // Initialize Governance services (optional)
   let spine: SpineService | undefined;
   let brain: DSGBrainService | undefined;
   let compliance: ComplianceService | undefined;
@@ -81,17 +64,11 @@ async function main() {
   setupZ3Tools(registry);
   console.error('[DSG MCP] Z3 Formal Proof tools initialized with 3 tools');
 
-  // Handle tools/list request
   server.setRequestHandler('tools/list', async () => {
     const tools: any[] = [
       { name: 'dsg_query_database', description: 'Execute SQL queries against Supabase with RLS', inputSchema: {} as any },
       { name: 'dsg_list_tables', description: 'List all tables in Supabase', inputSchema: {} as any },
     ];
-
-    if (services.vercel) {
-      tools.push({ name: 'vercel_list_deployments', description: 'List Vercel deployments', inputSchema: {} as any });
-      tools.push({ name: 'vercel_get_project_status', description: 'Get project status', inputSchema: {} as any });
-    }
 
     if (spine) {
       tools.push({ name: 'spine_check_quota', description: 'Check agent quota', inputSchema: {} as any });
@@ -105,7 +82,6 @@ async function main() {
       tools.push({ name: 'ccvs_list_audit_logs', description: 'List audit logs', inputSchema: {} as any });
     }
 
-    // Z3 Formal Proof tools
     tools.push({ name: 'dsg_solve_ising_qubo', description: 'Solve regulatory policy optimization using Ising model + QUBO energy minimization', inputSchema: {} as any });
     tools.push({ name: 'dsg_verify_z3_constraints', description: 'Verify that a policy solution satisfies all Z3 formal constraints', inputSchema: {} as any });
     tools.push({ name: 'dsg_verify_audit_chain', description: 'Cryptographically verify integrity of audit chain using SHA-256 hash chain validation', inputSchema: {} as any });
@@ -113,7 +89,6 @@ async function main() {
     return { tools };
   });
 
-  // Handle tools/call request
   server.setRequestHandler('tools/call', async (request: any) => {
     const toolName = request.params.name;
     const toolInput = request.params.arguments || {};
@@ -126,7 +101,6 @@ async function main() {
     }
   });
 
-  // Handle resources/list request
   server.setRequestHandler('resources/list', async () => ({
     resources: [
       {
@@ -138,7 +112,6 @@ async function main() {
     ],
   }));
 
-  // Handle resources/read request
   server.setRequestHandler('resources/read', async (request: any) => {
     if (request.params.uri === 'dsg-control-plane://status') {
       return {
@@ -150,8 +123,8 @@ async function main() {
 ================
 Status: Ready
 Services: ${Object.keys(services).join(', ')}
-Tools: 10+ (includes Z3 Formal Proof)
-Phase: 3 (Testing) & 4 (Evaluation) & 5 (Optimization)`,
+Tools: governed database + Z3 + optional governance services
+Production authority: Azure`,
           } as any,
         ],
       };
