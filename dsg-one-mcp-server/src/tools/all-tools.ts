@@ -1,5 +1,4 @@
 import { SupabaseService } from '../services/supabase-service.js';
-import { VercelService } from '../services/vercel-service.js';
 import { AnthropicService } from '../services/anthropic-service.js';
 import { StripeService } from '../services/stripe-service.js';
 import { SpineService } from '../services/spine-service.js';
@@ -14,7 +13,6 @@ export interface ToolHandler {
   handler: (input: any) => Promise<{ type: string; text: string; isError?: boolean }>;
 }
 
-// Supabase Tools
 export function createSupabaseTools(supabaseService: SupabaseService): ToolHandler[] {
   return [
     {
@@ -125,91 +123,6 @@ export function createSupabaseTools(supabaseService: SupabaseService): ToolHandl
   ];
 }
 
-// Vercel Tools
-export function createVercelTools(vercelService: VercelService): ToolHandler[] {
-  return [
-    {
-      name: 'vercel_list_deployments',
-      description: 'List Vercel deployments',
-      inputSchema: { type: 'object', properties: { projectId: { type: 'string' }, limit: { type: 'number', default: 10 } }, required: ['projectId'] },
-      handler: async (input: any) => {
-        try {
-          const deployments = await vercelService.listDeployments(input.projectId, input.limit || 10);
-          return { type: 'text', text: JSON.stringify(deployments, null, 2) };
-        } catch (error) {
-          const err = formatError(error);
-          return { type: 'text', text: `Error: ${err.message}`, isError: true };
-        }
-      },
-    },
-    {
-      name: 'vercel_trigger_deploy',
-      description: 'Trigger deployment',
-      inputSchema: {
-        type: 'object',
-        properties: { projectId: { type: 'string' }, environment: { type: 'string', enum: ['preview', 'production'] }, ref: { type: 'string' } },
-        required: ['projectId'],
-      },
-      handler: async (input: any) => {
-        try {
-          const result = await vercelService.triggerDeploy(input.projectId, input.ref, input.environment || 'preview');
-          return { type: 'text', text: `Deployed: ${result.deploymentUrl}\nID: ${result.deploymentId}` };
-        } catch (error) {
-          const err = formatError(error);
-          return { type: 'text', text: `Error: ${err.message}`, isError: true };
-        }
-      },
-    },
-    {
-      name: 'vercel_get_build_logs',
-      description: 'Get build logs',
-      inputSchema: { type: 'object', properties: { deploymentId: { type: 'string' }, lines: { type: 'number', default: 100 } }, required: ['deploymentId'] },
-      handler: async (input: any) => {
-        try {
-          const logs = await vercelService.getBuildLogs(input.deploymentId, input.lines || 100);
-          return { type: 'text', text: logs };
-        } catch (error) {
-          const err = formatError(error);
-          return { type: 'text', text: `Error: ${err.message}`, isError: true };
-        }
-      },
-    },
-    {
-      name: 'vercel_get_project_status',
-      description: 'Get project status',
-      inputSchema: { type: 'object', properties: { projectId: { type: 'string' } }, required: ['projectId'] },
-      handler: async (input: any) => {
-        try {
-          const status = await vercelService.getProjectStatus(input.projectId);
-          return { type: 'text', text: JSON.stringify(status, null, 2) };
-        } catch (error) {
-          const err = formatError(error);
-          return { type: 'text', text: `Error: ${err.message}`, isError: true };
-        }
-      },
-    },
-    {
-      name: 'vercel_manage_env_vars',
-      description: 'Manage environment variables',
-      inputSchema: {
-        type: 'object',
-        properties: { projectId: { type: 'string' }, key: { type: 'string' }, value: { type: 'string' }, action: { type: 'string', enum: ['set', 'delete'], default: 'set' } },
-        required: ['projectId', 'key'],
-      },
-      handler: async (input: any) => {
-        try {
-          const result = await vercelService.manageEnvVar(input.projectId, input.key, input.value, input.action || 'set');
-          return { type: 'text', text: result.message };
-        } catch (error) {
-          const err = formatError(error);
-          return { type: 'text', text: `Error: ${err.message}`, isError: true };
-        }
-      },
-    },
-  ];
-}
-
-// Spine, DSG Brain, Compliance Tools (Placeholder implementations)
 export function createGovernanceTools(
   spineService?: SpineService,
   dsgBrainService?: DSGBrainService,
@@ -270,3 +183,5 @@ export function createGovernanceTools(
 
   return tools;
 }
+
+export type ExternalToolService = AnthropicService | StripeService;
