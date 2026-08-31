@@ -42,11 +42,7 @@ export function getAllowedCorsOrigins(): string[] {
     process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL
   );
 
-  const vercelOrigin = process.env.VERCEL_PROJECT_PRODUCTION_URL
-    ? parseOrigin(`https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`)
-    : null;
-
-  const origins = unique([...explicit, appOrigin, vercelOrigin]);
+  const origins = unique([...explicit, appOrigin]);
 
   if (isStrictCors() && origins.length === 0) {
     console.warn('[CORS] No allowed origins configured in strict mode');
