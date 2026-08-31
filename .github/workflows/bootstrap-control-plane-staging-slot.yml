@@ -1,0 +1,146 @@
+name: Bootstrap Control Plane Staging Slot
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/bootstrap-control-plane-staging-slot.yml'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/bootstrap-control-plane-staging-slot.yml'
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: bootstrap-control-plane-staging-slot
+  cancel-in-progress: false
+
+jobs:
+  validate-contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate bounded slot bootstrap contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          file='.github/workflows/bootstrap-control-plane-staging-slot.yml'
+          mutation_block="$(awk '/^  ensure-staging-slot:/{found=1} found{print}' "$file")"
+          grep -Fq "config/azure-github-oidc-identity.json" <<<"$mutation_block"
+          grep -Fq "dsg-control-plane" <<<"$mutation_block"
+          grep -Fq "AZURE_STAGING_SLOT: staging" <<<"$mutation_block"
+          grep -Fq "az webapp deployment slot create" <<<"$mutation_block"
+          if grep -Eq 'az appservice plan update|az resource update.*sku|az role assignment create|AZURE_CLIENT_SECRET' <<<"$mutation_block"; then
+            echo '::error::Slot bootstrap must not upgrade the plan, broaden RBAC, or use a client secret.' >&2
+            exit 1
+          fi
+
+  ensure-staging-slot:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: prod
+    timeout-minutes: 12
+    env:
+      AZURE_RESOURCE_GROUP: rg-t.dealer01-0468
+      AZURE_WEBAPP_NAME: dsg-control-plane
+      AZURE_STAGING_SLOT: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve proven Azure GitHub OIDC identity
+        id: identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          file='config/azure-github-oidc-identity.json'
+          test -s "$file"
+          client_id="$(jq -er '.clientId' "$file")"
+          tenant_id="$(jq -er '.tenantId' "$file")"
+          subscription_id="$(jq -er '.subscriptionId' "$file")"
+          subject="$(jq -er '.federatedSubject' "$file")"
+          audience="$(jq -er '.audience' "$file")"
+          test "$subject" = 'repo:tdealer01-crypto/tdealer01-crypto-dsg-control-plane:environment:prod'
+          test "$audience" = 'api://AzureADTokenExchange'
+          echo "::add-mask::$client_id"
+          echo "::add-mask::$tenant_id"
+          echo "::add-mask::$subscription_id"
+          echo "client_id=$client_id" >> "$GITHUB_OUTPUT"
+          echo "tenant_id=$tenant_id" >> "$GITHUB_OUTPUT"
+          echo "subscription_id=$subscription_id" >> "$GITHUB_OUTPUT"
+
+      - name: Login to Azure with GitHub OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ steps.identity.outputs.client_id }}
+          tenant-id: ${{ steps.identity.outputs.tenant_id }}
+          subscription-id: ${{ steps.identity.outputs.subscription_id }}
+
+      - name: Inspect plan and ensure staging slot
+        id: slot
+        shell: bash
+        run: |
+          set -euo pipefail
+          az account show --only-show-errors --output none
+          APP_ID="$(az webapp show -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" --query id -o tsv)"
+          PLAN_ID="$(az webapp show -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" --query serverFarmId -o tsv)"
+          test -n "$APP_ID" && test -n "$PLAN_ID"
+
+          SKU_TIER="$(az resource show --ids "$PLAN_ID" --query 'sku.tier' -o tsv)"
+          SKU_NAME="$(az resource show --ids "$PLAN_ID" --query 'sku.name' -o tsv)"
+          test -n "$SKU_TIER" && test -n "$SKU_NAME"
+
+          SLOT="$(az webapp deployment slot list -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" --query "[?name=='$AZURE_STAGING_SLOT'].name | [0]" -o tsv)"
+          CREATED=false
+          if [[ "$SLOT" != "$AZURE_STAGING_SLOT" ]]; then
+            case "$SKU_TIER" in
+              Standard|Premium|PremiumV2|PremiumV3|Isolated|IsolatedV2)
+                ;;
+              *)
+                echo "::error::STAGING_SLOT_UNSUPPORTED_PLAN:tier=$SKU_TIER,sku=$SKU_NAME" >&2
+                echo '::error::No App Service plan upgrade was attempted.' >&2
+                exit 1
+                ;;
+            esac
+
+            az webapp deployment slot create \
+              -g "$AZURE_RESOURCE_GROUP" \
+              -n "$AZURE_WEBAPP_NAME" \
+              --slot "$AZURE_STAGING_SLOT" \
+              --configuration-source "$AZURE_WEBAPP_NAME" \
+              --only-show-errors --output none
+            CREATED=true
+          fi
+
+          SLOT="$(az webapp deployment slot list -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" --query "[?name=='$AZURE_STAGING_SLOT'].name | [0]" -o tsv)"
+          test "$SLOT" = "$AZURE_STAGING_SLOT" || { echo '::error::STAGING_SLOT_READBACK_FAILED'; exit 1; }
+          HOST="$(az webapp show -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" --slot "$AZURE_STAGING_SLOT" --query defaultHostName -o tsv)"
+          test -n "$HOST"
+
+          echo "created=$CREATED" >> "$GITHUB_OUTPUT"
+          echo "sku_tier=$SKU_TIER" >> "$GITHUB_OUTPUT"
+          echo "sku_name=$SKU_NAME" >> "$GITHUB_OUTPUT"
+          echo "host=$HOST" >> "$GITHUB_OUTPUT"
+
+      - name: Record slot bootstrap evidence
+        shell: bash
+        env:
+          CREATED: ${{ steps.slot.outputs.created }}
+          SKU_TIER: ${{ steps.slot.outputs.sku_tier }}
+          SKU_NAME: ${{ steps.slot.outputs.sku_name }}
+          SLOT_HOST: ${{ steps.slot.outputs.host }}
+        run: |
+          {
+            echo '## Control Plane staging slot bootstrap'
+            echo '- status: PASS'
+            echo "- app: $AZURE_WEBAPP_NAME"
+            echo "- slot: $AZURE_STAGING_SLOT"
+            echo "- slot host: $SLOT_HOST"
+            echo "- plan tier: $SKU_TIER"
+            echo "- plan SKU: $SKU_NAME"
+            echo "- slot created this run: $CREATED"
+            echo '- plan upgrade attempted: no'
+            echo '- RBAC mutation: no'
+          } >> "$GITHUB_STEP_SUMMARY"
