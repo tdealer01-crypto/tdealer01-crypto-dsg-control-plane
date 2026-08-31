@@ -1,0 +1,54 @@
+name: Refresh lock after retired host cleanup
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/refresh-lock-after-host-cleanup.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-lock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Rebuild lock from current package manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --package-lock-only --ignore-scripts
+          node - <<'NODE'
+          const fs = require('fs');
+          const pkg = JSON.parse(fs.readFileSync('package.json','utf8'));
+          const lock = JSON.parse(fs.readFileSync('package-lock.json','utf8'));
+          for (const name of ['@vercel/analytics','@vercel/speed-insights']) {
+            if (pkg.dependencies?.[name] || pkg.devDependencies?.[name]) throw new Error(`${name} still in package.json`);
+            if (lock.packages?.['']?.dependencies?.[name] || lock.packages?.['']?.devDependencies?.[name]) throw new Error(`${name} still in root lock manifest`);
+          }
+          NODE
+          npm ci --ignore-scripts
+          git diff --check
+
+      - name: Commit synchronized lock
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package-lock.json
+          if git diff --cached --quiet; then
+            echo 'package-lock.json already synchronized.'
+            exit 0
+          fi
+          git commit -m 'chore: synchronize lock after Vercel removal'
+          git push origin HEAD:main
