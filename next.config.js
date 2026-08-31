@@ -10,8 +10,6 @@ function loadMarkdocConfig() {
 }
 
 const markdocConfig = loadMarkdocConfig();
-
-// Merge markdoc config with our custom config
 const { ...markdocRest } = markdocConfig;
 
 function parseOrigin(url) {
@@ -37,17 +35,7 @@ function resolveRemoteApiOrigin() {
 
 function resolveCanonicalResponseOrigin() {
   const appOrigin = parseOrigin(process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL);
-  const vercelProductionOrigin = process.env.VERCEL_PROJECT_PRODUCTION_URL
-    ? parseOrigin(`https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`)
-    : null;
-  const vercelDeploymentOrigin = process.env.VERCEL_URL
-    ? parseOrigin(`https://${process.env.VERCEL_URL}`)
-    : null;
-
-  return appOrigin
-    || vercelProductionOrigin
-    || vercelDeploymentOrigin
-    || 'http://localhost:3000'; // Development fallback only
+  return appOrigin || 'http://localhost:3000';
 }
 
 function buildConnectSrc() {
@@ -66,15 +54,10 @@ function buildScriptSrc() {
 }
 
 const nextConfig = {
-  // Next.js 16 requires turbopack config when plugins add webpack configuration
   turbopack: {},
 
   // Playwright's default e2e baseURL is http://127.0.0.1:3000 (see playwright.config.ts).
-  // Next dev treats 127.0.0.1 as cross-origin from the "localhost" the dev server binds to,
-  // so it silently blocks the Turbopack HMR bootstrap request for that origin. That bootstrap
-  // failure prevents client component hydration entirely on any page loaded via 127.0.0.1,
-  // which is why client-side useEffect data fetches (and anything gated on their state, like
-  // a submit button) never run in e2e runs. This does not affect `next build`/`next start`.
+  // Next dev treats 127.0.0.1 as cross-origin from the "localhost" the dev server binds to.
   allowedDevOrigins: ['127.0.0.1'],
 
   async redirects() {
@@ -119,8 +102,6 @@ const nextConfig = {
   },
 
   async headers() {
-    // API CORS is intentionally handled at route level via lib/security/cors.ts.
-    // Non-API document/static responses should never expose wildcard CORS.
     const canonicalResponseOrigin = resolveCanonicalResponseOrigin();
 
     return [
