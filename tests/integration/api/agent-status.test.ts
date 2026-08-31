@@ -3,6 +3,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 describe('GET /api/agent/status', () => {
   beforeEach(() => {
     vi.resetModules();
+    delete process.env.DSG_GIT_SHA;
+    delete process.env.GIT_COMMIT_SHA;
+    delete process.env.DSG_ENVIRONMENT;
   });
 
   it('returns 200 with ok:true when db check passes', async () => {
@@ -23,7 +26,7 @@ describe('GET /api/agent/status', () => {
     expect(body.ok).toBe(true);
   });
 
-  it('has required fields: repo, version, env, ts, checks', async () => {
+  it('has required fields: repo, version, environment, env, ts, checks', async () => {
     vi.doMock('../../../lib/supabase-server', () => ({
       getSupabaseAdmin: vi.fn(() => ({
         from: vi.fn(() => ({
@@ -39,15 +42,14 @@ describe('GET /api/agent/status', () => {
 
     expect(body.repo).toBe('dsg-control-plane');
     expect(typeof body.version).toBe('string');
-    expect(typeof body.env).toBe('string');
+    expect(typeof body.environment).toBe('string');
+    expect(body.env).toBe(body.environment);
     expect(typeof body.ts).toBe('string');
     expect(typeof body.checks).toBe('object');
     expect(typeof body.checks.db).toBe('boolean');
   });
 
-  it('version falls back to "local" when VERCEL_GIT_COMMIT_SHA is not set', async () => {
-    delete process.env.VERCEL_GIT_COMMIT_SHA;
-
+  it('version falls back to "local" when Azure/Git commit metadata is not set', async () => {
     vi.doMock('../../../lib/supabase-server', () => ({
       getSupabaseAdmin: vi.fn(() => ({
         from: vi.fn(() => ({
@@ -64,8 +66,8 @@ describe('GET /api/agent/status', () => {
     expect(body.version).toBe('local');
   });
 
-  it('env falls back to "local" when VERCEL_ENV is not set', async () => {
-    delete process.env.VERCEL_ENV;
+  it('uses DSG_ENVIRONMENT when configured', async () => {
+    process.env.DSG_ENVIRONMENT = 'production';
 
     vi.doMock('../../../lib/supabase-server', () => ({
       getSupabaseAdmin: vi.fn(() => ({
@@ -80,7 +82,8 @@ describe('GET /api/agent/status', () => {
     const res = await GET();
     const body = await res.json();
 
-    expect(body.env).toBe('local');
+    expect(body.environment).toBe('production');
+    expect(body.env).toBe('production');
   });
 
   it('returns 503 with ok:false when db check fails', async () => {
