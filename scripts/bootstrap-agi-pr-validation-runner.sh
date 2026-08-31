@@ -9,7 +9,8 @@ required() {
   fi
 }
 
-required DSG_GITHUB_AUTOMATION_TOKEN
+required RUNNER_REGISTRATION_TOKEN
+required TARGET_SHA
 required AZURE_RESOURCE_GROUP
 required TARGET_REPO
 required TARGET_BRANCH
@@ -28,36 +29,20 @@ if ! [[ "$TARGET_BRANCH" =~ ^[A-Za-z0-9._/-]+$ ]] || [[ "$TARGET_BRANCH" == *'..
   echo '::error::TARGET_BRANCH_INVALID' >&2
   exit 1
 fi
+if ! [[ "$TARGET_SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
+  echo '::error::TARGET_SHA_INVALID' >&2
+  exit 1
+fi
+if [[ ${#RUNNER_REGISTRATION_TOKEN} -lt 20 ]]; then
+  echo '::error::RUNNER_REGISTRATION_TOKEN_INVALID' >&2
+  exit 1
+fi
 if ! [[ "$RUNNER_VM_NAME" =~ ^[A-Za-z0-9-]{1,64}$ ]]; then
   echo '::error::RUNNER_VM_NAME_INVALID' >&2
   exit 1
 fi
 if ! [[ "$RUNNER_TTL_MINUTES" =~ ^[0-9]+$ ]] || (( RUNNER_TTL_MINUTES < 30 || RUNNER_TTL_MINUTES > 360 )); then
   echo '::error::RUNNER_TTL_MINUTES_INVALID' >&2
-  exit 1
-fi
-
-api() {
-  curl --fail --silent --show-error \
-    -H "Authorization: Bearer ${DSG_GITHUB_AUTOMATION_TOKEN}" \
-    -H 'Accept: application/vnd.github+json' \
-    -H 'X-GitHub-Api-Version: 2022-11-28' \
-    "$@"
-}
-
-echo "Resolving target branch ${TARGET_REPO}@${TARGET_BRANCH}..."
-ref_json="$(api "https://api.github.com/repos/${TARGET_REPO}/git/ref/heads/${TARGET_BRANCH}")"
-TARGET_SHA="$(jq -er '.object.sha' <<<"$ref_json")"
-if ! [[ "$TARGET_SHA" =~ ^[0-9a-f]{40}$ ]]; then
-  echo '::error::TARGET_SHA_INVALID' >&2
-  exit 1
-fi
-
-echo 'Requesting short-lived repository runner registration token...'
-registration_json="$(api -X POST "https://api.github.com/repos/${TARGET_REPO}/actions/runners/registration-token")"
-RUNNER_REGISTRATION_TOKEN="$(jq -er '.token' <<<"$registration_json")"
-if [[ ${#RUNNER_REGISTRATION_TOKEN} -lt 20 ]]; then
-  echo '::error::RUNNER_REGISTRATION_TOKEN_INVALID' >&2
   exit 1
 fi
 
@@ -174,7 +159,6 @@ az vm create \
   --only-show-errors \
   --output none
 
-# Explicitly prove that no managed identity was attached.
 identity_type="$(az vm show --resource-group "$AZURE_RESOURCE_GROUP" --name "$RUNNER_VM_NAME" --query 'identity.type' --output tsv 2>/dev/null || true)"
 if [[ -n "$identity_type" && "$identity_type" != 'None' ]]; then
   echo "::error::RUNNER_VM_MANAGED_IDENTITY_PRESENT:${identity_type}" >&2
@@ -189,29 +173,9 @@ az vm auto-shutdown \
   --only-show-errors \
   --output none
 
-echo "Waiting for GitHub to report runner ${RUNNER_VM_NAME} online..."
-deadline=$((SECONDS + 600))
-runner_id=''
-runner_status=''
-while (( SECONDS < deadline )); do
-  runners_json="$(api "https://api.github.com/repos/${TARGET_REPO}/actions/runners?per_page=100")"
-  runner_id="$(jq -r --arg name "$RUNNER_VM_NAME" '.runners[]? | select(.name == $name) | .id' <<<"$runners_json" | head -n1)"
-  runner_status="$(jq -r --arg name "$RUNNER_VM_NAME" '.runners[]? | select(.name == $name) | .status' <<<"$runners_json" | head -n1)"
-  if [[ -n "$runner_id" && "$runner_status" == 'online' ]]; then
-    break
-  fi
-  sleep 10
-done
-
-if [[ -z "$runner_id" || "$runner_status" != 'online' ]]; then
-  echo "::error::RUNNER_ALLOCATION_NOT_ONLINE:name=${RUNNER_VM_NAME},status=${runner_status:-missing}" >&2
-  exit 1
-fi
-
-echo "RUNNER_REGISTRATION_ONLINE name=${RUNNER_VM_NAME} id=${runner_id} targetSha=${TARGET_SHA} labels=${RUNNER_LABELS}"
+echo "RUNNER_VM_PROVISIONED name=${RUNNER_VM_NAME} targetSha=${TARGET_SHA} labels=${RUNNER_LABELS}"
 if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
   {
-    echo "runner_id=${runner_id}"
     echo "runner_name=${RUNNER_VM_NAME}"
     echo "target_sha=${TARGET_SHA}"
     echo "auto_shutdown_utc=${auto_shutdown}"
