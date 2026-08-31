@@ -1,12 +1,11 @@
 import { manifestRegistry } from './registry';
 import { gitHubManifest } from './github';
 import { stripeManifest } from './stripe';
-import { vercelManifest } from './vercel';
 import { supabaseManifest } from './supabase';
 import { openaiManifest } from './openai';
 
 export function registerDefaultManifests(): void {
-  const manifests = [gitHubManifest, stripeManifest, vercelManifest, supabaseManifest, openaiManifest];
+  const manifests = [gitHubManifest, stripeManifest, supabaseManifest, openaiManifest];
 
   for (const manifest of manifests) {
     const validation = manifestRegistry.validate(manifest);
