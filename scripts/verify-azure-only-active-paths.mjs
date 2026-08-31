@@ -24,12 +24,15 @@ const EXCLUDED = new Set([
 ]);
 
 const FORBIDDEN = [
-  { label: 'retired Vercel production hostname', regex: /\.vercel\.app\b/i },
+  { label: 'retired Vercel hostname', regex: /\.vercel\.app\b/i },
   { label: 'retired Vercel API', regex: /api\.vercel\.com\b/i },
   { label: 'retired Vercel runtime environment variable', regex: /process\.env\.VERCEL_[A-Z0-9_]+/ },
   { label: 'retired Vercel GitHub Actions secret/variable', regex: /\$\{\{\s*(?:secrets|vars)\.VERCEL_[A-Z0-9_]+/ },
-  { label: 'retired Vercel CLI command', regex: /(?:^|[\s;&|])(?:npx\s+|npm\s+exec\s+)?vercel(?:\s+|$)/im },
-  { label: 'retired Vercel env command', regex: /\bvercel\s+env\b/i },
+  {
+    label: 'retired Vercel CLI command',
+    regex: /(?:^|[;&|]\s*|\brun:\s*|\bexec(?:Async)?\([^\n]*|\bcommand\s+-v\s+)(?:npx\s+|npm\s+exec\s+)?vercel\s+(?:deploy|env|pull|link|ls|whoami|alias|login|logout|logs|inspect|promote|rollback|redeploy|domains|projects|teams|certs|dns|dev|build|--prod|--token|--yes)\b/i,
+  },
+  { label: 'retired Vercel env command', regex: /\bvercel\s+env\s+(?:add|rm|remove|pull|ls)\b/i },
 ];
 
 function walk(path) {
