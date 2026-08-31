@@ -56,19 +56,20 @@ jobs:
           script='scripts/bootstrap-agi-pr-validation-runner.sh'
           workflow='.github/workflows/bootstrap-agi-pr-validation-runner.yml'
           broker='app/api/dsg/ops/runner-bootstrap/broker/route.ts'
+          token_name='DSG_GITHUB_AUTOMATION_TOKEN'
           grep -Fq 'dsgTrustBoundary=pr-validation-no-managed-identity' "$script"
           grep -Fq -- '--nsg-rule NONE' "$script"
           grep -Fq 'RUNNER_REGISTRATION_TOKEN' "$script"
           grep -Fq 'dsg-agi-runner-bootstrap' "$workflow"
           grep -Fq 'ACTIONS_ID_TOKEN_REQUEST_URL' "$workflow"
           grep -Fq 'verifyGitHubActionsOidcToken' "$broker"
-          grep -Fq 'DSG_GITHUB_AUTOMATION_TOKEN' "$broker"
+          grep -Fq "$token_name" "$broker"
           grep -Fq 'createRegistrationTokenForRepo' "$broker"
-          if grep -Fq 'DSG_GITHUB_AUTOMATION_TOKEN' "$script"; then
+          if grep -Fq "$token_name" "$script"; then
             echo '::error::Long-lived GitHub automation token must not enter the runner bootstrap script.' >&2
             exit 1
           fi
-          if grep -Fq 'DSG_GITHUB_AUTOMATION_TOKEN' "$workflow"; then
+          if grep -Eq "secrets\\.${token_name}|^[[:space:]]*${token_name}:[[:space:]]" "$workflow"; then
             echo '::error::Long-lived GitHub automation token must not be injected into the public workflow.' >&2
             exit 1
           fi
