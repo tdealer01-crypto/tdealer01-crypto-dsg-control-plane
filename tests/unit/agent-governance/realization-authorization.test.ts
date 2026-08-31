@@ -63,16 +63,19 @@ function buildSpec(planBytes: Buffer): CandidateRealizationSpecV1 {
   return { ...payload, specSha256: sha256(JSON.stringify(payload)) };
 }
 
-function clientFor(planBytes: Buffer): GitHubPlanClient {
+function clientFor(planBytes: Buffer, files = ['src/checkpoint.ts']): GitHubPlanClient {
   return {
     getContent: async () => ({
       data: { content: planBytes.toString('base64'), encoding: 'base64' },
+    }),
+    compareCommits: async () => ({
+      data: { status: 'ahead', files: files.map((filename) => ({ filename })) },
     }),
   };
 }
 
 describe('candidate realization authorization', () => {
-  it('authorizes only a code candidate bound to the approved GitHub plan', async () => {
+  it('authorizes only a code candidate bound to the approved GitHub plan and commit lineage', async () => {
     const planBytes = Buffer.from(`${JSON.stringify(approvedPlan(), null, 2)}\n`);
     const receipt = await authorizeCandidateRealization(clientFor(planBytes), buildSpec(planBytes), '2026-08-31T00:00:00.000Z');
     expect(receipt.status).toBe('ALLOW');
@@ -95,6 +98,19 @@ describe('candidate realization authorization', () => {
     const { specSha256: _old, ...rest } = spec;
     spec.specSha256 = sha256(JSON.stringify(rest));
     await expect(authorizeCandidateRealization(clientFor(planBytes), spec)).rejects.toThrow('REALIZATION_SCOPE_WIDENING_BLOCKED');
+  });
+
+  it('blocks a GitHub diff outside the candidate scope', async () => {
+    const planBytes = Buffer.from(`${JSON.stringify(approvedPlan(), null, 2)}\n`);
+    const spec = buildSpec(planBytes);
+    await expect(authorizeCandidateRealization(clientFor(planBytes, ['tests/outside.ts']), spec)).rejects.toThrow('REALIZATION_CANDIDATE_DIFF_OUTSIDE_SCOPE');
+  });
+
+  it('blocks a non-descendant origin candidate', async () => {
+    const planBytes = Buffer.from(`${JSON.stringify(approvedPlan(), null, 2)}\n`);
+    const client = clientFor(planBytes);
+    client.compareCommits = async () => ({ data: { status: 'diverged', files: [{ filename: 'src/checkpoint.ts' }] } });
+    await expect(authorizeCandidateRealization(client, buildSpec(planBytes))).rejects.toThrow('REALIZATION_BASELINE_NOT_ANCESTOR');
   });
 
   it('blocks traversal in requested scope', () => {
