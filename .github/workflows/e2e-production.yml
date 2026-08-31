@@ -15,6 +15,9 @@ concurrency:
   group: e2e-production-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  PRODUCTION_BASE_URL: https://dsg-control-plane.azurewebsites.net
+
 jobs:
   health:
     name: Production Health & E2E
@@ -40,7 +43,7 @@ jobs:
       - name: Run infrastructure health checks
         run: npx playwright test tests/e2e/infrastructure.spec.ts --reporter=list
         env:
-          PLAYWRIGHT_BASE_URL: https://tdealer01-crypto-dsg-control-plane.vercel.app
+          PLAYWRIGHT_BASE_URL: ${{ env.PRODUCTION_BASE_URL }}
           SKIP_TUNNEL_HEALTH: 'true'
 
       - name: Run API auth guard tests (no credentials needed)
@@ -52,7 +55,7 @@ jobs:
             tests/e2e/hermes-sessions.spec.ts \
             --reporter=list
         env:
-          PLAYWRIGHT_BASE_URL: https://tdealer01-crypto-dsg-control-plane.vercel.app
+          PLAYWRIGHT_BASE_URL: ${{ env.PRODUCTION_BASE_URL }}
 
       - name: Run public page smoke tests
         run: |
@@ -61,7 +64,7 @@ jobs:
             tests/e2e/support.spec.ts \
             --reporter=list
         env:
-          PLAYWRIGHT_BASE_URL: https://tdealer01-crypto-dsg-control-plane.vercel.app
+          PLAYWRIGHT_BASE_URL: ${{ env.PRODUCTION_BASE_URL }}
 
       - name: Upload test results on failure
         if: failure()
