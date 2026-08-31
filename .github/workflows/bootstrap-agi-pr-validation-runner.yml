@@ -1,0 +1,123 @@
+name: Bootstrap AGI PR Validation Runner
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/bootstrap-agi-pr-validation-runner.yml'
+      - 'scripts/bootstrap-agi-pr-validation-runner.sh'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/bootstrap-agi-pr-validation-runner.yml'
+      - 'scripts/bootstrap-agi-pr-validation-runner.sh'
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: Private AGI branch that needs runner allocation proof
+        required: true
+        type: string
+        default: fix/runtime-baseline-capability-evolution
+      vm_size:
+        description: Azure VM size for the dedicated PR validation runner
+        required: true
+        type: string
+        default: Standard_B2s
+      ttl_minutes:
+        description: Azure auto-shutdown TTL in minutes
+        required: true
+        type: number
+        default: 120
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: dsg-agi-pr-validation-runner
+  cancel-in-progress: false
+
+jobs:
+  validate-bootstrap-contract:
+    name: Validate runner bootstrap contract
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax-check bootstrap script
+        run: bash -n scripts/bootstrap-agi-pr-validation-runner.sh
+      - name: Enforce PR-validation trust boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          file='scripts/bootstrap-agi-pr-validation-runner.sh'
+          grep -Fq 'dsgTrustBoundary=pr-validation-no-managed-identity' "$file"
+          grep -Fq -- '--nsg-rule NONE' "$file"
+          grep -Fq '/actions/runners/registration-token' "$file"
+          grep -Fq 'RUNNER_ALLOCATION_NOT_ONLINE' "$file"
+          if grep -Eq 'az vm identity assign|--assign-identity' "$file"; then
+            echo '::error::PR validation runner must not receive an Azure managed identity.' >&2
+            exit 1
+          fi
+          if grep -Eq -- '--nsg-rule (SSH|RDP)|--open-port' "$file"; then
+            echo '::error::PR validation runner must not expose inbound administration ports.' >&2
+            exit 1
+          fi
+
+  provision-runner:
+    name: Provision dedicated Azure PR validation runner
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: prod
+    timeout-minutes: 20
+    env:
+      TARGET_REPO: tdealer01-crypto/dsg-agi-simulation
+      TARGET_BRANCH: ${{ inputs.target_branch || 'fix/runtime-baseline-capability-evolution' }}
+      AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP || 'rg-t.dealer01-0468' }}
+      RUNNER_VM_NAME: dsg-pr41-validator
+      RUNNER_VM_SIZE: ${{ inputs.vm_size || 'Standard_B2s' }}
+      RUNNER_LABELS: azure,dsg-pr-validation,pr41
+      RUNNER_TTL_MINUTES: ${{ inputs.ttl_minutes || 120 }}
+      DSG_GITHUB_AUTOMATION_TOKEN: ${{ secrets.DSG_GITHUB_AUTOMATION_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate required bootstrap credentials
+        shell: bash
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        run: |
+          set -euo pipefail
+          test -n "${AZURE_CLIENT_ID:-}" || { echo '::error::AZURE_CLIENT_ID_REQUIRED'; exit 1; }
+          test -n "${AZURE_TENANT_ID:-}" || { echo '::error::AZURE_TENANT_ID_REQUIRED'; exit 1; }
+          test -n "${AZURE_SUBSCRIPTION_ID:-}" || { echo '::error::AZURE_SUBSCRIPTION_ID_REQUIRED'; exit 1; }
+          test -n "${DSG_GITHUB_AUTOMATION_TOKEN:-}" || { echo '::error::DSG_GITHUB_AUTOMATION_TOKEN_REQUIRED'; exit 1; }
+      - name: Login to Azure with existing governed OIDC binding
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Provision and prove GitHub runner registration
+        id: runner
+        shell: bash
+        run: bash scripts/bootstrap-agi-pr-validation-runner.sh
+      - name: Record allocation evidence
+        shell: bash
+        env:
+          RUNNER_ID: ${{ steps.runner.outputs.runner_id }}
+          RUNNER_NAME: ${{ steps.runner.outputs.runner_name }}
+          TARGET_SHA: ${{ steps.runner.outputs.target_sha }}
+          AUTO_SHUTDOWN_UTC: ${{ steps.runner.outputs.auto_shutdown_utc }}
+        run: |
+          {
+            echo '## DSG AGI PR validation runner'
+            echo "- status: ONLINE"
+            echo "- runner: ${RUNNER_NAME}"
+            echo "- runner id: ${RUNNER_ID}"
+            echo "- target SHA: ${TARGET_SHA}"
+            echo "- labels: self-hosted, Linux, X64, azure, dsg-pr-validation, pr41"
+            echo "- Azure managed identity: prohibited"
+            echo "- inbound admin ports: prohibited"
+            echo "- auto-shutdown (UTC): ${AUTO_SHUTDOWN_UTC}"
+          } >> "$GITHUB_STEP_SUMMARY"
