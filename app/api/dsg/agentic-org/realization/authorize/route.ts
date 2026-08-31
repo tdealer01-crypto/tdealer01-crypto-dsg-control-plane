@@ -58,6 +58,9 @@ export async function POST(request: NextRequest) {
   const octokit = new Octokit({ auth: githubToken });
   const client: GitHubPlanClient = {
     getContent: (input) => octokit.rest.repos.getContent(input) as unknown as Promise<{ data: unknown }>,
+    compareCommits: (input) => octokit.rest.repos.compareCommitsWithBasehead(input) as unknown as Promise<{
+      data: { status: string; files?: Array<{ filename: string }> };
+    }>,
   };
 
   try {
