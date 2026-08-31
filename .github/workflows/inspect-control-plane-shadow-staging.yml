@@ -1,0 +1,185 @@
+name: Inspect Control Plane Shadow Staging Feasibility
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/inspect-control-plane-shadow-staging.yml'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/inspect-control-plane-shadow-staging.yml'
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: inspect-control-plane-shadow-staging
+  cancel-in-progress: false
+
+jobs:
+  validate-contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate read-only inspection boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          file='.github/workflows/inspect-control-plane-shadow-staging.yml'
+          inspect_block="$(awk '/^  inspect-shadow-feasibility:/{found=1} found{print}' "$file")"
+          grep -Fq 'config/azure-github-oidc-identity.json' <<<"$inspect_block"
+          grep -Fq 'dsg-control-plane' <<<"$inspect_block"
+          if grep -Eq 'az (webapp|resource|appservice|role|identity)[^\n]*[[:space:]](create|update|set|delete|assign)([[:space:]]|$)|AZURE_CLIENT_SECRET' <<<"$inspect_block"; then
+            echo '::error::Inspection workflow must remain read-only and secretless.' >&2
+            exit 1
+          fi
+
+  inspect-shadow-feasibility:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: prod
+    timeout-minutes: 10
+    env:
+      AZURE_RESOURCE_GROUP: rg-t.dealer01-0468
+      AZURE_WEBAPP_NAME: dsg-control-plane
+      PROPOSED_SHADOW_NAME: dsg-cp-staging-50aaef839
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve proven Azure GitHub OIDC identity
+        id: identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          file='config/azure-github-oidc-identity.json'
+          test -s "$file"
+          client_id="$(jq -er '.clientId' "$file")"
+          tenant_id="$(jq -er '.tenantId' "$file")"
+          subscription_id="$(jq -er '.subscriptionId' "$file")"
+          subject="$(jq -er '.federatedSubject' "$file")"
+          audience="$(jq -er '.audience' "$file")"
+          test "$subject" = 'repo:tdealer01-crypto/tdealer01-crypto-dsg-control-plane:environment:prod'
+          test "$audience" = 'api://AzureADTokenExchange'
+          echo "::add-mask::$client_id"
+          echo "::add-mask::$tenant_id"
+          echo "::add-mask::$subscription_id"
+          echo "client_id=$client_id" >> "$GITHUB_OUTPUT"
+          echo "tenant_id=$tenant_id" >> "$GITHUB_OUTPUT"
+          echo "subscription_id=$subscription_id" >> "$GITHUB_OUTPUT"
+
+      - name: Login to Azure with GitHub OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ steps.identity.outputs.client_id }}
+          tenant-id: ${{ steps.identity.outputs.tenant_id }}
+          subscription-id: ${{ steps.identity.outputs.subscription_id }}
+
+      - name: Inspect production plan, identity, Key Vault and container bindings
+        id: inspect
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          az account show --only-show-errors --output none
+
+          az webapp show -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" -o json > /tmp/app.json
+          APP_ID="$(jq -er '.id' /tmp/app.json)"
+          PLAN_ID="$(jq -er '.serverFarmId' /tmp/app.json)"
+          LOCATION="$(jq -er '.location' /tmp/app.json)"
+          IDENTITY_TYPE="$(jq -r '.identity.type // "None"' /tmp/app.json)"
+          USER_ASSIGNED_COUNT="$(jq '.identity.userAssignedIdentities // {} | length' /tmp/app.json)"
+
+          az resource show --ids "$PLAN_ID" -o json > /tmp/plan.json
+          SKU_TIER="$(jq -er '.sku.tier' /tmp/plan.json)"
+          SKU_NAME="$(jq -er '.sku.name' /tmp/plan.json)"
+          PLAN_NAME="$(jq -er '.name' /tmp/plan.json)"
+
+          az resource show --ids "$APP_ID" -o json > /tmp/app-resource.json
+          KEY_VAULT_REFERENCE_IDENTITY="$(jq -r '.properties.keyVaultReferenceIdentity // ""' /tmp/app-resource.json)"
+          ACR_USE_MI="$(jq -r '.properties.siteConfig.acrUseManagedIdentityCreds // false' /tmp/app-resource.json)"
+          ACR_UAMI_CLIENT_ID="$(jq -r '.properties.siteConfig.acrUserManagedIdentityID // ""' /tmp/app-resource.json)"
+          LINUX_FX_VERSION="$(jq -r '.properties.siteConfig.linuxFxVersion // ""' /tmp/app-resource.json)"
+
+          az webapp config appsettings list -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" -o json > /tmp/appsettings.json
+          SETTING_COUNT="$(jq 'length' /tmp/appsettings.json)"
+          KEY_VAULT_REF_COUNT="$(jq '[.[] | select((.value // "") | startswith("@Microsoft.KeyVault("))] | length' /tmp/appsettings.json)"
+          az webapp config connection-string list -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" -o json > /tmp/connections.json
+          CONNECTION_STRING_COUNT="$(jq 'length' /tmp/connections.json)"
+
+          SHADOW_EXISTS=false
+          if az webapp show -g "$AZURE_RESOURCE_GROUP" -n "$PROPOSED_SHADOW_NAME" --only-show-errors --output none 2>/dev/null; then
+            SHADOW_EXISTS=true
+          fi
+
+          IDENTITY_REUSE_SAFE=false
+          IDENTITY_REASON='NO_KEY_VAULT_REFERENCES'
+          if [[ "$KEY_VAULT_REF_COUNT" -gt 0 ]]; then
+            IDENTITY_REASON='KEY_VAULT_REFERENCES_WITHOUT_PROVEN_REUSABLE_UAMI'
+            if [[ "$IDENTITY_TYPE" == *UserAssigned* && "$USER_ASSIGNED_COUNT" -gt 0 && -n "$KEY_VAULT_REFERENCE_IDENTITY" ]]; then
+              if jq -e --arg id "$KEY_VAULT_REFERENCE_IDENTITY" '.identity.userAssignedIdentities // {} | has($id)' /tmp/app.json >/dev/null; then
+                IDENTITY_REUSE_SAFE=true
+                IDENTITY_REASON='PRODUCTION_KEY_VAULT_UAMI_CAN_BE_REUSED_WITHOUT_NEW_RBAC'
+              fi
+            fi
+          else
+            IDENTITY_REUSE_SAFE=true
+          fi
+
+          echo "sku_tier=$SKU_TIER" >> "$GITHUB_OUTPUT"
+          echo "sku_name=$SKU_NAME" >> "$GITHUB_OUTPUT"
+          echo "plan_name=$PLAN_NAME" >> "$GITHUB_OUTPUT"
+          echo "identity_type=$IDENTITY_TYPE" >> "$GITHUB_OUTPUT"
+          echo "user_assigned_count=$USER_ASSIGNED_COUNT" >> "$GITHUB_OUTPUT"
+          echo "key_vault_ref_count=$KEY_VAULT_REF_COUNT" >> "$GITHUB_OUTPUT"
+          echo "connection_string_count=$CONNECTION_STRING_COUNT" >> "$GITHUB_OUTPUT"
+          echo "setting_count=$SETTING_COUNT" >> "$GITHUB_OUTPUT"
+          echo "acr_use_mi=$ACR_USE_MI" >> "$GITHUB_OUTPUT"
+          echo "acr_uami_present=$([[ -n "$ACR_UAMI_CLIENT_ID" ]] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "container_configured=$([[ -n "$LINUX_FX_VERSION" ]] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "identity_reuse_safe=$IDENTITY_REUSE_SAFE" >> "$GITHUB_OUTPUT"
+          echo "identity_reason=$IDENTITY_REASON" >> "$GITHUB_OUTPUT"
+          echo "shadow_exists=$SHADOW_EXISTS" >> "$GITHUB_OUTPUT"
+          echo "location=$LOCATION" >> "$GITHUB_OUTPUT"
+
+          rm -f /tmp/appsettings.json /tmp/connections.json /tmp/app.json /tmp/plan.json /tmp/app-resource.json
+
+      - name: Record non-secret feasibility evidence
+        shell: bash
+        env:
+          SKU_TIER: ${{ steps.inspect.outputs.sku_tier }}
+          SKU_NAME: ${{ steps.inspect.outputs.sku_name }}
+          PLAN_NAME: ${{ steps.inspect.outputs.plan_name }}
+          LOCATION: ${{ steps.inspect.outputs.location }}
+          IDENTITY_TYPE: ${{ steps.inspect.outputs.identity_type }}
+          USER_ASSIGNED_COUNT: ${{ steps.inspect.outputs.user_assigned_count }}
+          KEY_VAULT_REF_COUNT: ${{ steps.inspect.outputs.key_vault_ref_count }}
+          CONNECTION_STRING_COUNT: ${{ steps.inspect.outputs.connection_string_count }}
+          SETTING_COUNT: ${{ steps.inspect.outputs.setting_count }}
+          ACR_USE_MI: ${{ steps.inspect.outputs.acr_use_mi }}
+          ACR_UAMI_PRESENT: ${{ steps.inspect.outputs.acr_uami_present }}
+          CONTAINER_CONFIGURED: ${{ steps.inspect.outputs.container_configured }}
+          IDENTITY_REUSE_SAFE: ${{ steps.inspect.outputs.identity_reuse_safe }}
+          IDENTITY_REASON: ${{ steps.inspect.outputs.identity_reason }}
+          SHADOW_EXISTS: ${{ steps.inspect.outputs.shadow_exists }}
+        run: |
+          {
+            echo '## Control Plane shadow-staging feasibility'
+            echo '- mutation performed: no'
+            echo "- App Service plan: $PLAN_NAME"
+            echo "- plan tier/SKU: $SKU_TIER / $SKU_NAME"
+            echo "- location: $LOCATION"
+            echo "- production identity type: $IDENTITY_TYPE"
+            echo "- user-assigned identities: $USER_ASSIGNED_COUNT"
+            echo "- Key Vault reference settings: $KEY_VAULT_REF_COUNT"
+            echo "- connection strings: $CONNECTION_STRING_COUNT"
+            echo "- total app settings: $SETTING_COUNT"
+            echo "- ACR uses managed identity: $ACR_USE_MI"
+            echo "- ACR user-assigned client ID configured: $ACR_UAMI_PRESENT"
+            echo "- container configured: $CONTAINER_CONFIGURED"
+            echo "- reusable identity without new RBAC: $IDENTITY_REUSE_SAFE"
+            echo "- identity assessment: $IDENTITY_REASON"
+            echo "- proposed shadow app: $PROPOSED_SHADOW_NAME"
+            echo "- proposed shadow already exists: $SHADOW_EXISTS"
+          } >> "$GITHUB_STEP_SUMMARY"
