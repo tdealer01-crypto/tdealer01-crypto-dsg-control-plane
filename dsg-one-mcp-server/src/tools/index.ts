@@ -1,5 +1,4 @@
 import { SupabaseService } from '../services/supabase-service.js';
-import { VercelService } from '../services/vercel-service.js';
 import { SpineService } from '../services/spine-service.js';
 import { DSGBrainService } from '../services/dsg-brain-service.js';
 import { ComplianceService } from '../services/compliance-service.js';
@@ -8,7 +7,6 @@ import {
   solveisingQubo,
   verifyZ3Constraints,
   verifyAuditChain,
-  Z3FormalProofTools,
   IsingZ3SolverInputSchema,
   Z3FormalVerifyInputSchema,
   AuditChainVerifyInputSchema,
@@ -32,7 +30,6 @@ export class ToolRegistry {
 
   getTools(): Array<{ name: string; description: string; inputSchema: Record<string, unknown> }> {
     const tools: Array<{ name: string; description: string; inputSchema: Record<string, unknown> }> = [];
-    // Implementation would return registered tools
     return tools;
   }
 
@@ -61,28 +58,6 @@ export function setupSupabaseTools(registry: ToolRegistry, service: SupabaseServ
     } catch (error) {
       const err = formatError(error);
       throw new Error(`List tables error: ${err.message}`);
-    }
-  });
-}
-
-export function setupVercelTools(registry: ToolRegistry, service: VercelService) {
-  registry.registerTool('vercel_list_deployments', 'List Vercel deployments', { type: 'object', properties: { projectId: { type: 'string' } } }, async (input) => {
-    try {
-      const deployments = await service.listDeployments(input.projectId, input.limit || 10);
-      return JSON.stringify(deployments, null, 2);
-    } catch (error) {
-      const err = formatError(error);
-      throw new Error(`Deployments error: ${err.message}`);
-    }
-  });
-
-  registry.registerTool('vercel_get_project_status', 'Get project status', { type: 'object', properties: { projectId: { type: 'string' } } }, async (input) => {
-    try {
-      const status = await service.getProjectStatus(input.projectId);
-      return JSON.stringify(status, null, 2);
-    } catch (error) {
-      const err = formatError(error);
-      throw new Error(`Status error: ${err.message}`);
     }
   });
 }
