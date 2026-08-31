@@ -69,7 +69,7 @@ jobs:
           CONFIG_SUBJECT="$(jq -er '.federatedSubject' "$IDENTITY_FILE")"
           CONFIG_AUDIENCE="$(jq -er '.audience' "$IDENTITY_FILE")"
 
-          EXPECTED_SUBJECT='repo:tdealer01-crypto@260597462/tdealer01-crypto-dsg-control-plane@1186640068:environment:prod'
+          EXPECTED_SUBJECT='repo:tdealer01-crypto/tdealer01-crypto-dsg-control-plane:environment:prod'
           test "$CONFIG_SUBJECT" = "$EXPECTED_SUBJECT" || { echo '::error::Azure OIDC federated subject mismatch'; exit 1; }
           test "$CONFIG_AUDIENCE" = 'api://AzureADTokenExchange' || { echo '::error::Azure OIDC audience mismatch'; exit 1; }
 
