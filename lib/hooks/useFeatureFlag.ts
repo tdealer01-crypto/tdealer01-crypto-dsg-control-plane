@@ -1,21 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getFeatureFlagClient, type FeatureFlagName } from '../vercel-flags';
+import { getFeatureFlagClient, type FeatureFlagName } from '../feature-flags';
 
 /**
- * useFeatureFlag — Client-side feature flag hook
- *
- * Use this in client components to conditionally render based on feature flags.
- *
- * Example:
- *   const isDashboardEnabled = useFeatureFlag('ENABLE_MONITOR_DASHBOARD');
- *   return isDashboardEnabled && <Dashboard />;
- *
- * The hook reads flags from window.__featureFlags (set by server during initial render)
- * and falls back to default configuration if not available.
+ * useFeatureFlag — Client-side feature flag hook.
+ * Reads flags from window.__featureFlags set by the server and falls back to
+ * the provider-neutral runtime defaults.
  */
-
 export function useFeatureFlag(
   flagName: FeatureFlagName
 ): { enabled: boolean; loading: boolean } {
@@ -23,7 +15,6 @@ export function useFeatureFlag(
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    // Read flag from client-side source (server-injected)
     const flagValue = getFeatureFlagClient(flagName);
     setEnabled(flagValue);
     setLoading(false);
@@ -31,17 +22,6 @@ export function useFeatureFlag(
 
   return { enabled, loading };
 }
-
-/**
- * useFeatureFlags — Check multiple feature flags at once
- *
- * Example:
- *   const flags = useFeatureFlags(['ENABLE_MONITOR_DASHBOARD', 'ENABLE_BILLING_UI']);
- *   return {
- *     monitoring: flags.ENABLE_MONITOR_DASHBOARD,
- *     billing: flags.ENABLE_BILLING_UI,
- *   };
- */
 
 export function useFeatureFlags(
   flagNames: FeatureFlagName[]
