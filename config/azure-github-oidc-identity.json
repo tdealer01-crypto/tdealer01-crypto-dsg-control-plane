@@ -6,10 +6,11 @@
   "resourceGroup": "rg-t.dealer01-0468",
   "azureIdentityName": "dsg-cinema-proof-agent-github-deployer",
   "federatedCredentialName": "github-control-plane-prod",
-  "federatedSubject": "repo:tdealer01-crypto@260597462/tdealer01-crypto-dsg-control-plane@1186640068:environment:prod",
+  "federatedSubject": "repo:tdealer01-crypto/tdealer01-crypto-dsg-control-plane:environment:prod",
   "audience": "api://AzureADTokenExchange",
   "evidence": {
     "cinemaProductionOidcRunId": 32927629103,
-    "controlPlaneFederationBootstrapRunId": 33423069421
+    "controlPlaneFederationBootstrapRunId": 33430316124,
+    "failedControlPlanePromotionRunId": 33429266801
   }
 }
