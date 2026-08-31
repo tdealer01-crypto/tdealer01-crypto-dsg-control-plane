@@ -71,6 +71,9 @@ export interface RealizationAuthorizationReceipt {
 
 export interface GitHubPlanClient {
   getContent(input: { owner: string; repo: string; path: string; ref: string }): Promise<{ data: unknown }>;
+  compareCommits(input: { owner: string; repo: string; basehead: string }): Promise<{
+    data: { status: string; files?: Array<{ filename: string }> };
+  }>;
 }
 
 const APPROVED_PLAN_PATH_BY_REPOSITORY: Record<string, string> = {
@@ -180,7 +183,7 @@ async function loadApprovedPlan(client: GitHubPlanClient, spec: CandidateRealiza
 
   let response: { data: unknown };
   try {
-    response = await client.getContent({ ...repository, path, ref: spec.candidateCommit });
+    response = await client.getContent({ ...repository, path, ref: spec.baselineCommit });
   } catch {
     throw new Error('REALIZATION_APPROVED_PLAN_FETCH_FAILED');
   }
@@ -205,6 +208,30 @@ async function loadApprovedPlan(client: GitHubPlanClient, spec: CandidateRealiza
   return plan;
 }
 
+async function verifyCandidateLineage(client: GitHubPlanClient, spec: CandidateRealizationSpecV1, plan: ApprovedImprovementPlanV1): Promise<void> {
+  const repository = splitRepository(spec.targetRepository);
+  if (!repository) throw new Error('REALIZATION_TARGET_REPOSITORY_INVALID');
+
+  let comparison: { data: { status: string; files?: Array<{ filename: string }> } };
+  try {
+    comparison = await client.compareCommits({
+      ...repository,
+      basehead: `${spec.baselineCommit}...${spec.candidateCommit}`,
+    });
+  } catch {
+    throw new Error('REALIZATION_CANDIDATE_COMPARE_FAILED');
+  }
+  if (comparison.data.status !== 'ahead') throw new Error(`REALIZATION_BASELINE_NOT_ANCESTOR:${comparison.data.status}`);
+  const files = comparison.data.files ?? [];
+  if (files.length === 0) throw new Error('REALIZATION_CANDIDATE_DIFF_EMPTY');
+  const invalid = files.map((file) => file.filename).filter((filename) => {
+    const inPlan = plan.allowedPaths.some((scope) => pathInsideScope(filename, scope));
+    const inSpec = spec.allowedPaths.some((scope) => pathInsideScope(filename, scope));
+    return !inPlan || !inSpec;
+  });
+  if (invalid.length > 0) throw new Error(`REALIZATION_CANDIDATE_DIFF_OUTSIDE_SCOPE:${invalid.join(',')}`);
+}
+
 export async function authorizeCandidateRealization(
   client: GitHubPlanClient,
   value: unknown,
@@ -214,6 +241,7 @@ export async function authorizeCandidateRealization(
   const plan = await loadApprovedPlan(client, spec);
   const widened = spec.allowedPaths.filter((requested) => !plan.allowedPaths.some((approved) => requestedScopeInsideApprovedScope(requested, approved)));
   if (widened.length > 0) throw new Error(`REALIZATION_SCOPE_WIDENING_BLOCKED:${widened.join(',')}`);
+  await verifyCandidateLineage(client, spec, plan);
 
   const payload = {
     schemaVersion: REALIZATION_AUTHORIZATION_SCHEMA_VERSION,
