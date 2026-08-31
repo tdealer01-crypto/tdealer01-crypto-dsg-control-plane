@@ -41,7 +41,7 @@ function getShareUrl(runId: string): string {
   const base =
     process.env.NEXT_PUBLIC_APP_URL ??
     process.env.APP_URL ??
-    'https://tdealer01-crypto-dsg-control-plane.vercel.app';
+    'https://dsg-control-plane.azurewebsites.net';
   return `${base}/delivery-proof/report/${encodeURIComponent(runId)}`;
 }
 
@@ -62,7 +62,6 @@ async function loadFromSupabase(runId?: string): Promise<SupabaseResult> {
       : await query.order('created_at', { ascending: false }).limit(1).single();
 
     if (error) {
-      // PGRST116 = no rows found — not a DB connectivity error
       if ((error as { code?: string }).code === 'PGRST116') {
         return { ok: false, notFound: true };
       }
@@ -82,7 +81,7 @@ async function loadFromSupabase(runId?: string): Promise<SupabaseResult> {
         updated_at: data.updated_at as string,
       },
     };
-  } catch (err) {
+  } catch {
     return { ok: false, notFound: false, error: 'db_error' };
   }
 }
@@ -116,15 +115,14 @@ export async function GET(request?: Request) {
     : undefined;
 
   const deployment = {
-    commit: process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.GITHUB_SHA ?? 'unknown',
-    env: process.env.VERCEL_ENV ?? 'local',
+    commit: process.env.DSG_GIT_SHA ?? process.env.GITHUB_SHA ?? 'unknown',
+    env: process.env.DSG_ENVIRONMENT ?? process.env.NODE_ENV ?? 'local',
     policy_version: process.env.DSG_POLICY_VERSION ?? 'v1',
   };
 
   const result = await loadFromSupabase(runId);
 
   if (result.ok === false && result.notFound === false) {
-    // DB connectivity failure — fail closed, do not return stale or fake compliance data
     return NextResponse.json(
       { ok: false, error: 'db_unavailable', deployment },
       { status: 503 },
@@ -200,10 +198,9 @@ export async function POST(request: Request) {
     );
   }
 
-  // Capture compliance_report_generated event
   void captureEvent('compliance_report_generated', {
-    userId: 'ci-pipeline', // CI system generating the report
-    organizationId: 'platform', // Platform-wide compliance
+    userId: 'ci-pipeline',
+    organizationId: 'platform',
   }, {
     organization_id: 'platform',
     run_id,
