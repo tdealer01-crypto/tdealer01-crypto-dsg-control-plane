@@ -2,7 +2,7 @@
  * GET /api/ccvs/evidence-chain
  *
  * Returns the current CCVS compliance status: the latest chain_hash per
- * evidence type and a summary of the compliance matrix.  All data is
+ * evidence type and a summary of the compliance matrix. All data is
  * derived from compile-time constants and env vars — no live DB query.
  *
  * This endpoint is public (no auth) so auditors and CI pipelines can verify
@@ -39,8 +39,8 @@ export async function GET() {
     schema_version: '1.0.0',
     generated_at: new Date().toISOString(),
     deployment: {
-      commit: process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.GITHUB_SHA ?? 'unknown',
-      env: process.env.VERCEL_ENV ?? 'local',
+      commit: process.env.DSG_GIT_SHA ?? process.env.GITHUB_SHA ?? 'unknown',
+      env: process.env.DSG_ENVIRONMENT ?? process.env.NODE_ENV ?? 'local',
       policy_version: currentSnapshot.policy_version,
     },
     drift: {
