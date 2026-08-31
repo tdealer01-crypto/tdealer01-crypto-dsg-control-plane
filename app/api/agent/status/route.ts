@@ -12,17 +12,15 @@ import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
-// Simple in-memory cache for DB checks to reduce latency
 const dbCheckCache = {
   result: false,
   timestamp: 0,
-  ttl: 30_000, // 30 seconds
+  ttl: 30_000,
 };
 
 async function checkDb(): Promise<boolean> {
   const now = Date.now();
 
-  // Return cached result if fresh
   if (now - dbCheckCache.timestamp < dbCheckCache.ttl) {
     return dbCheckCache.result;
   }
@@ -32,7 +30,6 @@ async function checkDb(): Promise<boolean> {
     const { error } = await admin.from('organizations').select('id').limit(1);
     const isHealthy = !error;
 
-    // Update cache
     dbCheckCache.result = isHealthy;
     dbCheckCache.timestamp = now;
 
@@ -47,8 +44,8 @@ async function checkDb(): Promise<boolean> {
 export async function GET() {
   const dbOk = await checkDb();
 
-  // Get commit hash with fallback
-  const commitHash = process.env.VERCEL_GIT_COMMIT_SHA || process.env.GIT_COMMIT_SHA || 'local';
+  const commitHash = process.env.DSG_GIT_SHA || process.env.GIT_COMMIT_SHA || 'local';
+  const environment = process.env.DSG_ENVIRONMENT || process.env.NODE_ENV || 'local';
 
   return NextResponse.json(
     {
@@ -56,7 +53,8 @@ export async function GET() {
       repo: 'dsg-control-plane',
       version: commitHash,
       commit: commitHash,
-      env: process.env.VERCEL_ENV ?? 'local',
+      environment,
+      env: environment,
       ts: new Date().toISOString(),
       checks: {
         db: dbOk,
