@@ -1,0 +1,177 @@
+name: Inspect Control Plane Identity Access
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/inspect-control-plane-identity-access.yml'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/inspect-control-plane-identity-access.yml'
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: inspect-control-plane-identity-access
+  cancel-in-progress: false
+
+jobs:
+  validate-contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate read-only access inspection
+        shell: bash
+        run: |
+          set -euo pipefail
+          file='.github/workflows/inspect-control-plane-identity-access.yml'
+          inspect_block="$(awk '/^  inspect-access:/{found=1} found{print}' "$file")"
+          grep -Fq 'role assignment list' <<<"$inspect_block"
+          grep -Fq 'keyvault show' <<<"$inspect_block"
+          grep -Fq 'dsg-kv-tdealer01-0468' <<<"$inspect_block"
+          grep -Fq 'dsgcp50aaef839' <<<"$inspect_block"
+          if grep -Eq 'az [^\n]*[[:space:]](create|update|set|delete|assign|add|remove)([[:space:]]|$)|AZURE_CLIENT_SECRET' <<<"$inspect_block"; then
+            echo '::error::Identity access inspection must remain read-only and secretless.' >&2
+            exit 1
+          fi
+
+  inspect-access:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: prod
+    timeout-minutes: 10
+    env:
+      AZURE_RESOURCE_GROUP: rg-t.dealer01-0468
+      AZURE_WEBAPP_NAME: dsg-control-plane
+      AZURE_KEY_VAULT_NAME: dsg-kv-tdealer01-0468
+      AZURE_ACR_NAME: dsgcp50aaef839
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve proven Azure GitHub OIDC identity
+        id: identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          file='config/azure-github-oidc-identity.json'
+          client_id="$(jq -er '.clientId' "$file")"
+          tenant_id="$(jq -er '.tenantId' "$file")"
+          subscription_id="$(jq -er '.subscriptionId' "$file")"
+          test "$(jq -er '.federatedSubject' "$file")" = 'repo:tdealer01-crypto/tdealer01-crypto-dsg-control-plane:environment:prod'
+          echo "::add-mask::$client_id"
+          echo "::add-mask::$tenant_id"
+          echo "::add-mask::$subscription_id"
+          echo "client_id=$client_id" >> "$GITHUB_OUTPUT"
+          echo "tenant_id=$tenant_id" >> "$GITHUB_OUTPUT"
+          echo "subscription_id=$subscription_id" >> "$GITHUB_OUTPUT"
+
+      - name: Login to Azure with GitHub OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ steps.identity.outputs.client_id }}
+          tenant-id: ${{ steps.identity.outputs.tenant_id }}
+          subscription-id: ${{ steps.identity.outputs.subscription_id }}
+
+      - name: Inspect exact production identity access
+        id: access
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          PRINCIPAL_ID="$(az webapp identity show -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" --query principalId -o tsv)"
+          test -n "$PRINCIPAL_ID"
+          echo "::add-mask::$PRINCIPAL_ID"
+
+          VAULT_ID="$(az keyvault show -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_KEY_VAULT_NAME" --query id -o tsv)"
+          ACR_ID="$(az acr show -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_ACR_NAME" --query id -o tsv)"
+          RG_ID="$(az group show -n "$AZURE_RESOURCE_GROUP" --query id -o tsv)"
+          test -n "$VAULT_ID" && test -n "$ACR_ID" && test -n "$RG_ID"
+
+          VAULT_RBAC="$(az keyvault show -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_KEY_VAULT_NAME" --query 'properties.enableRbacAuthorization' -o tsv)"
+          [[ -n "$VAULT_RBAC" ]] || VAULT_RBAC=false
+
+          az role assignment list --assignee-object-id "$PRINCIPAL_ID" --all --include-inherited false -o json > /tmp/roles.json
+          ROLE_COUNT="$(jq 'length' /tmp/roles.json)"
+          VAULT_ROLE_COUNT="$(jq --arg id "$VAULT_ID" '[.[] | select((.scope | ascii_downcase) == ($id | ascii_downcase))] | length' /tmp/roles.json)"
+          ACR_ROLE_COUNT="$(jq --arg id "$ACR_ID" '[.[] | select((.scope | ascii_downcase) == ($id | ascii_downcase))] | length' /tmp/roles.json)"
+          RG_ROLE_COUNT="$(jq --arg id "$RG_ID" '[.[] | select((.scope | ascii_downcase) == ($id | ascii_downcase))] | length' /tmp/roles.json)"
+          VAULT_ROLE_NAMES="$(jq -r --arg id "$VAULT_ID" '[.[] | select((.scope | ascii_downcase) == ($id | ascii_downcase)) | .roleDefinitionName] | sort | unique | join(",")' /tmp/roles.json)"
+          ACR_ROLE_NAMES="$(jq -r --arg id "$ACR_ID" '[.[] | select((.scope | ascii_downcase) == ($id | ascii_downcase)) | .roleDefinitionName] | sort | unique | join(",")' /tmp/roles.json)"
+          RG_ROLE_NAMES="$(jq -r --arg id "$RG_ID" '[.[] | select((.scope | ascii_downcase) == ($id | ascii_downcase)) | .roleDefinitionName] | sort | unique | join(",")' /tmp/roles.json)"
+
+          ACCESS_POLICY_PRESENT=false
+          ACCESS_POLICY_SECRET_PERMS=''
+          if [[ "$VAULT_RBAC" != true ]]; then
+            az keyvault show -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_KEY_VAULT_NAME" -o json > /tmp/vault.json
+            POLICY_COUNT="$(jq --arg oid "$PRINCIPAL_ID" '[.properties.accessPolicies[]? | select((.objectId | ascii_downcase) == ($oid | ascii_downcase))] | length' /tmp/vault.json)"
+            if [[ "$POLICY_COUNT" -gt 0 ]]; then
+              ACCESS_POLICY_PRESENT=true
+              ACCESS_POLICY_SECRET_PERMS="$(jq -r --arg oid "$PRINCIPAL_ID" '[.properties.accessPolicies[]? | select((.objectId | ascii_downcase) == ($oid | ascii_downcase)) | .permissions.secrets[]?] | sort | unique | join(",")' /tmp/vault.json)"
+            fi
+          fi
+
+          ACR_PULL_EFFECTIVE=false
+          if grep -Eq '(^|,)(AcrPull|Owner|Contributor)($|,)' <<<",$ACR_ROLE_NAMES," || grep -Eq '(^|,)(Owner|Contributor)($|,)' <<<",$RG_ROLE_NAMES,"; then
+            ACR_PULL_EFFECTIVE=true
+          fi
+
+          KEY_VAULT_ACCESS_MODEL='access-policy'
+          KEY_VAULT_EFFECTIVE=false
+          if [[ "$VAULT_RBAC" == true ]]; then
+            KEY_VAULT_ACCESS_MODEL='rbac'
+            if [[ "$VAULT_ROLE_COUNT" -gt 0 || "$RG_ROLE_COUNT" -gt 0 ]]; then
+              KEY_VAULT_EFFECTIVE=true
+            fi
+          elif [[ "$ACCESS_POLICY_PRESENT" == true ]]; then
+            KEY_VAULT_EFFECTIVE=true
+          fi
+
+          echo "role_count=$ROLE_COUNT" >> "$GITHUB_OUTPUT"
+          echo "vault_rbac=$VAULT_RBAC" >> "$GITHUB_OUTPUT"
+          echo "vault_role_count=$VAULT_ROLE_COUNT" >> "$GITHUB_OUTPUT"
+          echo "acr_role_count=$ACR_ROLE_COUNT" >> "$GITHUB_OUTPUT"
+          echo "rg_role_count=$RG_ROLE_COUNT" >> "$GITHUB_OUTPUT"
+          echo "vault_role_names=$VAULT_ROLE_NAMES" >> "$GITHUB_OUTPUT"
+          echo "acr_role_names=$ACR_ROLE_NAMES" >> "$GITHUB_OUTPUT"
+          echo "rg_role_names=$RG_ROLE_NAMES" >> "$GITHUB_OUTPUT"
+          echo "access_policy_present=$ACCESS_POLICY_PRESENT" >> "$GITHUB_OUTPUT"
+          echo "access_policy_secret_perms=$ACCESS_POLICY_SECRET_PERMS" >> "$GITHUB_OUTPUT"
+          echo "acr_pull_effective=$ACR_PULL_EFFECTIVE" >> "$GITHUB_OUTPUT"
+          echo "key_vault_access_model=$KEY_VAULT_ACCESS_MODEL" >> "$GITHUB_OUTPUT"
+          echo "key_vault_effective=$KEY_VAULT_EFFECTIVE" >> "$GITHUB_OUTPUT"
+          rm -f /tmp/roles.json /tmp/vault.json
+
+      - name: Record non-secret access evidence
+        shell: bash
+        env:
+          ROLE_COUNT: ${{ steps.access.outputs.role_count }}
+          VAULT_RBAC: ${{ steps.access.outputs.vault_rbac }}
+          VAULT_ROLE_COUNT: ${{ steps.access.outputs.vault_role_count }}
+          ACR_ROLE_COUNT: ${{ steps.access.outputs.acr_role_count }}
+          RG_ROLE_COUNT: ${{ steps.access.outputs.rg_role_count }}
+          VAULT_ROLE_NAMES: ${{ steps.access.outputs.vault_role_names }}
+          ACR_ROLE_NAMES: ${{ steps.access.outputs.acr_role_names }}
+          RG_ROLE_NAMES: ${{ steps.access.outputs.rg_role_names }}
+          ACCESS_POLICY_PRESENT: ${{ steps.access.outputs.access_policy_present }}
+          ACCESS_POLICY_SECRET_PERMS: ${{ steps.access.outputs.access_policy_secret_perms }}
+          ACR_PULL_EFFECTIVE: ${{ steps.access.outputs.acr_pull_effective }}
+          KEY_VAULT_ACCESS_MODEL: ${{ steps.access.outputs.key_vault_access_model }}
+          KEY_VAULT_EFFECTIVE: ${{ steps.access.outputs.key_vault_effective }}
+        run: |
+          {
+            echo '## Production system-identity access boundary'
+            echo '- mutation performed: no'
+            echo "- total direct role assignments: $ROLE_COUNT"
+            echo "- Key Vault access model: $KEY_VAULT_ACCESS_MODEL"
+            echo "- Key Vault RBAC enabled: $VAULT_RBAC"
+            echo "- Key Vault direct roles: $VAULT_ROLE_COUNT [$VAULT_ROLE_NAMES]"
+            echo "- Key Vault access policy present: $ACCESS_POLICY_PRESENT"
+            echo "- Key Vault secret permissions: $ACCESS_POLICY_SECRET_PERMS"
+            echo "- Key Vault access effective: $KEY_VAULT_EFFECTIVE"
+            echo "- ACR direct roles: $ACR_ROLE_COUNT [$ACR_ROLE_NAMES]"
+            echo "- resource-group direct roles: $RG_ROLE_COUNT [$RG_ROLE_NAMES]"
+            echo "- ACR pull effective from inspected scopes: $ACR_PULL_EFFECTIVE"
+          } >> "$GITHUB_STEP_SUMMARY"
