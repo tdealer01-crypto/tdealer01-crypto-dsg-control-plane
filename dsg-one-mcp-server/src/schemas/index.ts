@@ -13,18 +13,6 @@ export const SupabaseUpdateSchema = z.object({
   auditReason: z.string().optional().describe('Reason for audit log'),
 });
 
-// Vercel Schemas
-export const VercelDeploySchema = z.object({
-  projectId: z.string().describe('Vercel project ID'),
-  environment: z.enum(['preview', 'production']).describe('Deployment environment'),
-  ref: z.string().optional().describe('Git ref (branch/commit)'),
-});
-
-export const VercelBuildLogsSchema = z.object({
-  deploymentId: z.string().describe('Vercel deployment ID'),
-  lines: z.number().optional().default(100).describe('Number of log lines'),
-});
-
 // Anthropic Schemas
 export const AnthropicSessionSchema = z.object({
   model: z.string().describe('Claude model ID'),
