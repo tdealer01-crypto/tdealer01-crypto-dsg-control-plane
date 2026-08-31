@@ -31,7 +31,7 @@ jobs:
           inspect_block="$(awk '/^  inspect-shadow-feasibility:/{found=1} found{print}' "$file")"
           grep -Fq 'config/azure-github-oidc-identity.json' <<<"$inspect_block"
           grep -Fq 'dsg-control-plane' <<<"$inspect_block"
-          if grep -Eq 'az (webapp|resource|appservice|role|identity).*(create|update|set|delete|assign)|AZURE_CLIENT_SECRET' <<<"$inspect_block"; then
+          if grep -Eq 'az (webapp|resource|appservice|role|identity)[^\n]*[[:space:]](create|update|set|delete|assign)([[:space:]]|$)|AZURE_CLIENT_SECRET' <<<"$inspect_block"; then
             echo '::error::Inspection workflow must remain read-only and secretless.' >&2
             exit 1
           fi
