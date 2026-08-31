@@ -5,11 +5,15 @@ on:
     paths:
       - '.github/workflows/bootstrap-agi-pr-validation-runner.yml'
       - 'scripts/bootstrap-agi-pr-validation-runner.sh'
+      - 'app/api/dsg/ops/runner-bootstrap/broker/route.ts'
+      - 'lib/security/github-actions-oidc.ts'
   push:
     branches: [main]
     paths:
       - '.github/workflows/bootstrap-agi-pr-validation-runner.yml'
       - 'scripts/bootstrap-agi-pr-validation-runner.sh'
+      - 'app/api/dsg/ops/runner-bootstrap/broker/route.ts'
+      - 'lib/security/github-actions-oidc.ts'
   workflow_dispatch:
     inputs:
       target_branch:
@@ -45,20 +49,35 @@ jobs:
       - uses: actions/checkout@v4
       - name: Syntax-check bootstrap script
         run: bash -n scripts/bootstrap-agi-pr-validation-runner.sh
-      - name: Enforce PR-validation trust boundary
+      - name: Enforce OIDC broker and PR-validation trust boundary
         shell: bash
         run: |
           set -euo pipefail
-          file='scripts/bootstrap-agi-pr-validation-runner.sh'
-          grep -Fq 'dsgTrustBoundary=pr-validation-no-managed-identity' "$file"
-          grep -Fq -- '--nsg-rule NONE' "$file"
-          grep -Fq '/actions/runners/registration-token' "$file"
-          grep -Fq 'RUNNER_ALLOCATION_NOT_ONLINE' "$file"
-          if grep -Eq 'az vm identity assign|--assign-identity' "$file"; then
+          script='scripts/bootstrap-agi-pr-validation-runner.sh'
+          workflow='.github/workflows/bootstrap-agi-pr-validation-runner.yml'
+          broker='app/api/dsg/ops/runner-bootstrap/broker/route.ts'
+          token_name='DSG_GITHUB_AUTOMATION_TOKEN'
+          grep -Fq 'dsgTrustBoundary=pr-validation-no-managed-identity' "$script"
+          grep -Fq -- '--nsg-rule NONE' "$script"
+          grep -Fq 'RUNNER_REGISTRATION_TOKEN' "$script"
+          grep -Fq 'dsg-agi-runner-bootstrap' "$workflow"
+          grep -Fq 'ACTIONS_ID_TOKEN_REQUEST_URL' "$workflow"
+          grep -Fq 'verifyGitHubActionsOidcToken' "$broker"
+          grep -Fq "$token_name" "$broker"
+          grep -Fq 'createRegistrationTokenForRepo' "$broker"
+          if grep -Fq "$token_name" "$script"; then
+            echo '::error::Long-lived GitHub automation token must not enter the runner bootstrap script.' >&2
+            exit 1
+          fi
+          if grep -Eq "secrets\\.${token_name}|^[[:space:]]*${token_name}:[[:space:]]" "$workflow"; then
+            echo '::error::Long-lived GitHub automation token must not be injected into the public workflow.' >&2
+            exit 1
+          fi
+          if grep -Eq 'az vm identity assign|--assign-identity' "$script"; then
             echo '::error::PR validation runner must not receive an Azure managed identity.' >&2
             exit 1
           fi
-          if grep -Eq -- '--nsg-rule (SSH|RDP)|--open-port' "$file"; then
+          if grep -Eq -- '--nsg-rule (SSH|RDP)|--open-port' "$script"; then
             echo '::error::PR validation runner must not expose inbound administration ports.' >&2
             exit 1
           fi
@@ -68,46 +87,137 @@ jobs:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     environment: prod
-    timeout-minutes: 20
+    timeout-minutes: 25
     env:
       TARGET_REPO: tdealer01-crypto/dsg-agi-simulation
       TARGET_BRANCH: ${{ inputs.target_branch || 'fix/runtime-baseline-capability-evolution' }}
-      AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP || 'rg-t.dealer01-0468' }}
-      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID || vars.AZURE_CLIENT_ID }}
-      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID || vars.AZURE_TENANT_ID }}
-      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID || vars.AZURE_SUBSCRIPTION_ID }}
       RUNNER_VM_NAME: dsg-pr41-validator
       RUNNER_VM_SIZE: ${{ inputs.vm_size || 'Standard_B2s' }}
       RUNNER_LABELS: azure,dsg-pr-validation,pr41
       RUNNER_TTL_MINUTES: ${{ inputs.ttl_minutes || 120 }}
-      DSG_GITHUB_AUTOMATION_TOKEN: ${{ secrets.DSG_GITHUB_AUTOMATION_TOKEN }}
+      BROKER_URL: ${{ vars.DSG_RUNNER_BOOTSTRAP_BROKER_URL || 'https://dsg-control-plane.azurewebsites.net/api/dsg/ops/runner-bootstrap/broker' }}
     steps:
       - uses: actions/checkout@v4
-      - name: Validate required bootstrap credentials
+
+      - name: Exchange GitHub OIDC for short-lived bootstrap material
+        id: broker
         shell: bash
         run: |
           set -euo pipefail
-          test -n "${AZURE_CLIENT_ID:-}" || { echo '::error::AZURE_CLIENT_ID_REQUIRED'; exit 1; }
-          test -n "${AZURE_TENANT_ID:-}" || { echo '::error::AZURE_TENANT_ID_REQUIRED'; exit 1; }
-          test -n "${AZURE_SUBSCRIPTION_ID:-}" || { echo '::error::AZURE_SUBSCRIPTION_ID_REQUIRED'; exit 1; }
-          test -n "${DSG_GITHUB_AUTOMATION_TOKEN:-}" || { echo '::error::DSG_GITHUB_AUTOMATION_TOKEN_REQUIRED'; exit 1; }
+          get_oidc_token() {
+            curl --fail --silent --show-error \
+              -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+              "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=dsg-agi-runner-bootstrap" | jq -er '.value'
+          }
+
+          oidc_token="$(get_oidc_token)"
+          echo "::add-mask::$oidc_token"
+          payload="$(jq -nc --arg repo "$TARGET_REPO" --arg branch "$TARGET_BRANCH" \
+            '{action:"issue",targetRepository:$repo,targetBranch:$branch}')"
+          response_file="$RUNNER_TEMP/dsg-runner-broker-issue.json"
+          http_status="$(curl --silent --show-error -o "$response_file" -w '%{http_code}' \
+            -X POST "$BROKER_URL" \
+            -H "Authorization: Bearer $oidc_token" \
+            -H 'Content-Type: application/json' \
+            --data "$payload")"
+          if [[ "$http_status" != 200 ]]; then
+            jq -c '{status,reason,missing,detail}' "$response_file" 2>/dev/null || true
+            echo "::error::RUNNER_BOOTSTRAP_BROKER_ISSUE_FAILED:http=$http_status" >&2
+            exit 1
+          fi
+          jq -e --arg repo "$TARGET_REPO" --arg branch "$TARGET_BRANCH" \
+            '.status == "PASS" and .action == "issue" and .targetRepository == $repo and .targetBranch == $branch' \
+            "$response_file" >/dev/null
+
+          azure_client_id="$(jq -er '.azure.clientId' "$response_file")"
+          azure_tenant_id="$(jq -er '.azure.tenantId' "$response_file")"
+          azure_subscription_id="$(jq -er '.azure.subscriptionId' "$response_file")"
+          azure_resource_group="$(jq -er '.azure.resourceGroup' "$response_file")"
+          registration_token="$(jq -er '.runner.registrationToken' "$response_file")"
+          target_sha="$(jq -er '.targetSha' "$response_file")"
+          expires_at="$(jq -er '.runner.expiresAt' "$response_file")"
+
+          [[ "$target_sha" =~ ^[0-9a-fA-F]{40}$ ]] || { echo '::error::BROKER_TARGET_SHA_INVALID'; exit 1; }
+          [[ ${#registration_token} -ge 20 ]] || { echo '::error::BROKER_REGISTRATION_TOKEN_INVALID'; exit 1; }
+          for value in "$azure_client_id" "$azure_tenant_id" "$azure_subscription_id" "$registration_token"; do
+            echo "::add-mask::$value"
+          done
+          {
+            echo "azure_client_id=$azure_client_id"
+            echo "azure_tenant_id=$azure_tenant_id"
+            echo "azure_subscription_id=$azure_subscription_id"
+            echo "azure_resource_group=$azure_resource_group"
+            echo "registration_token=$registration_token"
+            echo "target_sha=$target_sha"
+            echo "registration_expires_at=$expires_at"
+          } >> "$GITHUB_OUTPUT"
+          rm -f "$response_file"
+
       - name: Login to Azure with existing governed OIDC binding
         uses: azure/login@v2
         with:
-          client-id: ${{ env.AZURE_CLIENT_ID }}
-          tenant-id: ${{ env.AZURE_TENANT_ID }}
-          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
-      - name: Provision and prove GitHub runner registration
+          client-id: ${{ steps.broker.outputs.azure_client_id }}
+          tenant-id: ${{ steps.broker.outputs.azure_tenant_id }}
+          subscription-id: ${{ steps.broker.outputs.azure_subscription_id }}
+
+      - name: Provision dedicated VM with short-lived runner token
         id: runner
         shell: bash
+        env:
+          AZURE_RESOURCE_GROUP: ${{ steps.broker.outputs.azure_resource_group }}
+          RUNNER_REGISTRATION_TOKEN: ${{ steps.broker.outputs.registration_token }}
+          TARGET_SHA: ${{ steps.broker.outputs.target_sha }}
         run: bash scripts/bootstrap-agi-pr-validation-runner.sh
+
+      - name: Prove GitHub reports the runner online through the broker
+        id: online
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ steps.broker.outputs.target_sha }}
+        run: |
+          set -euo pipefail
+          get_oidc_token() {
+            curl --fail --silent --show-error \
+              -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+              "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=dsg-agi-runner-bootstrap" | jq -er '.value'
+          }
+
+          payload="$(jq -nc --arg repo "$TARGET_REPO" --arg branch "$TARGET_BRANCH" --arg runner "$RUNNER_VM_NAME" \
+            '{action:"status",targetRepository:$repo,targetBranch:$branch,runnerName:$runner}')"
+          deadline=$((SECONDS + 600))
+          while (( SECONDS < deadline )); do
+            oidc_token="$(get_oidc_token)"
+            echo "::add-mask::$oidc_token"
+            response_file="$RUNNER_TEMP/dsg-runner-broker-status.json"
+            http_status="$(curl --silent --show-error -o "$response_file" -w '%{http_code}' \
+              -X POST "$BROKER_URL" \
+              -H "Authorization: Bearer $oidc_token" \
+              -H 'Content-Type: application/json' \
+              --data "$payload")"
+            if [[ "$http_status" == 200 ]] && \
+               jq -e --arg sha "$EXPECTED_SHA" --arg runner "$RUNNER_VM_NAME" \
+                 '.status == "PASS" and .action == "status" and .targetSha == $sha and .runner.name == $runner and .runner.status == "online" and (.runner.labels | index("dsg-pr-validation")) != null and (.runner.labels | index("pr41")) != null' \
+                 "$response_file" >/dev/null 2>&1; then
+              runner_id="$(jq -er '.runner.id' "$response_file")"
+              echo "runner_id=$runner_id" >> "$GITHUB_OUTPUT"
+              echo "runner_name=$RUNNER_VM_NAME" >> "$GITHUB_OUTPUT"
+              rm -f "$response_file"
+              exit 0
+            fi
+            rm -f "$response_file"
+            sleep 10
+          done
+          echo "::error::RUNNER_ALLOCATION_NOT_ONLINE:name=${RUNNER_VM_NAME}" >&2
+          exit 1
+
       - name: Record allocation evidence
         shell: bash
         env:
-          RUNNER_ID: ${{ steps.runner.outputs.runner_id }}
-          RUNNER_NAME: ${{ steps.runner.outputs.runner_name }}
-          TARGET_SHA: ${{ steps.runner.outputs.target_sha }}
+          RUNNER_ID: ${{ steps.online.outputs.runner_id }}
+          RUNNER_NAME: ${{ steps.online.outputs.runner_name }}
+          TARGET_SHA: ${{ steps.broker.outputs.target_sha }}
           AUTO_SHUTDOWN_UTC: ${{ steps.runner.outputs.auto_shutdown_utc }}
+          REGISTRATION_EXPIRES_AT: ${{ steps.broker.outputs.registration_expires_at }}
         run: |
           {
             echo '## DSG AGI PR validation runner'
@@ -115,6 +225,8 @@ jobs:
             echo "- runner: ${RUNNER_NAME}"
             echo "- runner id: ${RUNNER_ID}"
             echo "- target SHA: ${TARGET_SHA}"
+            echo "- bootstrap auth: GitHub OIDC → Control Plane broker → short-lived runner token"
+            echo "- runner registration token expiry: ${REGISTRATION_EXPIRES_AT}"
             echo "- labels: self-hosted, Linux, X64, azure, dsg-pr-validation, pr41"
             echo "- Azure managed identity: prohibited"
             echo "- inbound admin ports: prohibited"
