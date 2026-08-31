@@ -49,30 +49,50 @@ jobs:
           ref: ${{ inputs.commit_sha }}
           fetch-depth: 0
 
-      - name: Resolve Azure identity after prod environment load
+      - name: Resolve proven Azure GitHub OIDC identity
         id: azure_identity
         shell: bash
         env:
           AZURE_CLIENT_ID_CANDIDATE: ${{ secrets.AZURE_CLIENT_ID || vars.AZURE_CLIENT_ID }}
           AZURE_TENANT_ID_CANDIDATE: ${{ secrets.AZURE_TENANT_ID || vars.AZURE_TENANT_ID }}
           AZURE_SUBSCRIPTION_ID_CANDIDATE: ${{ secrets.AZURE_SUBSCRIPTION_ID || vars.AZURE_SUBSCRIPTION_ID }}
+          AZURE_RESOURCE_GROUP_CANDIDATE: ${{ vars.AZURE_RESOURCE_GROUP }}
         run: |
           set -euo pipefail
-          missing=()
-          test -n "$AZURE_CLIENT_ID_CANDIDATE" || missing+=(AZURE_CLIENT_ID)
-          test -n "$AZURE_TENANT_ID_CANDIDATE" || missing+=(AZURE_TENANT_ID)
-          test -n "$AZURE_SUBSCRIPTION_ID_CANDIDATE" || missing+=(AZURE_SUBSCRIPTION_ID)
-          if (( ${#missing[@]} > 0 )); then
-            printf '::error::Missing Azure prod environment identity binding(s): %s\n' "${missing[*]}"
-            exit 1
-          fi
-          echo "::add-mask::$AZURE_CLIENT_ID_CANDIDATE"
-          echo "::add-mask::$AZURE_TENANT_ID_CANDIDATE"
-          echo "::add-mask::$AZURE_SUBSCRIPTION_ID_CANDIDATE"
-          echo "client_id=$AZURE_CLIENT_ID_CANDIDATE" >> "$GITHUB_OUTPUT"
-          echo "tenant_id=$AZURE_TENANT_ID_CANDIDATE" >> "$GITHUB_OUTPUT"
-          echo "subscription_id=$AZURE_SUBSCRIPTION_ID_CANDIDATE" >> "$GITHUB_OUTPUT"
-          echo 'Azure identity bindings resolved after prod environment load.'
+          IDENTITY_FILE='config/azure-github-oidc-identity.json'
+          test -s "$IDENTITY_FILE" || { echo '::error::Azure GitHub OIDC identity config missing'; exit 1; }
+
+          CONFIG_CLIENT_ID="$(jq -er '.clientId' "$IDENTITY_FILE")"
+          CONFIG_TENANT_ID="$(jq -er '.tenantId' "$IDENTITY_FILE")"
+          CONFIG_SUBSCRIPTION_ID="$(jq -er '.subscriptionId' "$IDENTITY_FILE")"
+          CONFIG_RESOURCE_GROUP="$(jq -er '.resourceGroup' "$IDENTITY_FILE")"
+          CONFIG_SUBJECT="$(jq -er '.federatedSubject' "$IDENTITY_FILE")"
+          CONFIG_AUDIENCE="$(jq -er '.audience' "$IDENTITY_FILE")"
+
+          EXPECTED_SUBJECT='repo:tdealer01-crypto@260597462/tdealer01-crypto-dsg-control-plane@1186640068:environment:prod'
+          test "$CONFIG_SUBJECT" = "$EXPECTED_SUBJECT" || { echo '::error::Azure OIDC federated subject mismatch'; exit 1; }
+          test "$CONFIG_AUDIENCE" = 'api://AzureADTokenExchange' || { echo '::error::Azure OIDC audience mismatch'; exit 1; }
+
+          CLIENT_ID="${AZURE_CLIENT_ID_CANDIDATE:-$CONFIG_CLIENT_ID}"
+          TENANT_ID="${AZURE_TENANT_ID_CANDIDATE:-$CONFIG_TENANT_ID}"
+          SUBSCRIPTION_ID="${AZURE_SUBSCRIPTION_ID_CANDIDATE:-$CONFIG_SUBSCRIPTION_ID}"
+          RESOURCE_GROUP="${AZURE_RESOURCE_GROUP_CANDIDATE:-$CONFIG_RESOURCE_GROUP}"
+
+          UUID_RE='^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+          [[ "$CLIENT_ID" =~ $UUID_RE ]] || { echo '::error::Azure client ID is invalid'; exit 1; }
+          [[ "$TENANT_ID" =~ $UUID_RE ]] || { echo '::error::Azure tenant ID is invalid'; exit 1; }
+          [[ "$SUBSCRIPTION_ID" =~ $UUID_RE ]] || { echo '::error::Azure subscription ID is invalid'; exit 1; }
+          test -n "$RESOURCE_GROUP" || { echo '::error::Azure resource group is empty'; exit 1; }
+
+          echo "::add-mask::$CLIENT_ID"
+          echo "::add-mask::$TENANT_ID"
+          echo "::add-mask::$SUBSCRIPTION_ID"
+          echo "client_id=$CLIENT_ID" >> "$GITHUB_OUTPUT"
+          echo "tenant_id=$TENANT_ID" >> "$GITHUB_OUTPUT"
+          echo "subscription_id=$SUBSCRIPTION_ID" >> "$GITHUB_OUTPUT"
+          echo "resource_group=$RESOURCE_GROUP" >> "$GITHUB_OUTPUT"
+          echo "AZURE_RESOURCE_GROUP=$RESOURCE_GROUP" >> "$GITHUB_ENV"
+          echo 'Azure GitHub OIDC identity resolved from protected override or execution-verified config.'
 
       - name: Fail-closed deployment preflight
         shell: bash
