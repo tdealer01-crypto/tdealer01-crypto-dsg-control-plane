@@ -20,7 +20,6 @@ concurrency:
 
 jobs:
   validate-contract:
-    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,41 +28,72 @@ jobs:
         run: |
           set -euo pipefail
           file='.github/workflows/inspect-control-plane-runtime-access-v2.yml'
-          inspect_block="$(awk '/^  inspect-runtime-access:/{found=1} found{print}' "$file")"
-          mutation_re='(^|[^[:alnum:]_])az[[:space:]][^[:cntrl:]]*[[:space:]](create|update|set|delete|assign|add|remove)([[:space:]]|$)'
+          python3 - "$file" <<'PY'
+          from pathlib import Path
+          import re
+          import sys
 
-          grep -Fq 'role assignment list' <<<"$inspect_block"
-          grep -Fq -- '--include-groups' <<<"$inspect_block"
-          grep -Fq -- '--include-inherited' <<<"$inspect_block"
-          grep -Fq -- '--scope "$scope"' <<<"$inspect_block"
-          grep -Fq 'role definition' <<<"$inspect_block"
-          grep -Fq 'roleAssignmentMode' <<<"$inspect_block"
-          grep -Fq 'microsoft.keyvault/vaults/secrets/getsecret/action' <<<"$inspect_block"
-          grep -Fq 'microsoft.containerregistry/registries/pull/read' <<<"$inspect_block"
-          grep -Fq 'microsoft.containerregistry/registries/repositories/content/read' <<<"$inspect_block"
-          grep -Fq 'azure/runtime-keyvault-secret-get' <<<"$inspect_block"
-          grep -Fq 'azure/runtime-acr-pull' <<<"$inspect_block"
-          grep -Fq 'steps.publish.outcome' <<<"$inspect_block"
+          path = Path(sys.argv[1])
+          text = path.read_text(encoding='utf-8')
+          marker = '\n  inspect-runtime-access:'
+          if marker not in text:
+              raise SystemExit('inspect-runtime-access job missing')
+          block = text.split(marker, 1)[1]
 
-          for sample in \
-            'az identity create -g rg -n uami' \
-            'az role assignment create --role Reader --scope /x' \
-            'x="$(az webapp config appsettings set -g rg -n app --settings A=B)"'; do
-            if ! grep -Eq "$mutation_re" <<<"$sample"; then
-              echo "::error::Mutation guard missed prohibited sample: $sample" >&2
-              exit 1
-            fi
-          done
-          if grep -Eq "$mutation_re" <<< 'az role assignment list --scope /x'; then
-            echo '::error::Mutation guard rejected a read-only Azure command.' >&2
-            exit 1
-          fi
-          if grep -Eq "$mutation_re" <<<"$inspect_block" || grep -Fq 'AZURE_CLIENT_SECRET' <<<"$inspect_block"; then
-            echo '::error::Runtime access inspection must remain Azure-read-only and secretless.' >&2
-            exit 1
-          fi
+          required = [
+              'role assignment list',
+              '--include-groups',
+              '--include-inherited',
+              '--scope "$scope"',
+              'role definition',
+              'roleAssignmentMode',
+              'microsoft.keyvault/vaults/secrets/getsecret/action',
+              'microsoft.containerregistry/registries/pull/read',
+              'microsoft.containerregistry/registries/repositories/content/read',
+              'azure/runtime-keyvault-secret-get',
+              'azure/runtime-acr-pull',
+              'steps.publish.outcome',
+          ]
+          missing = [token for token in required if token not in block]
+          if missing:
+              raise SystemExit(f'missing runtime access proof markers: {missing}')
+
+          normalized = re.sub(r'\\\s*\n', ' ', block)
+          if 'AZURE_CLIENT_SECRET' in normalized:
+              raise SystemExit('Azure client secret is forbidden')
+
+          mutating = re.compile(
+              r'\baz\b[^\n;&|]*\b(create|update|set|delete|assign|add|remove)\b',
+              re.IGNORECASE,
+          )
+          rest_method = re.compile(
+              r'\baz\s+rest\b[^\n;&|]*--method(?:=|\s+)([A-Za-z]+)',
+              re.IGNORECASE,
+          )
+
+          def assert_mutating(sample: str) -> None:
+              normalized_sample = re.sub(r'\\\s*\n', ' ', sample)
+              if not mutating.search(normalized_sample):
+                  raise SystemExit(f'mutation guard missed sample: {sample!r}')
+
+          for sample in (
+              'az identity create -g rg -n uami',
+              'az role assignment create --role Reader --scope /x',
+              'az webapp config appsettings set -g rg -n app --settings A=B',
+              'az identity \\\n  create -g rg -n uami',
+              'az role assignment \\\n  create --role Reader --scope /x',
+          ):
+              assert_mutating(sample)
+
+          if mutating.search(normalized):
+              raise SystemExit('runtime access job contains a mutating Azure CLI command')
+          for match in rest_method.finditer(normalized):
+              if match.group(1).upper() != 'GET':
+                  raise SystemExit('runtime access job contains a non-GET az rest call')
+          PY
 
   inspect-runtime-access:
+    needs: validate-contract
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     environment: prod
@@ -179,7 +209,9 @@ jobs:
 
           export ACR_MODE VAULT_RBAC ACCESS_POLICY_PRESENT ACCESS_POLICY_SECRET_PERMS VAULT_ROLE_CONTEXT ACR_ROLE_CONTEXT
           python3 - <<'PY' > /tmp/runtime-access.json
-          import fnmatch, json, os
+          import fnmatch
+          import json
+          import os
 
           def load(path):
               with open(path, encoding='utf-8') as fh:
@@ -206,9 +238,14 @@ jobs:
           acr_context = os.environ['ACR_ROLE_CONTEXT'].lower() == 'true'
 
           kv_target = 'microsoft.keyvault/vaults/secrets/getsecret/action'
+          known_acr_modes = {'rbac', 'rbac-abac'}
+          acr_mode_known = acr_mode in known_acr_modes
           acr_abac = acr_mode == 'rbac-abac'
-          acr_target = ('microsoft.containerregistry/registries/repositories/content/read' if acr_abac
-                        else 'microsoft.containerregistry/registries/pull/read')
+          acr_target = (
+              'microsoft.containerregistry/registries/repositories/content/read'
+              if acr_abac
+              else 'microsoft.containerregistry/registries/pull/read'
+          )
           acr_allow = 'dataActions' if acr_abac else 'actions'
           acr_deny = 'notDataActions' if acr_abac else 'notActions'
 
@@ -234,8 +271,14 @@ jobs:
                   (conditioned if assignment.get('condition') else unconditioned).append(row)
               return unconditioned, conditioned
 
-          kv_roles, kv_conditioned = qualifying(vault_assignments, kv_target, 'dataActions', 'notDataActions') if vault_context else ([], [])
-          acr_roles, acr_conditioned = qualifying(acr_assignments, acr_target, acr_allow, acr_deny) if acr_context else ([], [])
+          kv_roles, kv_conditioned = (
+              qualifying(vault_assignments, kv_target, 'dataActions', 'notDataActions')
+              if vault_context else ([], [])
+          )
+          acr_roles, acr_conditioned = (
+              qualifying(acr_assignments, acr_target, acr_allow, acr_deny)
+              if acr_context and acr_mode_known else ([], [])
+          )
 
           if vault_rbac:
               kv_model = 'rbac'
@@ -254,10 +297,11 @@ jobs:
               'keyVaultRoles': sorted({x['role'] for x in kv_roles}),
               'keyVaultAccessPolicySecretPermissions': sorted(access_policy_secret_perms),
               'acrRoleAssignmentMode': acr_mode,
+              'acrRoleAssignmentModeKnown': acr_mode_known,
               'acrRoleContextAvailable': acr_context,
               'acrPermissionTarget': acr_target,
-              'acrPullEffective': acr_context and bool(acr_roles),
-              'acrConditionalOnly': acr_context and not acr_roles and bool(acr_conditioned),
+              'acrPullEffective': acr_mode_known and acr_context and bool(acr_roles),
+              'acrConditionalOnly': acr_mode_known and acr_context and not acr_roles and bool(acr_conditioned),
               'acrRoles': sorted({x['role'] for x in acr_roles}),
           }
           print(json.dumps(result, sort_keys=True, separators=(',', ':')))
@@ -270,6 +314,7 @@ jobs:
           echo "key_vault_roles=$(jq -r '.keyVaultRoles | join(",")' /tmp/runtime-access.json)" >> "$GITHUB_OUTPUT"
           echo "key_vault_policy_perms=$(jq -r '.keyVaultAccessPolicySecretPermissions | join(",")' /tmp/runtime-access.json)" >> "$GITHUB_OUTPUT"
           echo "acr_mode=$(jq -r '.acrRoleAssignmentMode' /tmp/runtime-access.json)" >> "$GITHUB_OUTPUT"
+          echo "acr_mode_known=$(jq -r '.acrRoleAssignmentModeKnown' /tmp/runtime-access.json)" >> "$GITHUB_OUTPUT"
           echo "acr_role_context=$(jq -r '.acrRoleContextAvailable' /tmp/runtime-access.json)" >> "$GITHUB_OUTPUT"
           echo "acr_effective=$(jq -r '.acrPullEffective' /tmp/runtime-access.json)" >> "$GITHUB_OUTPUT"
           echo "acr_conditional=$(jq -r '.acrConditionalOnly' /tmp/runtime-access.json)" >> "$GITHUB_OUTPUT"
@@ -291,6 +336,7 @@ jobs:
           KEY_VAULT_ROLES: ${{ steps.access.outputs.key_vault_roles }}
           KEY_VAULT_POLICY_PERMS: ${{ steps.access.outputs.key_vault_policy_perms }}
           ACR_MODE: ${{ steps.access.outputs.acr_mode }}
+          ACR_MODE_KNOWN: ${{ steps.access.outputs.acr_mode_known }}
           ACR_ROLE_CONTEXT: ${{ steps.access.outputs.acr_role_context }}
           ACR_EFFECTIVE: ${{ steps.access.outputs.acr_effective }}
           ACR_CONDITIONAL: ${{ steps.access.outputs.acr_conditional }}
@@ -307,7 +353,7 @@ jobs:
 
           acr_state=failure
           [[ "$ACR_EFFECTIVE" == true ]] && acr_state=success
-          acr_desc="mode=$ACR_MODE; pull=$ACR_EFFECTIVE; roleContext=$ACR_ROLE_CONTEXT"
+          acr_desc="mode=$ACR_MODE; modeKnown=$ACR_MODE_KNOWN; pull=$ACR_EFFECTIVE; roleContext=$ACR_ROLE_CONTEXT"
           [[ -z "$ACR_ROLES" ]] || acr_desc="$acr_desc; roles=$ACR_ROLES"
           [[ "$ACR_CONDITIONAL" != true ]] || acr_desc="$acr_desc; conditionalOnly=true"
 
@@ -346,7 +392,7 @@ jobs:
           ACR_EFFECTIVE: ${{ steps.access.outputs.acr_effective }}
         run: |
           {
-            echo '## Production runtime identity access proof v3'
+            echo '## Production runtime identity access proof v4'
             echo '- Azure mutation performed: no'
             echo "- Key Vault access model: $KEY_VAULT_MODEL"
             echo "- Key Vault secret get effective: $KEY_VAULT_EFFECTIVE"
