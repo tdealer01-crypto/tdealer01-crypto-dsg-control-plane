@@ -1,0 +1,239 @@
+name: Discover Control Plane Key Vault References
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/discover-control-plane-keyvault-references.yml'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/discover-control-plane-keyvault-references.yml'
+
+permissions:
+  contents: read
+  id-token: write
+  statuses: write
+
+concurrency:
+  group: discover-control-plane-keyvault-references
+  cancel-in-progress: false
+
+jobs:
+  validate-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate read-only Key Vault discovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          file='.github/workflows/discover-control-plane-keyvault-references.yml'
+          python3 - "$file" <<'PY'
+          from pathlib import Path
+          import re
+          import sys
+
+          text = Path(sys.argv[1]).read_text(encoding='utf-8')
+          marker = '\n  discover-live-references:'
+          if marker not in text:
+              raise SystemExit('discovery job missing')
+          block = text.split(marker, 1)[1]
+          for token in (
+              'webapp config appsettings list',
+              '@Microsoft.KeyVault(',
+              'SecretUri',
+              'VaultName',
+              'azure/runtime-keyvault-reference-source',
+              'parsed_reference_count',
+          ):
+              if token not in block:
+                  raise SystemExit(f'missing discovery marker: {token}')
+          normalized = re.sub(r'\\\s*\n', ' ', block)
+          if 'AZURE_CLIENT_SECRET' in normalized:
+              raise SystemExit('Azure client secret is forbidden')
+          mutating = re.compile(r'\baz\b[^\n;&|]*\b(create|update|set|delete|assign|add|remove)\b', re.I)
+          rest_method = re.compile(r'\baz\s+rest\b[^\n;&|]*--method(?:=|\s+)([A-Za-z]+)', re.I)
+          samples = (
+              'az identity create -g rg -n uami',
+              'az webapp config appsettings \\\n  set -g rg -n app --settings A=B',
+          )
+          for sample in samples:
+              if not mutating.search(re.sub(r'\\\s*\n', ' ', sample)):
+                  raise SystemExit(f'mutation self-test missed: {sample!r}')
+          if mutating.search(normalized):
+              raise SystemExit('discovery job contains a mutating Azure CLI command')
+          for match in rest_method.finditer(normalized):
+              if match.group(1).upper() != 'GET':
+                  raise SystemExit('discovery job contains non-GET az rest')
+          PY
+
+  discover-live-references:
+    needs: validate-contract
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: prod
+    timeout-minutes: 10
+    env:
+      AZURE_RESOURCE_GROUP: rg-t.dealer01-0468
+      AZURE_WEBAPP_NAME: dsg-control-plane
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve proven Azure GitHub OIDC identity
+        id: identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          file='config/azure-github-oidc-identity.json'
+          client_id="$(jq -er '.clientId' "$file")"
+          tenant_id="$(jq -er '.tenantId' "$file")"
+          subscription_id="$(jq -er '.subscriptionId' "$file")"
+          test "$(jq -er '.resourceGroup' "$file")" = "$AZURE_RESOURCE_GROUP"
+          test "$(jq -er '.federatedSubject' "$file")" = 'repo:tdealer01-crypto/tdealer01-crypto-dsg-control-plane:environment:prod'
+          echo "::add-mask::$client_id"
+          echo "::add-mask::$tenant_id"
+          echo "::add-mask::$subscription_id"
+          echo "client_id=$client_id" >> "$GITHUB_OUTPUT"
+          echo "tenant_id=$tenant_id" >> "$GITHUB_OUTPUT"
+          echo "subscription_id=$subscription_id" >> "$GITHUB_OUTPUT"
+
+      - name: Publish pending discovery status
+        continue-on-error: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --method POST -H 'Accept: application/vnd.github+json' \
+            "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state='pending' \
+            -f context='azure/runtime-keyvault-reference-source' \
+            -f description='reading non-secret Key Vault reference metadata from production App Service'
+
+      - name: Login to Azure with GitHub OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ steps.identity.outputs.client_id }}
+          tenant-id: ${{ steps.identity.outputs.tenant_id }}
+          subscription-id: ${{ steps.identity.outputs.subscription_id }}
+
+      - name: Discover live Key Vault references without secret values
+        id: discover
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          az webapp config appsettings list \
+            -g "$AZURE_RESOURCE_GROUP" \
+            -n "$AZURE_WEBAPP_NAME" \
+            -o json > /tmp/appsettings.json
+
+          python3 - <<'PY' > /tmp/keyvault-reference-evidence.json
+          import json
+          import re
+          from urllib.parse import urlparse
+
+          with open('/tmp/appsettings.json', encoding='utf-8') as fh:
+              settings = json.load(fh)
+
+          refs = []
+          parsed = []
+          failures = []
+          for item in settings:
+              value = item.get('value') or ''
+              if not value.startswith('@Microsoft.KeyVault('):
+                  continue
+              refs.append(item.get('name') or '<unnamed>')
+              match_uri = re.search(r'SecretUri\s*=\s*([^;)]+)', value, re.I)
+              match_name = re.search(r'VaultName\s*=\s*([^;)]+)', value, re.I)
+              vault = None
+              if match_uri:
+                  host = (urlparse(match_uri.group(1).strip()).hostname or '').lower()
+                  suffix = '.vault.azure.net'
+                  if host.endswith(suffix) and len(host) > len(suffix):
+                      vault = host[:-len(suffix)]
+              elif match_name:
+                  vault = match_name.group(1).strip().lower()
+              if not vault or not re.fullmatch(r'[a-z0-9-]{3,24}', vault):
+                  failures.append(item.get('name') or '<unnamed>')
+              else:
+                  parsed.append(vault)
+
+          unique = sorted(set(parsed))
+          result = {
+              'reference_count': len(refs),
+              'parsed_reference_count': len(parsed),
+              'unique_vaults': unique,
+              'unique_vault_count': len(unique),
+              'parse_failure_count': len(failures),
+          }
+          print(json.dumps(result, sort_keys=True, separators=(',', ':')))
+          PY
+
+          REFERENCE_COUNT="$(jq -r '.reference_count' /tmp/keyvault-reference-evidence.json)"
+          PARSED_COUNT="$(jq -r '.parsed_reference_count' /tmp/keyvault-reference-evidence.json)"
+          FAILURE_COUNT="$(jq -r '.parse_failure_count' /tmp/keyvault-reference-evidence.json)"
+          VAULT_COUNT="$(jq -r '.unique_vault_count' /tmp/keyvault-reference-evidence.json)"
+          VAULTS="$(jq -r '.unique_vaults | join(",")' /tmp/keyvault-reference-evidence.json)"
+
+          test "$REFERENCE_COUNT" -gt 0 || { echo '::error::No Key Vault references found on production App Service.' >&2; exit 1; }
+          test "$PARSED_COUNT" -eq "$REFERENCE_COUNT" || { echo '::error::Not every Key Vault reference could be parsed.' >&2; exit 1; }
+          test "$FAILURE_COUNT" -eq 0
+          test "$VAULT_COUNT" -gt 0
+
+          echo "reference_count=$REFERENCE_COUNT" >> "$GITHUB_OUTPUT"
+          echo "parsed_reference_count=$PARSED_COUNT" >> "$GITHUB_OUTPUT"
+          echo "vault_count=$VAULT_COUNT" >> "$GITHUB_OUTPUT"
+          echo "vaults=$VAULTS" >> "$GITHUB_OUTPUT"
+
+          rm -f /tmp/appsettings.json /tmp/keyvault-reference-evidence.json
+
+      - name: Publish live Key Vault reference source
+        id: publish
+        if: steps.discover.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REF_COUNT: ${{ steps.discover.outputs.reference_count }}
+          PARSED_COUNT: ${{ steps.discover.outputs.parsed_reference_count }}
+          VAULT_COUNT: ${{ steps.discover.outputs.vault_count }}
+          VAULTS: ${{ steps.discover.outputs.vaults }}
+        run: |
+          set -u
+          desc="refs=$REF_COUNT; parsed=$PARSED_COUNT; vaults=$VAULT_COUNT:$VAULTS"
+          gh api --method POST -H 'Accept: application/vnd.github+json' \
+            "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state='success' \
+            -f context='azure/runtime-keyvault-reference-source' \
+            -f description="${desc:0:140}"
+
+      - name: Finalize discovery failure
+        if: always() && (steps.discover.outcome != 'success' || steps.publish.outcome != 'success')
+        continue-on-error: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --method POST -H 'Accept: application/vnd.github+json' \
+            "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state='failure' \
+            -f context='azure/runtime-keyvault-reference-source' \
+            -f description='Key Vault reference discovery failed or did not publish; no Azure mutation performed' || true
+
+      - name: Record non-secret discovery summary
+        if: steps.discover.outcome == 'success'
+        shell: bash
+        env:
+          REF_COUNT: ${{ steps.discover.outputs.reference_count }}
+          PARSED_COUNT: ${{ steps.discover.outputs.parsed_reference_count }}
+          VAULT_COUNT: ${{ steps.discover.outputs.vault_count }}
+          VAULTS: ${{ steps.discover.outputs.vaults }}
+        run: |
+          {
+            echo '## Live Control Plane Key Vault references'
+            echo '- Azure mutation performed: no'
+            echo "- Key Vault reference settings: $REF_COUNT"
+            echo "- parsed references: $PARSED_COUNT"
+            echo "- unique vaults: $VAULT_COUNT"
+            echo "- vault names: $VAULTS"
+          } >> "$GITHUB_STEP_SUMMARY"
