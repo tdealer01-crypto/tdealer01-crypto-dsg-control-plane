@@ -88,7 +88,10 @@ async function resolveAuth(
     return stored.context;
   }
 
-  const access = await requireOrgRole(['operator', 'org_admin'], request);
+  const access = await requireOrgRole(
+    ['operator', 'org_admin', 'reviewer', 'runtime_auditor', 'billing_admin'],
+    request,
+  );
   if (!access.ok) return error(null, -32001, access.error ?? 'Unauthorized');
   return {
     source: 'session',
