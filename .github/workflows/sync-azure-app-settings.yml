@@ -79,7 +79,7 @@ jobs:
     env:
       AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP || 'rg-t.dealer01-0468' }}
       AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME || 'dsg-control-plane' }}
-      AZURE_KEY_VAULT_NAME: ${{ vars.AZURE_KEY_VAULT_NAME || 'dsg-kv-tdealer01-0468' }}
+      AZURE_KEY_VAULT_NAME: ${{ vars.AZURE_KEY_VAULT_NAME || 'dsg-shared-secrets' }}
       AZURE_OIDC_PRINCIPAL_OBJECT_ID: ${{ vars.AZURE_OIDC_PRINCIPAL_OBJECT_ID }}
     steps:
       - name: Checkout exact source

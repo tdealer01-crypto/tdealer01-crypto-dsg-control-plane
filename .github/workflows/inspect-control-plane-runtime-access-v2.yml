@@ -101,7 +101,7 @@ jobs:
     env:
       AZURE_RESOURCE_GROUP: rg-t.dealer01-0468
       AZURE_WEBAPP_NAME: dsg-control-plane
-      AZURE_KEY_VAULT_NAME: dsg-kv-tdealer01-0468
+      AZURE_KEY_VAULT_NAME: dsg-shared-secrets
       AZURE_ACR_NAME: dsgcp50aaef839
     steps:
       - uses: actions/checkout@v4

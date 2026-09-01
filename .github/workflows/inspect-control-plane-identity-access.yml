@@ -40,7 +40,7 @@ jobs:
           grep -Fq 'microsoft.containerregistry/registries/pull/read' <<<"$inspect_block"
           grep -Fq 'microsoft.containerregistry/registries/repositories/content/read' <<<"$inspect_block"
           grep -Fq 'statuses/${GITHUB_SHA}' <<<"$inspect_block"
-          grep -Fq 'dsg-kv-tdealer01-0468' <<<"$inspect_block"
+          grep -Fq 'dsg-shared-secrets' <<<"$inspect_block"
           grep -Fq 'dsgcp50aaef839' <<<"$inspect_block"
           if grep -Eq 'az [^\n]*[[:space:]](create|update|set|delete|assign|add|remove)([[:space:]]|$)|AZURE_CLIENT_SECRET' <<<"$inspect_block"; then
             echo '::error::Identity access inspection must remain Azure-read-only and secretless.' >&2
@@ -55,7 +55,7 @@ jobs:
     env:
       AZURE_RESOURCE_GROUP: rg-t.dealer01-0468
       AZURE_WEBAPP_NAME: dsg-control-plane
-      AZURE_KEY_VAULT_NAME: dsg-kv-tdealer01-0468
+      AZURE_KEY_VAULT_NAME: dsg-shared-secrets
       AZURE_ACR_NAME: dsgcp50aaef839
     steps:
       - uses: actions/checkout@v4
