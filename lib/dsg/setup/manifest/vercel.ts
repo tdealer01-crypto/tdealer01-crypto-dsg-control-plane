@@ -1,5 +1,7 @@
 import type { ConnectorManifest } from '../types';
 
+// Vercel remains available as an optional customer-selected connector.
+// It is not the default production deployment target.
 export const vercelManifest: ConnectorManifest = {
   id: 'vercel',
   name: 'Vercel',
@@ -18,12 +20,12 @@ export const vercelManifest: ConnectorManifest = {
     {
       resource: 'deployment',
       key: 'vercel_deployment_url',
-      description: 'Vercel deployment URL',
+      description: 'Optional Vercel deployment URL',
     },
     {
       resource: 'api_key',
       key: 'vercel_api_key',
-      description: 'Vercel API key for CI/CD',
+      description: 'Optional Vercel API key for customer-selected deployments',
     },
   ],
   requires: [
