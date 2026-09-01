@@ -43,8 +43,12 @@ jobs:
               '@Microsoft.KeyVault(',
               'SecretUri',
               'VaultName',
+              'config/configreferences/appsettings',
+              'keyVaultReferenceIdentity',
               'azure/runtime-keyvault-reference-source',
+              'azure/runtime-keyvault-reference-health',
               'parsed_reference_count',
+              'resolved_reference_count',
           ):
               if token not in block:
                   raise SystemExit(f'missing discovery marker: {token}')
@@ -97,17 +101,20 @@ jobs:
           echo "tenant_id=$tenant_id" >> "$GITHUB_OUTPUT"
           echo "subscription_id=$subscription_id" >> "$GITHUB_OUTPUT"
 
-      - name: Publish pending discovery status
+      - name: Publish pending discovery statuses
         continue-on-error: true
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh api --method POST -H 'Accept: application/vnd.github+json' \
-            "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
-            -f state='pending' \
-            -f context='azure/runtime-keyvault-reference-source' \
-            -f description='reading non-secret Key Vault reference metadata from production App Service'
+          set -u
+          for context in azure/runtime-keyvault-reference-source azure/runtime-keyvault-reference-health; do
+            gh api --method POST -H 'Accept: application/vnd.github+json' \
+              "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+              -f state='pending' \
+              -f context="$context" \
+              -f description='reading non-secret Key Vault reference metadata from production App Service' || true
+          done
 
       - name: Login to Azure with GitHub OIDC
         uses: azure/login@v2
@@ -122,18 +129,34 @@ jobs:
         run: |
           set -euo pipefail
           umask 077
+
           az webapp config appsettings list \
             -g "$AZURE_RESOURCE_GROUP" \
             -n "$AZURE_WEBAPP_NAME" \
             -o json > /tmp/appsettings.json
 
-          python3 - <<'PY' > /tmp/keyvault-reference-evidence.json
+          az webapp show \
+            -g "$AZURE_RESOURCE_GROUP" \
+            -n "$AZURE_WEBAPP_NAME" \
+            -o json > /tmp/webapp.json
+
+          RESOURCE_ID="$(jq -er '.id' /tmp/webapp.json)"
+          KEY_VAULT_REFERENCE_IDENTITY="$(jq -r '.keyVaultReferenceIdentity // .properties.keyVaultReferenceIdentity // empty' /tmp/webapp.json)"
+
+          az rest --method GET \
+            --url "https://management.azure.com${RESOURCE_ID}/config/configreferences/appsettings?api-version=2026-07-15" \
+            > /tmp/configreferences.json
+
+          KEY_VAULT_REFERENCE_IDENTITY="$KEY_VAULT_REFERENCE_IDENTITY" python3 - <<'PY' > /tmp/keyvault-reference-evidence.json
           import json
+          import os
           import re
-          from urllib.parse import urlparse
+          from urllib.parse import unquote, urlparse
 
           with open('/tmp/appsettings.json', encoding='utf-8') as fh:
               settings = json.load(fh)
+          with open('/tmp/configreferences.json', encoding='utf-8') as fh:
+              configrefs = json.load(fh)
 
           refs = []
           parsed = []
@@ -142,7 +165,8 @@ jobs:
               value = item.get('value') or ''
               if not value.startswith('@Microsoft.KeyVault('):
                   continue
-              refs.append(item.get('name') or '<unnamed>')
+              name = item.get('name') or '<unnamed>'
+              refs.append(name)
               match_uri = re.search(r'SecretUri\s*=\s*([^;)]+)', value, re.I)
               match_name = re.search(r'VaultName\s*=\s*([^;)]+)', value, re.I)
               vault = None
@@ -154,17 +178,36 @@ jobs:
               elif match_name:
                   vault = match_name.group(1).strip().lower()
               if not vault or not re.fullmatch(r'[a-z0-9-]{3,24}', vault):
-                  failures.append(item.get('name') or '<unnamed>')
+                  failures.append(name)
               else:
                   parsed.append(vault)
 
+          status_by_name = {}
+          for record in configrefs.get('value') or []:
+              raw_name = record.get('name')
+              if not raw_name:
+                  raw_name = unquote(str(record.get('id') or '').rstrip('/').split('/')[-1])
+              status_by_name[raw_name] = str((record.get('properties') or {}).get('status') or 'MissingStatus')
+
+          reference_statuses = [
+              {'name': name, 'status': status_by_name.get(name, 'MissingReference')}
+              for name in refs
+          ]
+          resolved = [row for row in reference_statuses if row['status'] == 'Resolved']
+          unresolved = [row for row in reference_statuses if row['status'] != 'Resolved']
           unique = sorted(set(parsed))
+          identity = os.environ.get('KEY_VAULT_REFERENCE_IDENTITY', '').strip()
           result = {
               'reference_count': len(refs),
               'parsed_reference_count': len(parsed),
               'unique_vaults': unique,
               'unique_vault_count': len(unique),
               'parse_failure_count': len(failures),
+              'resolved_reference_count': len(resolved),
+              'unresolved_reference_count': len(unresolved),
+              'reference_statuses': reference_statuses,
+              'key_vault_reference_identity': identity,
+              'identity_mode': 'user-assigned' if identity else 'system-assigned',
           }
           print(json.dumps(result, sort_keys=True, separators=(',', ':')))
           PY
@@ -174,6 +217,11 @@ jobs:
           FAILURE_COUNT="$(jq -r '.parse_failure_count' /tmp/keyvault-reference-evidence.json)"
           VAULT_COUNT="$(jq -r '.unique_vault_count' /tmp/keyvault-reference-evidence.json)"
           VAULTS="$(jq -r '.unique_vaults | join(",")' /tmp/keyvault-reference-evidence.json)"
+          RESOLVED_COUNT="$(jq -r '.resolved_reference_count' /tmp/keyvault-reference-evidence.json)"
+          UNRESOLVED_COUNT="$(jq -r '.unresolved_reference_count' /tmp/keyvault-reference-evidence.json)"
+          IDENTITY_MODE="$(jq -r '.identity_mode' /tmp/keyvault-reference-evidence.json)"
+          REFERENCE_IDENTITY="$(jq -r '.key_vault_reference_identity' /tmp/keyvault-reference-evidence.json)"
+          STATUS_SUMMARY="$(jq -r '[.reference_statuses[] | (.name + ":" + .status)] | join(",")' /tmp/keyvault-reference-evidence.json)"
 
           test "$REFERENCE_COUNT" -gt 0 || { echo '::error::No Key Vault references found on production App Service.' >&2; exit 1; }
           test "$PARSED_COUNT" -eq "$REFERENCE_COUNT" || { echo '::error::Not every Key Vault reference could be parsed.' >&2; exit 1; }
@@ -184,10 +232,15 @@ jobs:
           echo "parsed_reference_count=$PARSED_COUNT" >> "$GITHUB_OUTPUT"
           echo "vault_count=$VAULT_COUNT" >> "$GITHUB_OUTPUT"
           echo "vaults=$VAULTS" >> "$GITHUB_OUTPUT"
+          echo "resolved_reference_count=$RESOLVED_COUNT" >> "$GITHUB_OUTPUT"
+          echo "unresolved_reference_count=$UNRESOLVED_COUNT" >> "$GITHUB_OUTPUT"
+          echo "identity_mode=$IDENTITY_MODE" >> "$GITHUB_OUTPUT"
+          echo "reference_identity=$REFERENCE_IDENTITY" >> "$GITHUB_OUTPUT"
+          echo "status_summary=$STATUS_SUMMARY" >> "$GITHUB_OUTPUT"
 
-          rm -f /tmp/appsettings.json /tmp/keyvault-reference-evidence.json
+          rm -f /tmp/appsettings.json /tmp/webapp.json /tmp/configreferences.json /tmp/keyvault-reference-evidence.json
 
-      - name: Publish live Key Vault reference source
+      - name: Publish live Key Vault reference source and health
         id: publish
         if: steps.discover.outcome == 'success'
         continue-on-error: true
@@ -198,14 +251,27 @@ jobs:
           PARSED_COUNT: ${{ steps.discover.outputs.parsed_reference_count }}
           VAULT_COUNT: ${{ steps.discover.outputs.vault_count }}
           VAULTS: ${{ steps.discover.outputs.vaults }}
+          RESOLVED_COUNT: ${{ steps.discover.outputs.resolved_reference_count }}
+          UNRESOLVED_COUNT: ${{ steps.discover.outputs.unresolved_reference_count }}
+          IDENTITY_MODE: ${{ steps.discover.outputs.identity_mode }}
         run: |
           set -u
-          desc="refs=$REF_COUNT; parsed=$PARSED_COUNT; vaults=$VAULT_COUNT:$VAULTS"
+          failed=0
+          source_desc="refs=$REF_COUNT; parsed=$PARSED_COUNT; vaults=$VAULT_COUNT:$VAULTS"
+          health_state=failure
+          [[ "$UNRESOLVED_COUNT" == 0 && "$RESOLVED_COUNT" == "$REF_COUNT" ]] && health_state=success
+          health_desc="resolved=$RESOLVED_COUNT/$REF_COUNT; unresolved=$UNRESOLVED_COUNT; identity=$IDENTITY_MODE"
           gh api --method POST -H 'Accept: application/vnd.github+json' \
             "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state='success' \
             -f context='azure/runtime-keyvault-reference-source' \
-            -f description="${desc:0:140}"
+            -f description="${source_desc:0:140}" || failed=1
+          gh api --method POST -H 'Accept: application/vnd.github+json' \
+            "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state="$health_state" \
+            -f context='azure/runtime-keyvault-reference-health' \
+            -f description="${health_desc:0:140}" || failed=1
+          exit "$failed"
 
       - name: Finalize discovery failure
         if: always() && (steps.discover.outcome != 'success' || steps.publish.outcome != 'success')
@@ -214,11 +280,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh api --method POST -H 'Accept: application/vnd.github+json' \
-            "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
-            -f state='failure' \
-            -f context='azure/runtime-keyvault-reference-source' \
-            -f description='Key Vault reference discovery failed or did not publish; no Azure mutation performed' || true
+          set -u
+          for context in azure/runtime-keyvault-reference-source azure/runtime-keyvault-reference-health; do
+            gh api --method POST -H 'Accept: application/vnd.github+json' \
+              "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+              -f state='failure' \
+              -f context="$context" \
+              -f description='Key Vault reference discovery failed or did not publish; no Azure mutation performed' || true
+          done
 
       - name: Record non-secret discovery summary
         if: steps.discover.outcome == 'success'
@@ -228,6 +297,11 @@ jobs:
           PARSED_COUNT: ${{ steps.discover.outputs.parsed_reference_count }}
           VAULT_COUNT: ${{ steps.discover.outputs.vault_count }}
           VAULTS: ${{ steps.discover.outputs.vaults }}
+          RESOLVED_COUNT: ${{ steps.discover.outputs.resolved_reference_count }}
+          UNRESOLVED_COUNT: ${{ steps.discover.outputs.unresolved_reference_count }}
+          IDENTITY_MODE: ${{ steps.discover.outputs.identity_mode }}
+          REFERENCE_IDENTITY: ${{ steps.discover.outputs.reference_identity }}
+          STATUS_SUMMARY: ${{ steps.discover.outputs.status_summary }}
         run: |
           {
             echo '## Live Control Plane Key Vault references'
@@ -236,4 +310,9 @@ jobs:
             echo "- parsed references: $PARSED_COUNT"
             echo "- unique vaults: $VAULT_COUNT"
             echo "- vault names: $VAULTS"
+            echo "- resolved references: $RESOLVED_COUNT"
+            echo "- unresolved references: $UNRESOLVED_COUNT"
+            echo "- reference identity mode: $IDENTITY_MODE"
+            echo "- reference identity resource id: ${REFERENCE_IDENTITY:-system-assigned}"
+            echo "- reference statuses: $STATUS_SUMMARY"
           } >> "$GITHUB_STEP_SUMMARY"
