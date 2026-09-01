@@ -5,38 +5,76 @@ on:
     - cron: '0 9 * * *' # 9 AM UTC daily
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   health-check:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      MONITORING_URL: https://dsg-control-plane.azurewebsites.net
     steps:
       - uses: actions/checkout@v4
 
       - name: Run data sync monitoring
         env:
-          MONITORING_URL: ${{ secrets.PRODUCTION_URL }}
+          MONITORING_API_KEY: ${{ secrets.MONITORING_API_KEY }}
           X_ORG_ID: ${{ secrets.MONITORING_ORG_ID }}
+        shell: bash
         run: |
-          echo "Checking data sync health..."
-          curl -X GET \
-            -H "Authorization: Bearer ${{ secrets.MONITORING_API_KEY }}" \
+          set -euo pipefail
+
+          test "$MONITORING_URL" = 'https://dsg-control-plane.azurewebsites.net' || {
+            echo '::error::Daily monitoring must target the authoritative Azure App Service.' >&2
+            exit 1
+          }
+          test -n "${MONITORING_API_KEY:-}" || {
+            echo '::error::MONITORING_API_KEY_REQUIRED' >&2
+            exit 1
+          }
+          test -n "${X_ORG_ID:-}" || {
+            echo '::error::MONITORING_ORG_ID_REQUIRED' >&2
+            exit 1
+          }
+
+          echo 'Checking Azure production data-sync health...'
+          curl \
+            --fail-with-body \
+            --silent \
+            --show-error \
+            --location \
+            --connect-timeout 10 \
+            --max-time 30 \
+            -H "Authorization: Bearer $MONITORING_API_KEY" \
             -H "x-org-id: $X_ORG_ID" \
             "$MONITORING_URL/api/dsg/v1/monitoring/data-sync?check=full" \
             -o health-report.json
 
-          cat health-report.json | jq .
+          jq -e . health-report.json >/dev/null
 
       - name: Parse health report
+        shell: bash
         run: |
-          HEALTH_SCORE=$(jq '.data.sync_report.health_score' health-report.json)
-          DIVERGENCES=$(jq '.data.sync_report.divergences | length' health-report.json)
+          set -euo pipefail
+
+          HEALTH_SCORE="$(jq -er '.data.sync_report.health_score | numbers' health-report.json)"
+          DIVERGENCES="$(jq -er '.data.sync_report.divergences | length' health-report.json)"
 
           echo "Health Score: $HEALTH_SCORE"
           echo "Divergences Found: $DIVERGENCES"
 
-          if (( HEALTH_SCORE < 80 )); then
-            echo "WARNING: Health score below threshold"
+          jq -e '.data.sync_report.health_score >= 80' health-report.json >/dev/null || {
+            echo '::error::Health score below threshold 80.' >&2
             exit 1
-          fi
+          }
+
+          {
+            echo '## Daily Azure health check'
+            echo "- target: $MONITORING_URL"
+            echo "- health score: $HEALTH_SCORE"
+            echo "- divergences: $DIVERGENCES"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload report
         if: always()
@@ -44,16 +82,31 @@ jobs:
         with:
           name: health-report
           path: health-report.json
+          if-no-files-found: warn
 
       - name: Notify on failure
         if: failure()
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+        shell: bash
         run: |
-          curl -X POST $SLACK_WEBHOOK \
+          set -euo pipefail
+
+          if [[ -z "${SLACK_WEBHOOK:-}" ]]; then
+            echo 'Slack webhook is not configured; skipping optional notification.'
+            exit 0
+          fi
+
+          curl \
+            --fail \
+            --silent \
+            --show-error \
+            --connect-timeout 10 \
+            --max-time 20 \
+            -X POST "$SLACK_WEBHOOK" \
             -H 'Content-Type: application/json' \
             -d '{
-              "text": "🚨 Daily health check FAILED",
+              "text": "Daily Azure health check FAILED",
               "attachments": [{
                 "color": "danger",
                 "text": "Health score below threshold or monitoring errors detected"
