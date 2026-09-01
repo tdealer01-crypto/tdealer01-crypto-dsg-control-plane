@@ -41,8 +41,8 @@ jobs:
           for token in (
               'webapp config appsettings list',
               '@Microsoft.KeyVault(',
-              'SecretUri=',
-              'VaultName=',
+              'SecretUri',
+              'VaultName',
               'azure/runtime-keyvault-reference-source',
               'parsed_reference_count',
           ):
