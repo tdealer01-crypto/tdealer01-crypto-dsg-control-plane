@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
         title: 'DSG Governance Plugin',
         version: '1.0.0',
         description:
-          'Govern an existing AI agent action against an approved DSG plan. Supports observe and enforce modes with structured live governance output.',
+          'Govern an existing AI agent action against an approved DSG plan. Observe/Enforce mode is owned by the DSG organization setting and cannot be overridden by the calling agent.',
       },
       servers: [{ url: origin }],
       paths: {
@@ -40,6 +40,7 @@ export async function GET(request: NextRequest) {
               '400': { description: 'Invalid governance input' },
               '401': { description: 'Invalid or missing DSG credential' },
               '403': { description: 'Authenticated actor lacks route access' },
+              '503': { description: 'Server-side governance mode is unavailable' },
             },
           },
         },
@@ -57,7 +58,6 @@ export async function GET(request: NextRequest) {
             type: 'object',
             additionalProperties: false,
             properties: {
-              mode: { type: 'string', enum: ['observe', 'enforce'] },
               eventId: { type: 'string' },
               planHash: { type: 'string', pattern: '^[0-9a-fA-F]{64}$' },
               agentId: { type: 'string' },
@@ -78,7 +78,6 @@ export async function GET(request: NextRequest) {
               evidenceRefs: { type: 'array', items: { type: 'string' } },
             },
             required: [
-              'mode',
               'eventId',
               'planHash',
               'agentId',
