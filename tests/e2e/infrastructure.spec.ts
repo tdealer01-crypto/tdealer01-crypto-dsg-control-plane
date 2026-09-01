@@ -4,12 +4,12 @@
  */
 import { test, expect, request } from '@playwright/test';
 
-const PROD_BASE = 'https://tdealer01-crypto-dsg-control-plane.vercel.app';
+const PROD_BASE = process.env.PLAYWRIGHT_BASE_URL ?? 'https://dsg-control-plane.azurewebsites.net';
 const TUNNEL_URL = process.env.CLOUDFLARE_TUNNEL_URL ?? 'https://shades-powerseller-guys-opposition.trycloudflare.com';
 
 const ENDPOINTS = [
   {
-    label: 'Production Vercel health',
+    label: 'Production Azure App Service health',
     url: `${PROD_BASE}/api/health`,
     skipEnv: undefined,
   },
