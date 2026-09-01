@@ -87,6 +87,8 @@ async function appendAuditEvent(params: {
   input: GovernancePreflightInput;
   status: GovernanceStatus;
   policyAllowsAction: boolean;
+  permissionPassed: boolean;
+  evidenceStatus: 'PASS' | 'UNVERIFIED';
   shouldBlock: boolean;
   claimAllowed: boolean;
   decisionHash: string;
@@ -118,6 +120,8 @@ async function appendAuditEvent(params: {
       operationName: params.input.operationName,
       status: params.status,
       policyAllowsAction: params.policyAllowsAction,
+      permissionPassed: params.permissionPassed,
+      evidenceStatus: params.evidenceStatus,
       shouldBlock: params.shouldBlock,
       claimAllowed: params.claimAllowed,
       decisionHash: params.decisionHash,
@@ -154,6 +158,13 @@ async function appendAuditEvent(params: {
         should_block: params.shouldBlock,
         claim_allowed: params.claimAllowed,
         evidence_refs: params.input.evidenceRefs ?? [],
+        panel_statuses: {
+          action: params.status,
+          plan_alignment: params.policyAllowsAction ? 'PASS' : 'BLOCKED',
+          permission: params.permissionPassed ? 'PASS' : 'WAITING_PERMISSION',
+          evidence: params.evidenceStatus,
+          execution_audit: 'PASS',
+        },
       },
       occurred_at: occurredAt,
     });
@@ -220,13 +231,15 @@ export async function governAction(
   const evidenceRefs = input.evidenceRefs ?? [];
   const claimNeedsEvidence = Boolean(input.claimedOutcome) && evidenceRefs.length === 0;
   if (claimNeedsEvidence) claimAllowed = false;
+  const evidenceStatus: 'PASS' | 'UNVERIFIED' =
+    claimAllowed && planDecision !== 'CLAIM_EVIDENCE_DENY' ? 'PASS' : 'UNVERIFIED';
 
   let status: GovernanceStatus;
   if (!policyAllowsAction) {
     status = 'BLOCKED';
   } else if (!permissionPassed) {
     status = 'WAITING_PERMISSION';
-  } else if (!claimAllowed || planDecision === 'CLAIM_EVIDENCE_DENY') {
+  } else if (evidenceStatus === 'UNVERIFIED') {
     status = 'UNVERIFIED';
   } else {
     status = 'PASS';
@@ -250,6 +263,8 @@ export async function governAction(
     input,
     status,
     policyAllowsAction,
+    permissionPassed,
+    evidenceStatus,
     shouldBlock,
     claimAllowed,
     decisionHash,
@@ -288,7 +303,7 @@ export async function governAction(
         actorId: auth.actorId,
       },
       evidence: {
-        status: claimAllowed && planDecision !== 'CLAIM_EVIDENCE_DENY' ? 'PASS' : 'UNVERIFIED',
+        status: evidenceStatus,
         claim: input.claimedOutcome ?? null,
         evidenceRefs,
         evidenceManifestId: input.evidenceManifestId ?? null,
