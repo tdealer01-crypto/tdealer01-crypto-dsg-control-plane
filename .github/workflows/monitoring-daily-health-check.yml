@@ -4,10 +4,6 @@ on:
   pull_request:
     paths:
       - '.github/workflows/monitoring-daily-health-check.yml'
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/monitoring-daily-health-check.yml'
   schedule:
     - cron: '0 9 * * *' # 9 AM UTC daily
   workflow_dispatch:
