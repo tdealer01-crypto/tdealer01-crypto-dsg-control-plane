@@ -1,6 +1,189 @@
 # DSG Control Plane
 
-Deterministic governance control plane for AI-agent execution. The repository is the source of truth for implementation, policy gates, tests, deployment configuration, runtime evidence, and audit artifacts.
+Governance and evidence layer for AI agents, MCP servers, and automated workflows.
+
+Connect an existing agent or automation to DSG. DSG checks what the agent is trying to do against the approved plan, permissions, constraints, and available evidence, then records what actually happened.
+
+You do not need to replace your existing agent framework.
+
+```text
+Your Agent / MCP / Automation
+            │
+            ▼
+     DSG Control Plane
+            │
+     ┌──────┴──────┐
+     │             │
+  OBSERVE        ENFORCE
+     │             │
+ Record only    Gate action
+     │             │
+     └──────┬──────┘
+            ▼
+       External API
+```
+
+## What problem does DSG solve?
+
+AI agents can call APIs, modify infrastructure, deploy software, operate browsers, and execute automated workflows.
+
+The question is not only whether an agent can perform an action. The operational question is whether that action was approved, permitted, verified, and recorded.
+
+DSG adds that governance layer between an agent and execution.
+
+```text
+Approved Plan
+     ↓
+Preflight
+     ↓
+Plan Alignment
+     ↓
+Permission / Constraints
+     ↓
+Execution
+     ↓
+Evidence
+     ↓
+Verification
+     ↓
+Audit
+```
+
+DSG must not block an action merely because governance exists. An action covered by the user-approved plan should be allowed to proceed when its required permissions and constraints are satisfied. Unsupported claims or out-of-plan actions must not silently become successful results.
+
+## Operating modes
+
+### OBSERVE
+
+Use DSG as an evidence and audit layer without making DSG the execution blocker.
+
+```text
+Agent Action
+     ↓
+DSG observes
+     ↓
+Record plan alignment
+Record permissions
+Record evidence
+Record execution result
+     ↓
+Existing API / Tool
+```
+
+This is useful when introducing governance into an existing workflow without immediately changing execution behavior.
+
+### ENFORCE
+
+Use DSG as the pre-execution governance gate.
+
+```text
+Agent Action
+     ↓
+DSG Preflight
+     ↓
+PASS ─────────────────→ Execute
+BLOCKED ──────────────→ Stop
+WAITING_PERMISSION ───→ Request required permission
+UNVERIFIED ───────────→ Require evidence / verification
+```
+
+Core rule:
+
+```text
+Inside approved plan + required permission + supported evidence
+                         ↓
+                       PASS
+
+Outside approved plan
+                         ↓
+                      BLOCKED
+```
+
+## What the operator should see
+
+DSG should expose governance information as operational results rather than forcing users to reconstruct state from raw logs.
+
+A useful runtime view consists of five surfaces:
+
+1. **ACTION** — what the agent is attempting to do.
+2. **PLAN ALIGNMENT** — whether the requested action belongs to the approved plan.
+3. **PERMISSION** — whether the execution context has the required authority.
+4. **EVIDENCE** — what proves the result.
+5. **EXECUTION / AUDIT** — what actually happened and what was recorded.
+
+This separates:
+
+```text
+what was requested
+what was approved
+what was permitted
+what was executed
+what was proven
+```
+
+## Result states
+
+| State | Meaning |
+|---|---|
+| `PASS` | Required gate conditions passed |
+| `BLOCKED` | Action cannot proceed under the applicable policy or approved plan |
+| `WAITING_PERMISSION` | Required authority is missing |
+| `UNVERIFIED` | Required supporting evidence is unavailable |
+| `REVIEW` | Human or additional verification is required |
+| `FAILED` | Execution or verification failed |
+
+The exact state used depends on the applicable runtime contract and policy.
+
+## Designed for existing systems
+
+DSG is intended to sit between existing automation and the systems it already uses.
+
+```text
+Microsoft Foundry Agent ─┐
+Claude / Agent SDK ──────┤
+Custom AI Agent ─────────┤
+MCP Client ──────────────┤
+CI/CD Workflow ──────────┤
+Automation ──────────────┤
+                         ▼
+                  DSG Control Plane
+                         │
+                         ▼
+                  Existing Systems
+```
+
+The objective is:
+
+```text
+existing agent
++
+DSG governance
++
+evidence
++
+auditability
+```
+
+not to force users to rebuild their agent stack.
+
+## MCP
+
+The repository contains MCP-related implementation for connecting compatible agents and tooling to DSG governance capabilities.
+
+```text
+MCP Client
+    │
+    ▼
+DSG MCP
+    │
+    ▼
+Preflight / Governance
+    │
+    ▼
+Controlled execution
+```
+
+Before relying on an MCP capability in production, verify the current server configuration, exposed tools, authentication requirements, and deployed runtime.
 
 ## Production
 
@@ -11,24 +194,57 @@ Deterministic governance control plane for AI-agent execution. The repository is
 - Azure deployment evidence: [`qa-logs/azure-production/`](qa-logs/azure-production/)
 - Runtime environment guidance: [`docs/ops/azure-runtime-env-sync.md`](docs/ops/azure-runtime-env-sync.md)
 
-A deployment is not treated as production-ready from configuration alone. The Azure target, post-deploy health/readiness checks, and committed evidence must agree.
+The configured production target explicitly binds DSG to Azure App Service. Vercel and Render are not active DSG production targets.
 
-## What DSG does
+A configured deployment target does not by itself prove that the latest production deployment passed. Production success must be established from current deployment, runtime, database, and evidence checks.
 
-DSG evaluates agent actions against an approved plan and policy before execution. The intended runtime contract is:
+## Production deployment model
 
-`approved plan -> preflight -> alignment/constraints -> execution -> evidence -> verification -> audit/replay`
+The configured deployment path is designed around governed promotion and exact artifact identity.
 
-The governance layer must not block an action merely because governance exists. It must verify that the requested action is inside the approved plan, preserve evidence, and deny unsupported claims or actions outside the approved scope.
+```text
+approved/promoted change
+        ↓
+exact commit identity
+        ↓
+container build
+        ↓
+Azure Container Registry
+        ↓
+staging deployment
+        ↓
+runtime verification
+        ↓
+health verification
+        ↓
+proof/evidence checks
+        ↓
+production promotion
+```
 
-## Operator path
+The repository also defines Azure rollback behavior. Verification mismatches are expected to fail closed rather than being represented as successful deployment.
 
-1. Confirm the user-approved goal and plan.
-2. Run the applicable preflight/gate before external mutation.
-3. Execute only actions covered by the approved plan and available permissions.
-4. Record runtime evidence and test/deployment results.
-5. Verify the resulting state rather than inferring success from a command exit alone.
-6. Expose the result to the user as `PASS`, `REVIEW`, `BLOCK`, `FAILED`, or another repository-defined state with the next corrective action.
+## Health
+
+The configured production health probe is:
+
+```text
+GET /api/health
+```
+
+Do not treat an HTTP health response alone as proof that every DSG capability is production-ready. Full verification may additionally require authenticated runtime checks, database state, evidence persistence, deployment identity, and workflow verification.
+
+## Repository structure
+
+- `app/` — Next.js application and API surfaces.
+- `lib/` — governance, runtime, security, billing, evidence, and supporting implementation.
+- `mcp/` — MCP implementation.
+- `tests/` — automated verification.
+- `.github/workflows/` — CI/CD and governed deployment workflows.
+- `qa-logs/` — captured QA and deployment evidence.
+- `supabase/` — database migrations and schema-related resources.
+- `config/production-deployment-target.json` — canonical production deployment binding.
+- `docs/` — architecture, operating procedures, deployment guidance, and supporting documentation.
 
 ## Local development
 
@@ -36,7 +252,7 @@ Requirements:
 
 - Node.js `>=24`
 - npm
-- Required runtime secrets/services for the feature being exercised
+- Runtime services and secrets required by the capability being tested
 
 ```bash
 git clone https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane.git
@@ -47,38 +263,72 @@ npm test
 npm run build
 ```
 
-Do not treat a local build as production evidence. Production status is established by Azure deployment and post-deploy verification evidence.
+A successful local build proves the local build passed. It does not prove that production deployment, production database connectivity, external integrations, or full live E2E execution passed.
 
-## Verification and evidence
+## Evidence-first verification
 
-Useful repository surfaces include:
+For any important DSG capability, verify against executable evidence.
 
-- `tests/` — automated verification
-- `qa-logs/` — captured QA/deployment evidence
-- `.github/workflows/` — CI/CD automation
-- `lib/` and `app/` — implementation
-- `docs/` — operating and architecture documentation
-- `config/production-deployment-target.json` — production deployment authority
+Useful evidence sources include:
 
-For any capability claim, prefer current code plus executable evidence over historical planning documents or screenshots.
+- `tests/`
+- `qa-logs/`
+- GitHub Actions
+- runtime API responses
+- deployment status
+- database records
+- commit SHA
+- container/image digest
+- audit records
+- verification output
 
-## Decision discipline
+The evidence chain should make it possible to answer:
 
-Every material decision should preserve enough context to answer:
+1. What did the user approve?
+2. What action did the agent request?
+3. Was the action inside the approved plan?
+4. Did the executor have the required permission?
+5. What actually executed?
+6. What evidence was produced?
+7. What passed or failed?
+8. What must happen next?
 
-- What did the user approve?
-- What action was attempted?
-- Which policy/constraint was evaluated?
-- What evidence was produced?
-- What actually passed or failed?
-- What should the operator do next?
+## Truth boundary
 
-Unverified data is not a successful result. Missing evidence must remain `UNVERIFIED`, `REVIEW`, or `BLOCK` according to the applicable risk policy.
+Do not claim `production-ready`, `FULL LIVE E2E PASS`, certified compliance, successful deployment, verified proof, or external solver execution unless current evidence supports that specific claim.
+
+Configuration is not execution evidence. Source code is not production evidence. A successful command is not necessarily proof of the resulting external state.
+
+Missing evidence remains `UNVERIFIED`, `REVIEW`, or `BLOCKED` according to the applicable policy.
 
 ## Secrets
 
-Do not commit live secrets. Runtime secrets should use the production secret-management path documented for Azure. Example environment files are documentation only and are not evidence that a secret exists in production.
+Never commit live credentials to this repository.
 
-## Production truth boundary
+Production credentials should use the approved Azure secret/environment-management path. Example environment files document required configuration names; they are not evidence that the corresponding production secret currently exists.
 
-The repository must not claim production success, compliance, solver proof, deployment completion, or runtime health without current supporting evidence. If code, configuration, runtime state, and documentation disagree, verify the running Azure service and update the repository so they converge.
+## Core principle
+
+DSG exists to make agent execution answerable.
+
+```text
+Agent wants to act
+        ↓
+Was it approved?
+        ↓
+Is it inside the plan?
+        ↓
+Does it have permission?
+        ↓
+Can it execute?
+        ↓
+What actually happened?
+        ↓
+Where is the evidence?
+```
+
+The goal is not to add more steps for the operator. The goal is to expose governed execution as clear operational outcomes such as `PASS`, `BLOCKED`, `WAITING_PERMISSION`, `UNVERIFIED`, or `FAILED`, together with the reason, evidence, and next action.
+
+---
+
+**DSG Control Plane — govern the action, preserve the evidence, verify the result.**
