@@ -88,9 +88,11 @@ function seal(
   decidedAt: string,
 ): DsgPlanAlignmentResult {
   const decisionHash = sha256({ decision, planHash: contract.planHash, eventId: event.eventId, reasons, decidedAt });
+  const canProceed =
+    decision === "PLAN_MATCHED_ALLOW_AUDIT" || decision === "CLAIM_EVIDENCE_DENY";
   return {
     decision,
-    canProceed: decision === "PLAN_MATCHED_ALLOW_AUDIT",
+    canProceed,
     planId: contract.planId,
     planHash: contract.planHash,
     scopeHash: contract.scopeHash,
