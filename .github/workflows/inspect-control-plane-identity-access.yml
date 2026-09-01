@@ -33,10 +33,12 @@ jobs:
           grep -Fq 'role assignment list' <<<"$inspect_block"
           grep -Fq -- '--include-inherited' <<<"$inspect_block"
           grep -Fq 'role definition' <<<"$inspect_block"
+          grep -Fq 'roleAssignmentMode' <<<"$inspect_block"
           grep -Fq 'dataActions' <<<"$inspect_block"
           grep -Fq 'notDataActions' <<<"$inspect_block"
           grep -Fq 'microsoft.keyvault/vaults/secrets/getsecret/action' <<<"$inspect_block"
           grep -Fq 'microsoft.containerregistry/registries/pull/read' <<<"$inspect_block"
+          grep -Fq 'microsoft.containerregistry/registries/repositories/content/read' <<<"$inspect_block"
           grep -Fq 'statuses/${GITHUB_SHA}' <<<"$inspect_block"
           grep -Fq 'dsg-kv-tdealer01-0468' <<<"$inspect_block"
           grep -Fq 'dsgcp50aaef839' <<<"$inspect_block"
@@ -95,7 +97,8 @@ jobs:
 
           VAULT_ID="$(az keyvault show -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_KEY_VAULT_NAME" --query id -o tsv)"
           ACR_ID="$(az acr show -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_ACR_NAME" --query id -o tsv)"
-          test -n "$VAULT_ID" && test -n "$ACR_ID"
+          ACR_ROLE_ASSIGNMENT_MODE="$(az acr show -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_ACR_NAME" --query 'roleAssignmentMode' -o tsv)"
+          test -n "$VAULT_ID" && test -n "$ACR_ID" && test -n "$ACR_ROLE_ASSIGNMENT_MODE"
 
           VAULT_RBAC="$(az keyvault show -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_KEY_VAULT_NAME" --query 'properties.enableRbacAuthorization' -o tsv)"
           [[ -n "$VAULT_RBAC" ]] || VAULT_RBAC=false
@@ -126,7 +129,7 @@ jobs:
             fi
           fi
 
-          export VAULT_ID ACR_ID VAULT_RBAC ACCESS_POLICY_PRESENT ACCESS_POLICY_SECRET_PERMS
+          export VAULT_ID ACR_ID VAULT_RBAC ACCESS_POLICY_PRESENT ACCESS_POLICY_SECRET_PERMS ACR_ROLE_ASSIGNMENT_MODE
           python3 - <<'PY' > /tmp/access-evaluation.json
           import fnmatch
           import json
@@ -145,6 +148,7 @@ jobs:
           vault_id = os.environ['VAULT_ID'].lower().rstrip('/')
           acr_id = os.environ['ACR_ID'].lower().rstrip('/')
           vault_rbac = os.environ['VAULT_RBAC'].lower() == 'true'
+          acr_mode = os.environ['ACR_ROLE_ASSIGNMENT_MODE'].strip().lower()
           access_policy_present = os.environ['ACCESS_POLICY_PRESENT'].lower() == 'true'
           access_policy_secret_perms = {
               p.strip().lower()
@@ -153,7 +157,8 @@ jobs:
           }
 
           kv_target = 'microsoft.keyvault/vaults/secrets/getsecret/action'
-          acr_target = 'microsoft.containerregistry/registries/pull/read'
+          acr_rbac_target = 'microsoft.containerregistry/registries/pull/read'
+          acr_abac_target = 'microsoft.containerregistry/registries/repositories/content/read'
 
           def applies(scope: str, resource_id: str) -> bool:
               scope = (scope or '').lower().rstrip('/')
@@ -175,6 +180,11 @@ jobs:
           kv_conditioned = []
           acr_conditioned = []
 
+          abac_enabled = acr_mode == 'rbac-abac'
+          acr_allow_key = 'dataActions' if abac_enabled else 'actions'
+          acr_deny_key = 'notDataActions' if abac_enabled else 'notActions'
+          acr_target = acr_abac_target if abac_enabled else acr_rbac_target
+
           for assignment in assignments:
               scope = assignment.get('scope') or ''
               role_id = (assignment.get('roleDefinitionId') or '').lower()
@@ -190,7 +200,7 @@ jobs:
               }
               if applies(scope, vault_id) and permission_grants(role, 'dataActions', 'notDataActions', kv_target):
                   (kv_conditioned if row['condition'] else kv_roles).append(row)
-              if applies(scope, acr_id) and permission_grants(role, 'actions', 'notActions', acr_target):
+              if applies(scope, acr_id) and permission_grants(role, acr_allow_key, acr_deny_key, acr_target):
                   (acr_conditioned if row['condition'] else acr_roles).append(row)
 
           if vault_rbac:
@@ -213,6 +223,8 @@ jobs:
               'keyVaultConditionalRoles': kv_conditioned,
               'keyVaultAccessPolicyPresent': access_policy_present,
               'keyVaultAccessPolicySecretPermissions': sorted(access_policy_secret_perms),
+              'acrRoleAssignmentMode': acr_mode,
+              'acrPermissionTarget': acr_target,
               'acrPullEffective': acr_effective,
               'acrConditionalGrantUnverified': acr_unverified_condition,
               'acrPullRoles': acr_roles,
@@ -226,6 +238,8 @@ jobs:
           KEY_VAULT_CONDITIONAL="$(jq -r '.keyVaultConditionalGrantUnverified' /tmp/access-evaluation.json)"
           KEY_VAULT_ROLE_NAMES="$(jq -r '[.keyVaultSecretGetRoles[].role] | sort | unique | join(",")' /tmp/access-evaluation.json)"
           KEY_VAULT_ROLE_SCOPES="$(jq -r '[.keyVaultSecretGetRoles[] | (.role + "@" + .scope)] | sort | unique | join(";")' /tmp/access-evaluation.json)"
+          ACR_MODE="$(jq -r '.acrRoleAssignmentMode' /tmp/access-evaluation.json)"
+          ACR_PERMISSION_TARGET="$(jq -r '.acrPermissionTarget' /tmp/access-evaluation.json)"
           ACR_PULL_EFFECTIVE="$(jq -r '.acrPullEffective' /tmp/access-evaluation.json)"
           ACR_PULL_CONDITIONAL="$(jq -r '.acrConditionalGrantUnverified' /tmp/access-evaluation.json)"
           ACR_ROLE_NAMES="$(jq -r '[.acrPullRoles[].role] | sort | unique | join(",")' /tmp/access-evaluation.json)"
@@ -238,6 +252,8 @@ jobs:
           echo "key_vault_role_scopes=$KEY_VAULT_ROLE_SCOPES" >> "$GITHUB_OUTPUT"
           echo "access_policy_present=$ACCESS_POLICY_PRESENT" >> "$GITHUB_OUTPUT"
           echo "access_policy_secret_perms=$ACCESS_POLICY_SECRET_PERMS" >> "$GITHUB_OUTPUT"
+          echo "acr_role_assignment_mode=$ACR_MODE" >> "$GITHUB_OUTPUT"
+          echo "acr_permission_target=$ACR_PERMISSION_TARGET" >> "$GITHUB_OUTPUT"
           echo "acr_pull_effective=$ACR_PULL_EFFECTIVE" >> "$GITHUB_OUTPUT"
           echo "acr_pull_conditional=$ACR_PULL_CONDITIONAL" >> "$GITHUB_OUTPUT"
           echo "acr_role_names=$ACR_ROLE_NAMES" >> "$GITHUB_OUTPUT"
@@ -254,6 +270,7 @@ jobs:
           KEY_VAULT_CONDITIONAL: ${{ steps.access.outputs.key_vault_conditional }}
           KEY_VAULT_ROLE_NAMES: ${{ steps.access.outputs.key_vault_role_names }}
           ACCESS_POLICY_SECRET_PERMS: ${{ steps.access.outputs.access_policy_secret_perms }}
+          ACR_MODE: ${{ steps.access.outputs.acr_role_assignment_mode }}
           ACR_PULL_EFFECTIVE: ${{ steps.access.outputs.acr_pull_effective }}
           ACR_PULL_CONDITIONAL: ${{ steps.access.outputs.acr_pull_conditional }}
           ACR_ROLE_NAMES: ${{ steps.access.outputs.acr_role_names }}
@@ -274,7 +291,7 @@ jobs:
           fi
 
           acr_state=failure
-          acr_desc="pull=$ACR_PULL_EFFECTIVE"
+          acr_desc="mode=$ACR_MODE; pull=$ACR_PULL_EFFECTIVE"
           if [[ "$ACR_PULL_EFFECTIVE" == true ]]; then
             acr_state=success
             [[ -z "$ACR_ROLE_NAMES" ]] || acr_desc="$acr_desc; roles=$ACR_ROLE_NAMES"
@@ -311,13 +328,15 @@ jobs:
           KEY_VAULT_ROLE_SCOPES: ${{ steps.access.outputs.key_vault_role_scopes }}
           ACCESS_POLICY_PRESENT: ${{ steps.access.outputs.access_policy_present }}
           ACCESS_POLICY_SECRET_PERMS: ${{ steps.access.outputs.access_policy_secret_perms }}
+          ACR_MODE: ${{ steps.access.outputs.acr_role_assignment_mode }}
+          ACR_PERMISSION_TARGET: ${{ steps.access.outputs.acr_permission_target }}
           ACR_PULL_EFFECTIVE: ${{ steps.access.outputs.acr_pull_effective }}
           ACR_PULL_CONDITIONAL: ${{ steps.access.outputs.acr_pull_conditional }}
           ACR_ROLE_NAMES: ${{ steps.access.outputs.acr_role_names }}
           ACR_ROLE_SCOPES: ${{ steps.access.outputs.acr_role_scopes }}
         run: |
           {
-            echo '## Production system-identity access boundary v2'
+            echo '## Production system-identity access boundary v3'
             echo '- Azure mutation performed: no'
             echo "- Key Vault access model: $KEY_VAULT_ACCESS_MODEL"
             echo "- Key Vault secret get effective: $KEY_VAULT_EFFECTIVE"
@@ -326,6 +345,8 @@ jobs:
             echo "- Key Vault qualifying scopes: $KEY_VAULT_ROLE_SCOPES"
             echo "- Key Vault access policy present: $ACCESS_POLICY_PRESENT"
             echo "- Key Vault access-policy secret permissions: $ACCESS_POLICY_SECRET_PERMS"
+            echo "- ACR role assignment mode: $ACR_MODE"
+            echo "- ACR permission target: $ACR_PERMISSION_TARGET"
             echo "- ACR pull effective: $ACR_PULL_EFFECTIVE"
             echo "- ACR conditional-only grant: $ACR_PULL_CONDITIONAL"
             echo "- ACR qualifying roles: $ACR_ROLE_NAMES"
