@@ -13,11 +13,10 @@ const TOOL_NAME = 'dsg.governance.preflight';
 const TOOL = {
   name: TOOL_NAME,
   description:
-    'Verify an existing agent action against an approved DSG plan. Observe mode records without blocking; Enforce mode blocks only out-of-plan actions or missing execution permission. Unsupported claims remain UNVERIFIED without blocking a plan-authorized action.',
+    'Verify an existing agent action against an approved DSG plan. The organization owns Observe/Enforce mode; the agent cannot change it. Unsupported claims remain UNVERIFIED without blocking a plan-authorized action.',
   inputSchema: {
     type: 'object',
     properties: {
-      mode: { type: 'string', enum: ['observe', 'enforce'] },
       eventId: { type: 'string' },
       planHash: { type: 'string', pattern: '^[0-9a-fA-F]{64}$' },
       agentId: { type: 'string' },
@@ -38,7 +37,6 @@ const TOOL = {
       evidenceRefs: { type: 'array', items: { type: 'string' } },
     },
     required: [
-      'mode',
       'eventId',
       'planHash',
       'agentId',
@@ -108,6 +106,7 @@ export async function GET() {
     transport: 'MCP JSON-RPC over HTTP',
     tools: [TOOL],
     modes: ['observe', 'enforce'],
+    modeAuthority: 'DSG organization setting; callers cannot override mode',
     statuses: ['PASS', 'BLOCKED', 'WAITING_PERMISSION', 'UNVERIFIED'],
     truthBoundary:
       'Observe never blocks. Enforce blocks out-of-plan or unauthorized execution. UNVERIFIED blocks unsupported claims, not plan-authorized actions.',
