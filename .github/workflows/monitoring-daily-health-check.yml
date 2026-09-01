@@ -8,8 +8,7 @@ on:
     - cron: '0 9 * * *' # 9 AM UTC daily
   workflow_dispatch:
 
-permissions:
-  contents: read
+permissions: write-all
 
 jobs:
   validate-contract:
