@@ -29,6 +29,7 @@ const SECTIONS: NavSection[] = [
     id: 'govern',
     label: 'Govern',
     items: [
+      { href: '/dashboard/governance-live', label: 'Governance Live' },
       { href: '/approvals', label: 'Approvals' },
       { href: '/dashboard/audit', label: 'Audit' },
       { href: '/dashboard/policies', label: 'Policies' },
