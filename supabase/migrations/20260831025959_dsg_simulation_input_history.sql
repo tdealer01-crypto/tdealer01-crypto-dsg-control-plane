@@ -32,7 +32,7 @@ create index if not exists dsg_simulation_input_history_batch_idx
   on public.dsg_simulation_input_history (batch_id, rank);
 
 comment on table public.dsg_simulation_input_history is
-  'Append-only provenance for research and live inputs prepared before deterministic DSG simulation. PDF evidence is stored in private bucket dsg-simulation-input-evidence.';
+  'Append-only provenance for research and live inputs prepared before deterministic DSG simulation.';
 
 alter table public.dsg_simulation_input_history enable row level security;
 
@@ -61,16 +61,3 @@ drop trigger if exists dsg_simulation_input_history_append_only on public.dsg_si
 create trigger dsg_simulation_input_history_append_only
 before update or delete on public.dsg_simulation_input_history
 for each row execute function public.block_dsg_simulation_input_history_mutation();
-
-insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values (
-  'dsg-simulation-input-evidence',
-  'dsg-simulation-input-evidence',
-  false,
-  10485760,
-  array['application/pdf','application/json','application/x-ndjson']
-)
-on conflict (id) do update set
-  public = excluded.public,
-  file_size_limit = excluded.file_size_limit,
-  allowed_mime_types = excluded.allowed_mime_types;

@@ -5,9 +5,4 @@ CREATE TABLE IF NOT EXISTS public.dsg_governance_settings (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-
 ALTER TABLE public.dsg_governance_settings ENABLE ROW LEVEL SECURITY;
-
--- Runtime reads/writes are server-side only. No anon/authenticated policies are
--- created because the API resolves org membership and role before using the
--- backend service credential.
