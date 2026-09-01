@@ -1,6 +1,9 @@
 name: Daily Health Check
 
 on:
+  pull_request:
+    paths:
+      - '.github/workflows/monitoring-daily-health-check.yml'
   schedule:
     - cron: '0 9 * * *' # 9 AM UTC daily
   workflow_dispatch:
@@ -9,7 +12,29 @@ permissions:
   contents: read
 
 jobs:
+  validate-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Azure monitoring contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          file='.github/workflows/monitoring-daily-health-check.yml'
+          grep -Fq 'MONITORING_URL: https://dsg-control-plane.azurewebsites.net' "$file"
+          grep -Fq 'MONITORING_API_KEY_REQUIRED' "$file"
+          grep -Fq 'MONITORING_ORG_ID_REQUIRED' "$file"
+          grep -Fq 'Slack webhook is not configured; skipping optional notification.' "$file"
+          grep -Fq -- '--fail-with-body' "$file"
+          grep -Fq '.data.sync_report.health_score >= 80' "$file"
+          if grep -Eq 'secrets\.PRODUCTION_URL|vercel\.app|vercel\.com' "$file"; then
+            echo '::error::Daily monitoring must not depend on the retired Vercel/PRODUCTION_URL path.' >&2
+            exit 1
+          fi
+
   health-check:
+    needs: validate-contract
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
