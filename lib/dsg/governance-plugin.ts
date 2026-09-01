@@ -3,15 +3,14 @@ import type { UnifiedAuthContext } from '@/lib/mcp/unified-auth';
 import { getSupabaseAdmin } from '@/lib/supabase-server';
 import { lookupPlanContract } from './plan-contract-repository';
 import { evaluatePlanAlignment } from './plan-alignment-gate';
+import { getGovernanceMode, type GovernanceMode } from './governance-settings';
 import type { AgentActionType } from './agent-command-gate';
 import type { HermesActionEvent } from './plan-scope-contract';
 
-export type GovernanceMode = 'observe' | 'enforce';
 export type GovernanceStatus = 'PASS' | 'BLOCKED' | 'WAITING_PERMISSION' | 'UNVERIFIED';
 export type GovernanceRiskLevel = 'low' | 'medium' | 'high' | 'critical';
 
 export interface GovernancePreflightInput {
-  mode: GovernanceMode;
   eventId: string;
   planHash: string;
   agentId: string;
@@ -68,7 +67,6 @@ function hasExecutionRole(auth: UnifiedAuthContext): boolean {
 }
 
 function validateInput(input: GovernancePreflightInput): string | null {
-  if (!['observe', 'enforce'].includes(input.mode)) return 'mode must be observe or enforce';
   if (!input.eventId) return 'eventId is required';
   if (!/^[0-9a-f]{64}$/i.test(input.planHash)) return 'planHash must be a 64-character SHA-256 hex string';
   if (!input.agentId) return 'agentId is required';
@@ -85,6 +83,7 @@ function validateInput(input: GovernancePreflightInput): string | null {
 async function appendAuditEvent(params: {
   auth: UnifiedAuthContext;
   input: GovernancePreflightInput;
+  mode: GovernanceMode;
   status: GovernanceStatus;
   policyAllowsAction: boolean;
   permissionPassed: boolean;
@@ -118,6 +117,7 @@ async function appendAuditEvent(params: {
       actionType: params.input.actionType,
       targetSystemId: params.input.targetSystemId,
       operationName: params.input.operationName,
+      mode: params.mode,
       status: params.status,
       policyAllowsAction: params.policyAllowsAction,
       permissionPassed: params.permissionPassed,
@@ -147,7 +147,7 @@ async function appendAuditEvent(params: {
         org_id: params.auth.orgId,
         auth_source: params.auth.source,
         roles: params.auth.roles,
-        mode: params.input.mode,
+        mode: params.mode,
         plan_hash: params.input.planHash,
         target_system_id: params.input.targetSystemId,
         operation_name: params.input.operationName,
@@ -182,6 +182,13 @@ export async function governAction(
 ): Promise<GovernancePreflightResult | { ok: false; error: string }> {
   const invalid = validateInput(input);
   if (invalid) return { ok: false, error: invalid };
+
+  let mode: GovernanceMode;
+  try {
+    mode = await getGovernanceMode(auth.orgId);
+  } catch {
+    return { ok: false, error: 'GOVERNANCE_MODE_UNAVAILABLE' };
+  }
 
   const contract = await lookupPlanContract(input.planHash, auth.orgId);
   const permissionPassed = hasExecutionRole(auth);
@@ -222,9 +229,7 @@ export async function governAction(
     planDecision = alignment.decision;
     planReasons = alignment.reasons;
     alignmentDecisionHash = alignment.decisionHash;
-    policyAllowsAction =
-      alignment.decision === 'PLAN_MATCHED_ALLOW_AUDIT' ||
-      alignment.decision === 'CLAIM_EVIDENCE_DENY';
+    policyAllowsAction = alignment.canProceed;
     claimAllowed = alignment.claimAllowed;
   }
 
@@ -248,10 +253,10 @@ export async function governAction(
   // Observe mode never blocks the downstream call. Enforce mode blocks only
   // out-of-plan actions or callers without DSG execution permission.
   // Unsupported claims remain UNVERIFIED but do not stop a plan-authorized action.
-  const shouldBlock = input.mode === 'enforce' && (status === 'BLOCKED' || status === 'WAITING_PERMISSION');
+  const shouldBlock = mode === 'enforce' && (status === 'BLOCKED' || status === 'WAITING_PERMISSION');
   const decisionHash = sha256({
     alignmentDecisionHash,
-    mode: input.mode,
+    mode,
     status,
     permissionPassed,
     policyAllowsAction,
@@ -261,6 +266,7 @@ export async function governAction(
   const audit = await appendAuditEvent({
     auth,
     input,
+    mode,
     status,
     policyAllowsAction,
     permissionPassed,
@@ -274,7 +280,7 @@ export async function governAction(
 
   return {
     ok: true,
-    mode: input.mode,
+    mode,
     status,
     policyAllowsAction,
     shouldBlock,
