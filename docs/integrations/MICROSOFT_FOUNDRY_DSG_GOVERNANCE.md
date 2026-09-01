@@ -94,6 +94,10 @@ A transparent target proxy / MCP tool mirroring layer would be a separate execut
 - `public.dsg_governance_settings` was added with RLS enabled so mode is owned server-side.
 - Existing mock/scaffold `lib/spine/tool-handlers.ts` is not used by this integration.
 
+## Production activation
+
+Production remains bound to the repository's governed Azure App Service promotion path. The deployment trigger must build and verify the exact current `main` SHA; a green source CI run alone is not production evidence. This integration is eligible for production activation only after the governed deployment workflow verifies the Azure staging slot, image digest, runtime probes, proof persistence, and post-swap SHA/digest identity.
+
 ## Merge / production truth rule
 
 Do not claim Microsoft Foundry E2E PASS from source code or database migration alone.
