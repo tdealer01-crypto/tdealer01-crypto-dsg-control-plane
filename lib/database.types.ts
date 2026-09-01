@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.17"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -958,6 +958,53 @@ export type Database = {
           workspace_key?: string
         }
         Relationships: []
+      }
+      agentic_deployment_records: {
+        Row: {
+          baseline_commit: string
+          candidate_commit: string
+          deployed_at: string
+          deployment_id: string
+          deployment_slot: string
+          image_digest: string | null
+          promotion_id: string
+          provider: string
+          target_repository: string
+          workflow_run_uri: string
+        }
+        Insert: {
+          baseline_commit: string
+          candidate_commit: string
+          deployed_at?: string
+          deployment_id: string
+          deployment_slot: string
+          image_digest?: string | null
+          promotion_id: string
+          provider: string
+          target_repository: string
+          workflow_run_uri: string
+        }
+        Update: {
+          baseline_commit?: string
+          candidate_commit?: string
+          deployed_at?: string
+          deployment_id?: string
+          deployment_slot?: string
+          image_digest?: string | null
+          promotion_id?: string
+          provider?: string
+          target_repository?: string
+          workflow_run_uri?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agentic_deployment_records_promotion_id_fkey"
+            columns: ["promotion_id"]
+            isOneToOne: false
+            referencedRelation: "agentic_promotion_receipts"
+            referencedColumns: ["promotion_id"]
+          },
+        ]
       }
       agentic_evolution_baselines: {
         Row: {
@@ -3448,6 +3495,92 @@ export type Database = {
           },
         ]
       }
+      dsg_business_strategy_evaluations: {
+        Row: {
+          created_at: string
+          decision: string
+          decision_sha256: string
+          final_score: number
+          id: number
+          input_sha256: string
+          project_id: string
+          remark: string
+          rule_version: string
+        }
+        Insert: {
+          created_at?: string
+          decision: string
+          decision_sha256: string
+          final_score: number
+          id?: number
+          input_sha256: string
+          project_id: string
+          remark: string
+          rule_version: string
+        }
+        Update: {
+          created_at?: string
+          decision?: string
+          decision_sha256?: string
+          final_score?: number
+          id?: number
+          input_sha256?: string
+          project_id?: string
+          remark?: string
+          rule_version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dsg_business_strategy_evaluations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_business_strategy_projects"
+            referencedColumns: ["project_id"]
+          },
+        ]
+      }
+      dsg_business_strategy_projects: {
+        Row: {
+          created_at: string
+          evaluation_status: string
+          has_human_oversight: boolean
+          has_watermark_system: boolean
+          is_agentic: boolean
+          is_high_impact: boolean
+          is_open_ecosystem: boolean
+          project_id: string
+          project_name: string
+          relies_on_benchmarks_only: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          evaluation_status?: string
+          has_human_oversight: boolean
+          has_watermark_system?: boolean
+          is_agentic: boolean
+          is_high_impact?: boolean
+          is_open_ecosystem: boolean
+          project_id: string
+          project_name: string
+          relies_on_benchmarks_only?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          evaluation_status?: string
+          has_human_oversight?: boolean
+          has_watermark_system?: boolean
+          is_agentic?: boolean
+          is_high_impact?: boolean
+          is_open_ecosystem?: boolean
+          project_id?: string
+          project_name?: string
+          relies_on_benchmarks_only?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       dsg_completion_reports: {
         Row: {
           audit_export_id: string | null
@@ -3964,6 +4097,62 @@ export type Database = {
         }
         Relationships: []
       }
+      dsg_encoding_proofs: {
+        Row: {
+          created_at: string
+          encoding_hash: string
+          encoding_type: string
+          idempotency_key: string
+          nonce: string
+          organization_id: string
+          previous_proof_hash: string
+          problem_id: string
+          proof: Json
+          proof_hash: string
+          proof_id: string
+          request_hash: string
+          sequence: number
+        }
+        Insert: {
+          created_at?: string
+          encoding_hash: string
+          encoding_type: string
+          idempotency_key: string
+          nonce: string
+          organization_id: string
+          previous_proof_hash: string
+          problem_id: string
+          proof: Json
+          proof_hash: string
+          proof_id: string
+          request_hash: string
+          sequence?: never
+        }
+        Update: {
+          created_at?: string
+          encoding_hash?: string
+          encoding_type?: string
+          idempotency_key?: string
+          nonce?: string
+          organization_id?: string
+          previous_proof_hash?: string
+          problem_id?: string
+          proof?: Json
+          proof_hash?: string
+          proof_id?: string
+          request_hash?: string
+          sequence?: never
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dsg_encoding_proofs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dsg_evidence_items: {
         Row: {
           content_hash: string
@@ -4314,6 +4503,30 @@ export type Database = {
           metadata?: Json
           org_id?: string
           reason?: string | null
+        }
+        Relationships: []
+      }
+      dsg_governance_settings: {
+        Row: {
+          created_at: string
+          mode: string
+          org_id: string
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          created_at?: string
+          mode?: string
+          org_id: string
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          created_at?: string
+          mode?: string
+          org_id?: string
+          updated_at?: string
+          updated_by?: string
         }
         Relationships: []
       }
@@ -5187,6 +5400,63 @@ export type Database = {
         }
         Relationships: []
       }
+      dsg_plan_contracts: {
+        Row: {
+          agent_id: string
+          allowed_action_types: Json
+          allowed_operations: Json
+          allowed_target_systems: Json
+          approved_at: string
+          approved_by: string
+          claim_boundary: string
+          created_at: string
+          evidence_requirements: Json
+          expires_at: string | null
+          id: string
+          max_risk_level: string
+          plan_hash: string
+          plan_id: string
+          scope_hash: string
+          workspace_id: string
+        }
+        Insert: {
+          agent_id: string
+          allowed_action_types?: Json
+          allowed_operations?: Json
+          allowed_target_systems?: Json
+          approved_at: string
+          approved_by: string
+          claim_boundary: string
+          created_at?: string
+          evidence_requirements: Json
+          expires_at?: string | null
+          id?: string
+          max_risk_level: string
+          plan_hash: string
+          plan_id: string
+          scope_hash: string
+          workspace_id: string
+        }
+        Update: {
+          agent_id?: string
+          allowed_action_types?: Json
+          allowed_operations?: Json
+          allowed_target_systems?: Json
+          approved_at?: string
+          approved_by?: string
+          claim_boundary?: string
+          created_at?: string
+          evidence_requirements?: Json
+          expires_at?: string | null
+          id?: string
+          max_risk_level?: string
+          plan_hash?: string
+          plan_id?: string
+          scope_hash?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       dsg_production_flow_proofs: {
         Row: {
           checked_by: string
@@ -5643,6 +5913,75 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      dsg_simulation_input_history: {
+        Row: {
+          batch_id: string
+          created_at: string
+          error: string | null
+          excerpt: string
+          fetched_at: string
+          id: number
+          observation_id: string
+          pdf_file: string
+          pdf_sha256: string
+          published_at: string | null
+          publisher: string
+          query: string
+          rank: number
+          run_attempt: string
+          run_id: string
+          score: number
+          source_sha256: string
+          source_url: string
+          status: string
+          status_code: number
+        }
+        Insert: {
+          batch_id: string
+          created_at?: string
+          error?: string | null
+          excerpt: string
+          fetched_at: string
+          id?: number
+          observation_id: string
+          pdf_file: string
+          pdf_sha256: string
+          published_at?: string | null
+          publisher: string
+          query: string
+          rank: number
+          run_attempt: string
+          run_id: string
+          score: number
+          source_sha256: string
+          source_url: string
+          status: string
+          status_code: number
+        }
+        Update: {
+          batch_id?: string
+          created_at?: string
+          error?: string | null
+          excerpt?: string
+          fetched_at?: string
+          id?: number
+          observation_id?: string
+          pdf_file?: string
+          pdf_sha256?: string
+          published_at?: string | null
+          publisher?: string
+          query?: string
+          rank?: number
+          run_attempt?: string
+          run_id?: string
+          score?: number
+          source_sha256?: string
+          source_url?: string
+          status?: string
+          status_code?: number
+        }
+        Relationships: []
       }
       dsg_system_components: {
         Row: {
@@ -11451,6 +11790,18 @@ export type Database = {
           uses_mock_state: boolean
         }
         Returns: Json
+      }
+      dsg_commit_business_strategy_evaluation: {
+        Args: {
+          p_decision: string
+          p_decision_sha256: string
+          p_final_score: number
+          p_input_sha256: string
+          p_project_id: string
+          p_remark: string
+          p_rule_version: string
+        }
+        Returns: undefined
       }
       dsg_commit_evolution_baseline: {
         Args: {
