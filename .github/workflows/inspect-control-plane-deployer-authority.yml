@@ -20,7 +20,6 @@ concurrency:
 
 jobs:
   validate-contract:
-    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,44 +28,90 @@ jobs:
         run: |
           set -euo pipefail
           file='.github/workflows/inspect-control-plane-deployer-authority.yml'
-          inspect_block="$(awk '/^  inspect-authority:/{found=1} found{print}' "$file")"
-          mutation_re='(^|[^[:alnum:]_])az[[:space:]][^[:cntrl:]]*[[:space:]](create|update|set|delete|assign|add|remove)([[:space:]]|$)'
+          python3 - "$file" <<'PY'
+          from pathlib import Path
+          import re
+          import sys
 
-          grep -Fq 'Microsoft.Authorization/permissions' <<<"$inspect_block"
-          grep -Fq 'nextLink' <<<"$inspect_block"
-          grep -Fq -- '--include-groups' <<<"$inspect_block"
-          grep -Fq -- '--include-inherited' <<<"$inspect_block"
-          grep -Fq -- '--scope "$scope"' <<<"$inspect_block"
-          grep -Fq 'role definition' <<<"$inspect_block"
-          grep -Fq 'microsoft.managedidentity/userassignedidentities/write' <<<"$inspect_block"
-          grep -Fq 'microsoft.managedidentity/userassignedidentities/assign/action' <<<"$inspect_block"
-          grep -Fq 'microsoft.web/sites/write' <<<"$inspect_block"
-          grep -Fq 'microsoft.web/sites/config/write' <<<"$inspect_block"
-          grep -Fq 'microsoft.web/serverfarms/join/action' <<<"$inspect_block"
-          grep -Fq 'microsoft.authorization/roleassignments/write' <<<"$inspect_block"
-          grep -Fq 'microsoft.keyvault/vaults/accesspolicies/write' <<<"$inspect_block"
-          grep -Fq 'steps.publish.outcome' <<<"$inspect_block"
+          path = Path(sys.argv[1])
+          text = path.read_text(encoding='utf-8')
+          marker = '\n  inspect-authority:'
+          if marker not in text:
+              raise SystemExit('inspect-authority job missing')
+          block = text.split(marker, 1)[1]
 
-          for sample in \
-            'az identity create -g rg -n uami' \
-            'az role assignment create --role Reader --scope /x' \
-            'x="$(az webapp config appsettings set -g rg -n app --settings A=B)"' \
-            'az resource update --ids /x'; do
-            if ! grep -Eq "$mutation_re" <<<"$sample"; then
-              echo "::error::Mutation guard missed prohibited sample: $sample" >&2
-              exit 1
-            fi
-          done
-          if grep -Eq "$mutation_re" <<< 'az role assignment list --scope /x'; then
-            echo '::error::Mutation guard rejected a read-only Azure command.' >&2
-            exit 1
-          fi
-          if grep -Eq "$mutation_re" <<<"$inspect_block" || grep -Fq 'AZURE_CLIENT_SECRET' <<<"$inspect_block"; then
-            echo '::error::Deployer authority inspection must remain Azure-read-only and secretless.' >&2
-            exit 1
-          fi
+          required = [
+              'Microsoft.Authorization/permissions',
+              'nextLink',
+              '--include-groups',
+              '--include-inherited',
+              '--scope "$scope"',
+              'role definition',
+              'microsoft.managedidentity/userassignedidentities/write',
+              'microsoft.managedidentity/userassignedidentities/assign/action',
+              'microsoft.web/sites/write',
+              'microsoft.web/sites/config/write',
+              'microsoft.web/serverfarms/join/action',
+              'microsoft.authorization/roleassignments/write',
+              'microsoft.keyvault/vaults/accesspolicies/write',
+              'steps.publish.outcome',
+          ]
+          missing = [token for token in required if token not in block]
+          if missing:
+              raise SystemExit(f'missing authority proof markers: {missing}')
+
+          normalized = re.sub(r'\\\s*\n', ' ', block)
+          if 'AZURE_CLIENT_SECRET' in normalized:
+              raise SystemExit('Azure client secret is forbidden')
+
+          mutating = re.compile(
+              r'\baz\b[^\n;&|]*\b(create|update|set|delete|assign|add|remove)\b',
+              re.IGNORECASE,
+          )
+          rest_method = re.compile(
+              r'\baz\s+rest\b[^\n;&|]*--method(?:=|\s+)([A-Za-z]+)',
+              re.IGNORECASE,
+          )
+
+          def assert_read_only(sample: str) -> None:
+              normalized_sample = re.sub(r'\\\s*\n', ' ', sample)
+              if mutating.search(normalized_sample):
+                  raise SystemExit(f'read-only sample rejected: {sample!r}')
+              match = rest_method.search(normalized_sample)
+              if match and match.group(1).upper() != 'GET':
+                  raise SystemExit(f'non-GET az rest sample rejected: {sample!r}')
+
+          def assert_mutating(sample: str) -> None:
+              normalized_sample = re.sub(r'\\\s*\n', ' ', sample)
+              if not mutating.search(normalized_sample):
+                  raise SystemExit(f'mutation guard missed sample: {sample!r}')
+
+          for sample in (
+              'az identity create -g rg -n uami',
+              'az role assignment create --role Reader --scope /x',
+              'az webapp config appsettings set -g rg -n app --settings A=B',
+              'az resource update --ids /x',
+              'az identity \\\n  create -g rg -n uami',
+              'az role assignment \\\n  create --role Reader --scope /x',
+          ):
+              assert_mutating(sample)
+
+          for sample in (
+              'az role assignment list --scope /x',
+              'az identity show -g rg -n uami',
+              'az rest --method GET --url https://management.azure.com/x',
+          ):
+              assert_read_only(sample)
+
+          if mutating.search(normalized):
+              raise SystemExit('deployer authority job contains a mutating Azure CLI command')
+          for match in rest_method.finditer(normalized):
+              if match.group(1).upper() != 'GET':
+                  raise SystemExit('deployer authority job contains a non-GET az rest call')
+          PY
 
   inspect-authority:
+    needs: validate-contract
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     environment: prod
@@ -88,6 +133,7 @@ jobs:
           client_id="$(jq -er '.clientId' "$file")"
           tenant_id="$(jq -er '.tenantId' "$file")"
           subscription_id="$(jq -er '.subscriptionId' "$file")"
+          identity_name="$(jq -er '.azureIdentityName' "$file")"
           test "$(jq -er '.resourceGroup' "$file")" = "$AZURE_RESOURCE_GROUP"
           test "$(jq -er '.federatedSubject' "$file")" = 'repo:tdealer01-crypto/tdealer01-crypto-dsg-control-plane:environment:prod'
           echo "::add-mask::$client_id"
@@ -96,6 +142,7 @@ jobs:
           echo "client_id=$client_id" >> "$GITHUB_OUTPUT"
           echo "tenant_id=$tenant_id" >> "$GITHUB_OUTPUT"
           echo "subscription_id=$subscription_id" >> "$GITHUB_OUTPUT"
+          echo "identity_name=$identity_name" >> "$GITHUB_OUTPUT"
 
       - name: Publish pending authority statuses
         id: pending
@@ -132,32 +179,18 @@ jobs:
       - name: Inspect effective deployer authority
         id: authority
         shell: bash
+        env:
+          AZURE_IDENTITY_NAME: ${{ steps.identity.outputs.identity_name }}
         run: |
           set -euo pipefail
           umask 077
 
+          PRINCIPAL_ID="$(az identity show -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_IDENTITY_NAME" --query principalId -o tsv)"
           RG_ID="$(az group show -n "$AZURE_RESOURCE_GROUP" --query id -o tsv)"
           VAULT_ID="$(az keyvault show -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_KEY_VAULT_NAME" --query id -o tsv)"
           ACR_ID="$(az acr show -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_ACR_NAME" --query id -o tsv)"
           PLAN_ID="$(az webapp show -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" --query serverFarmId -o tsv)"
-          test -n "$RG_ID" && test -n "$VAULT_ID" && test -n "$ACR_ID" && test -n "$PLAN_ID"
-
-          ARM_TOKEN="$(az account get-access-token --resource https://management.azure.com/ --query accessToken -o tsv)"
-          test -n "$ARM_TOKEN"
-          PRINCIPAL_ID="$(TOKEN="$ARM_TOKEN" python3 - <<'PY'
-          import base64, json, os
-          token = os.environ['TOKEN']
-          payload_part = token.split('.')[1]
-          payload_part += '=' * (-len(payload_part) % 4)
-          payload = json.loads(base64.urlsafe_b64decode(payload_part.encode()))
-          oid = payload.get('oid') or payload.get('sub')
-          if not oid:
-              raise SystemExit('OID claim not found in ARM token')
-          print(oid)
-          PY
-          )"
-          unset ARM_TOKEN
-          test -n "$PRINCIPAL_ID"
+          test -n "$PRINCIPAL_ID" && test -n "$RG_ID" && test -n "$VAULT_ID" && test -n "$ACR_ID" && test -n "$PLAN_ID"
           echo "::add-mask::$PRINCIPAL_ID"
 
           fetch_permissions() {
@@ -211,7 +244,9 @@ jobs:
 
           export VAULT_ROLE_CONTEXT ACR_ROLE_CONTEXT
           python3 - <<'PY' > /tmp/authority.json
-          import fnmatch, json, os
+          import fnmatch
+          import json
+          import os
 
           def load(path):
               with open(path, encoding='utf-8') as fh:
@@ -385,7 +420,7 @@ jobs:
           KV_POLICY_WRITE: ${{ steps.authority.outputs.kv_access_policy_write }}
         run: |
           {
-            echo '## GitHub OIDC deployer authority proof v2'
+            echo '## GitHub OIDC deployer authority proof'
             echo '- Azure mutation performed: no'
             echo "- create UAMI: $UAMI_WRITE"
             echo "- assign UAMI: $UAMI_ASSIGN"
