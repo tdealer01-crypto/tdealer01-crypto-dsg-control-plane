@@ -1,0 +1,175 @@
+name: Inspect Azure Resource Topology
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/inspect-azure-resource-topology.yml'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/inspect-azure-resource-topology.yml'
+
+permissions:
+  contents: read
+  id-token: write
+  statuses: write
+
+jobs:
+  validate-contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate read-only topology inspection
+        shell: bash
+        run: |
+          set -euo pipefail
+          file='.github/workflows/inspect-azure-resource-topology.yml'
+          block="$(awk '/^  inspect-topology:/{found=1} found{print}' "$file")"
+          grep -Fq 'az keyvault list' <<<"$block"
+          grep -Fq 'az acr list' <<<"$block"
+          grep -Fq 'vars.AZURE_KEY_VAULT_NAME' "$file"
+          grep -Fq 'vars.AZURE_RESOURCE_GROUP' "$file"
+          grep -Fq 'azure/topology-keyvault' <<<"$block"
+          grep -Fq 'azure/topology-acr' <<<"$block"
+          if grep -Eq '(^|[^[:alnum:]_])az[[:space:]][^[:cntrl:]]*[[:space:]](create|update|set|delete|assign|add|remove)([[:space:]]|$)' <<<"$block"; then
+            echo '::error::Topology inspector must remain read-only.' >&2
+            exit 1
+          fi
+
+  inspect-topology:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: prod
+    timeout-minutes: 10
+    env:
+      AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP || 'rg-t.dealer01-0468' }}
+      AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME || 'dsg-control-plane' }}
+      AZURE_KEY_VAULT_NAME: ${{ vars.AZURE_KEY_VAULT_NAME || 'dsg-kv-tdealer01-0468' }}
+      AZURE_ACR_NAME: ${{ vars.AZURE_ACR_NAME || 'dsgcp50aaef839' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve proven Azure GitHub OIDC identity
+        id: identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          file='config/azure-github-oidc-identity.json'
+          client_id="$(jq -er '.clientId' "$file")"
+          tenant_id="$(jq -er '.tenantId' "$file")"
+          subscription_id="$(jq -er '.subscriptionId' "$file")"
+          test "$(jq -er '.federatedSubject' "$file")" = 'repo:tdealer01-crypto/tdealer01-crypto-dsg-control-plane:environment:prod'
+          echo "::add-mask::$client_id"
+          echo "::add-mask::$tenant_id"
+          echo "::add-mask::$subscription_id"
+          echo "client_id=$client_id" >> "$GITHUB_OUTPUT"
+          echo "tenant_id=$tenant_id" >> "$GITHUB_OUTPUT"
+          echo "subscription_id=$subscription_id" >> "$GITHUB_OUTPUT"
+
+      - name: Publish pending topology statuses
+        continue-on-error: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for context in azure/topology-keyvault azure/topology-acr azure/topology-webapp; do
+            gh api --method POST -H 'Accept: application/vnd.github+json' \
+              "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+              -f state='pending' -f context="$context" \
+              -f description='read-only Azure resource discovery in progress' || true
+          done
+
+      - name: Login to Azure with GitHub OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ steps.identity.outputs.client_id }}
+          tenant-id: ${{ steps.identity.outputs.tenant_id }}
+          subscription-id: ${{ steps.identity.outputs.subscription_id }}
+
+      - name: Discover visible Azure resource topology
+        id: topology
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+
+          az keyvault list --query '[].{name:name,resourceGroup:resourceGroup,id:id}' -o json > /tmp/vaults.json
+          az acr list --query '[].{name:name,resourceGroup:resourceGroup,id:id}' -o json > /tmp/acrs.json
+          az webapp list --query '[].{name:name,resourceGroup:resourceGroup,id:id,serverFarmId:serverFarmId}' -o json > /tmp/webapps.json
+
+          jq -c --arg configured "$AZURE_KEY_VAULT_NAME" '{configured:$configured,exact:[.[]|select((.name|ascii_downcase)==($configured|ascii_downcase))],all:[.[]|{name,resourceGroup,id}]}' /tmp/vaults.json > /tmp/vault-result.json
+          jq -c --arg configured "$AZURE_ACR_NAME" '{configured:$configured,exact:[.[]|select((.name|ascii_downcase)==($configured|ascii_downcase))],all:[.[]|{name,resourceGroup,id}]}' /tmp/acrs.json > /tmp/acr-result.json
+          jq -c --arg configured "$AZURE_WEBAPP_NAME" --arg rg "$AZURE_RESOURCE_GROUP" '{configured:$configured,configuredResourceGroup:$rg,exact:[.[]|select((.name|ascii_downcase)==($configured|ascii_downcase))],all:[.[]|{name,resourceGroup,id,serverFarmId}]}' /tmp/webapps.json > /tmp/webapp-result.json
+
+          for kind in vault acr webapp; do
+            count="$(jq -r '.exact|length' "/tmp/${kind}-result.json")"
+            all_count="$(jq -r '.all|length' "/tmp/${kind}-result.json")"
+            exact_name="$(jq -r '.exact[0].name // empty' "/tmp/${kind}-result.json")"
+            exact_rg="$(jq -r '.exact[0].resourceGroup // empty' "/tmp/${kind}-result.json")"
+            all_summary="$(jq -r '[.all[] | (.name + "@" + .resourceGroup)] | join(",")' "/tmp/${kind}-result.json")"
+            echo "${kind}_exact_count=$count" >> "$GITHUB_OUTPUT"
+            echo "${kind}_visible_count=$all_count" >> "$GITHUB_OUTPUT"
+            echo "${kind}_exact_name=$exact_name" >> "$GITHUB_OUTPUT"
+            echo "${kind}_exact_rg=$exact_rg" >> "$GITHUB_OUTPUT"
+            {
+              echo "${kind}_all<<EOF"
+              echo "$all_summary"
+              echo EOF
+            } >> "$GITHUB_OUTPUT"
+          done
+
+          rm -f /tmp/vaults.json /tmp/acrs.json /tmp/webapps.json /tmp/vault-result.json /tmp/acr-result.json /tmp/webapp-result.json
+
+      - name: Publish topology evidence
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          KV_COUNT: ${{ steps.topology.outputs.vault_exact_count }}
+          KV_VISIBLE: ${{ steps.topology.outputs.vault_visible_count }}
+          KV_NAME: ${{ steps.topology.outputs.vault_exact_name }}
+          KV_RG: ${{ steps.topology.outputs.vault_exact_rg }}
+          KV_ALL: ${{ steps.topology.outputs.vault_all }}
+          ACR_COUNT: ${{ steps.topology.outputs.acr_exact_count }}
+          ACR_VISIBLE: ${{ steps.topology.outputs.acr_visible_count }}
+          ACR_NAME_OUT: ${{ steps.topology.outputs.acr_exact_name }}
+          ACR_RG: ${{ steps.topology.outputs.acr_exact_rg }}
+          ACR_ALL: ${{ steps.topology.outputs.acr_all }}
+          WEBAPP_COUNT: ${{ steps.topology.outputs.webapp_exact_count }}
+          WEBAPP_NAME_OUT: ${{ steps.topology.outputs.webapp_exact_name }}
+          WEBAPP_RG: ${{ steps.topology.outputs.webapp_exact_rg }}
+        run: |
+          set -euo pipefail
+          publish() {
+            local context="$1" count="$2" desc="$3"
+            local state=failure
+            [[ "$count" == 1 ]] && state=success
+            gh api --method POST -H 'Accept: application/vnd.github+json' \
+              "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+              -f state="$state" -f context="$context" -f description="${desc:0:140}"
+          }
+          kv_desc="exact=$KV_COUNT visible=$KV_VISIBLE"
+          [[ "$KV_COUNT" != 1 ]] || kv_desc="$kv_desc $KV_NAME@$KV_RG"
+          [[ "$KV_COUNT" == 1 || -z "$KV_ALL" ]] || kv_desc="$kv_desc candidates=$KV_ALL"
+          acr_desc="exact=$ACR_COUNT visible=$ACR_VISIBLE"
+          [[ "$ACR_COUNT" != 1 ]] || acr_desc="$acr_desc $ACR_NAME_OUT@$ACR_RG"
+          [[ "$ACR_COUNT" == 1 || -z "$ACR_ALL" ]] || acr_desc="$acr_desc candidates=$ACR_ALL"
+          webapp_desc="exact=$WEBAPP_COUNT $WEBAPP_NAME_OUT@$WEBAPP_RG"
+          publish azure/topology-keyvault "$KV_COUNT" "$kv_desc"
+          publish azure/topology-acr "$ACR_COUNT" "$acr_desc"
+          publish azure/topology-webapp "$WEBAPP_COUNT" "$webapp_desc"
+
+      - name: Record topology summary
+        shell: bash
+        env:
+          KV_ALL: ${{ steps.topology.outputs.vault_all }}
+          ACR_ALL: ${{ steps.topology.outputs.acr_all }}
+          WEBAPP_RG: ${{ steps.topology.outputs.webapp_exact_rg }}
+        run: |
+          {
+            echo '## Azure resource topology (metadata only)'
+            echo '- Azure mutation performed: no'
+            echo "- visible Key Vaults: $KV_ALL"
+            echo "- visible ACRs: $ACR_ALL"
+            echo "- resolved Web App resource group: $WEBAPP_RG"
+          } >> "$GITHUB_STEP_SUMMARY"
