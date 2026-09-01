@@ -1,0 +1,94 @@
+name: Repair Azure Read-only Guards
+
+on:
+  push:
+    branches:
+      - fix/azure-proof-review-hotfix
+    paths:
+      - '.github/workflows/repair-azure-readonly-guards.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/azure-proof-review-hotfix
+
+      - name: Patch only the read-only validator guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          files = [
+              Path('.github/workflows/inspect-control-plane-deployer-authority.yml'),
+              Path('.github/workflows/inspect-control-plane-runtime-access-v2.yml'),
+          ]
+          mutation_line = "          mutation_re='(^|[^[:alnum:]_])az[[:space:]][^[:cntrl:]]*[[:space:]](create|update|set|delete|assign|add|remove)([[:space:]]|$)'\n"
+          normalized_block = (
+              "          normalized_inspect_block=\"$(printf '%s\\n' \"$inspect_block\" | sed ':a;N;$!ba;s/\\\\\\n/ /g')\"\n"
+              + mutation_line
+          )
+          marker = "          if grep -Eq \"$mutation_re\" <<< 'az role assignment list --scope /x'; then\n"
+          multiline_test = (
+              "          multiline_sample=$'az identity \\\\\\n  create -g rg -n uami'\n"
+              "          normalized_sample=\"$(printf '%s\\n' \"$multiline_sample\" | sed ':a;N;$!ba;s/\\\\\\n/ /g')\"\n"
+              "          if ! grep -Eq \"$mutation_re\" <<<\"$normalized_sample\"; then\n"
+              "            echo '::error::Mutation guard missed a backslash-continued Azure mutation.' >&2\n"
+              "            exit 1\n"
+              "          fi\n"
+          )
+
+          for path in files:
+              text = path.read_text(encoding='utf-8')
+              if 'normalized_inspect_block=' in text:
+                  raise SystemExit(f'{path}: guard already normalized; refusing duplicate patch')
+              if text.count(mutation_line) != 1:
+                  raise SystemExit(f'{path}: expected exactly one mutation guard definition')
+              if text.count(marker) != 1:
+                  raise SystemExit(f'{path}: expected exactly one read-only self-test marker')
+              text = text.replace(mutation_line, normalized_block, 1)
+              text = text.replace(marker, multiline_test + marker, 1)
+              old = 'grep -Eq "$mutation_re" <<<"$inspect_block"'
+              if text.count(old) != 1:
+                  raise SystemExit(f'{path}: expected exactly one live guard evaluation')
+              text = text.replace(old, 'grep -Eq "$mutation_re" <<<"$normalized_inspect_block"', 1)
+              path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Verify exact patch scope and self-tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          changed="$(git diff --name-only | sort)"
+          expected=$'.github/workflows/inspect-control-plane-deployer-authority.yml\n.github/workflows/inspect-control-plane-runtime-access-v2.yml'
+          test "$changed" = "$expected" || {
+            echo '::error::Repair changed files outside the two inspector workflows.' >&2
+            printf 'Changed:\n%s\n' "$changed" >&2
+            exit 1
+          }
+          for file in \
+            .github/workflows/inspect-control-plane-deployer-authority.yml \
+            .github/workflows/inspect-control-plane-runtime-access-v2.yml; do
+            grep -Fq 'normalized_inspect_block=' "$file"
+            grep -Fq 'backslash-continued Azure mutation' "$file"
+            grep -Fq 'normalized_sample=' "$file"
+          done
+
+      - name: Commit repaired guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            .github/workflows/inspect-control-plane-deployer-authority.yml \
+            .github/workflows/inspect-control-plane-runtime-access-v2.yml
+          git commit -m 'fix(ops): reject multiline Azure mutations'
+          git push origin HEAD:fix/azure-proof-review-hotfix
