@@ -31,12 +31,12 @@ jobs:
           file='.github/workflows/inspect-control-plane-identity-access.yml'
           inspect_block="$(awk '/^  inspect-access:/{found=1} found{print}' "$file")"
           grep -Fq 'role assignment list' <<<"$inspect_block"
-          grep -Fq -- '--include-inherited true' <<<"$inspect_block"
+          grep -Fq -- '--include-inherited' <<<"$inspect_block"
           grep -Fq 'role definition' <<<"$inspect_block"
           grep -Fq 'dataActions' <<<"$inspect_block"
           grep -Fq 'notDataActions' <<<"$inspect_block"
-          grep -Fq 'Microsoft.KeyVault/vaults/secrets/getSecret/action' <<<"$inspect_block"
-          grep -Fq 'Microsoft.ContainerRegistry/registries/pull/read' <<<"$inspect_block"
+          grep -Fq 'microsoft.keyvault/vaults/secrets/getsecret/action' <<<"$inspect_block"
+          grep -Fq 'microsoft.containerregistry/registries/pull/read' <<<"$inspect_block"
           grep -Fq 'statuses/${GITHUB_SHA}' <<<"$inspect_block"
           grep -Fq 'dsg-kv-tdealer01-0468' <<<"$inspect_block"
           grep -Fq 'dsgcp50aaef839' <<<"$inspect_block"
@@ -103,7 +103,7 @@ jobs:
           az role assignment list \
             --assignee-object-id "$PRINCIPAL_ID" \
             --all \
-            --include-inherited true \
+            --include-inherited \
             -o json > /tmp/assignments.json
 
           : > /tmp/roledefs.jsonl
@@ -253,6 +253,7 @@ jobs:
           KEY_VAULT_EFFECTIVE: ${{ steps.access.outputs.key_vault_effective }}
           KEY_VAULT_CONDITIONAL: ${{ steps.access.outputs.key_vault_conditional }}
           KEY_VAULT_ROLE_NAMES: ${{ steps.access.outputs.key_vault_role_names }}
+          ACCESS_POLICY_SECRET_PERMS: ${{ steps.access.outputs.access_policy_secret_perms }}
           ACR_PULL_EFFECTIVE: ${{ steps.access.outputs.acr_pull_effective }}
           ACR_PULL_CONDITIONAL: ${{ steps.access.outputs.acr_pull_conditional }}
           ACR_ROLE_NAMES: ${{ steps.access.outputs.acr_role_names }}
@@ -263,7 +264,11 @@ jobs:
           kv_desc="model=$KEY_VAULT_ACCESS_MODEL; get=$KEY_VAULT_EFFECTIVE"
           if [[ "$KEY_VAULT_EFFECTIVE" == true ]]; then
             kv_state=success
-            [[ -z "$KEY_VAULT_ROLE_NAMES" ]] || kv_desc="$kv_desc; roles=$KEY_VAULT_ROLE_NAMES"
+            if [[ "$KEY_VAULT_ACCESS_MODEL" == rbac && -n "$KEY_VAULT_ROLE_NAMES" ]]; then
+              kv_desc="$kv_desc; roles=$KEY_VAULT_ROLE_NAMES"
+            elif [[ "$KEY_VAULT_ACCESS_MODEL" == access-policy ]]; then
+              kv_desc="$kv_desc; perms=$ACCESS_POLICY_SECRET_PERMS"
+            fi
           elif [[ "$KEY_VAULT_CONDITIONAL" == true ]]; then
             kv_desc="$kv_desc; conditional=unverified"
           fi
