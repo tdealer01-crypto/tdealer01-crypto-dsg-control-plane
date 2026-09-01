@@ -30,9 +30,13 @@ jobs:
           set -euo pipefail
           file='.github/workflows/inspect-control-plane-deployer-authority.yml'
           inspect_block="$(awk '/^  inspect-authority:/{found=1} found{print}' "$file")"
+          mutation_re='(^|[^[:alnum:]_])az[[:space:]][^[:cntrl:]]*[[:space:]](create|update|set|delete|assign|add|remove)([[:space:]]|$)'
+
           grep -Fq 'Microsoft.Authorization/permissions' <<<"$inspect_block"
-          grep -Fq 'role assignment list' <<<"$inspect_block"
+          grep -Fq 'nextLink' <<<"$inspect_block"
+          grep -Fq -- '--include-groups' <<<"$inspect_block"
           grep -Fq -- '--include-inherited' <<<"$inspect_block"
+          grep -Fq -- '--scope "$scope"' <<<"$inspect_block"
           grep -Fq 'role definition' <<<"$inspect_block"
           grep -Fq 'microsoft.managedidentity/userassignedidentities/write' <<<"$inspect_block"
           grep -Fq 'microsoft.managedidentity/userassignedidentities/assign/action' <<<"$inspect_block"
@@ -41,8 +45,23 @@ jobs:
           grep -Fq 'microsoft.web/serverfarms/join/action' <<<"$inspect_block"
           grep -Fq 'microsoft.authorization/roleassignments/write' <<<"$inspect_block"
           grep -Fq 'microsoft.keyvault/vaults/accesspolicies/write' <<<"$inspect_block"
-          grep -Fq 'steps.authority.outcome' <<<"$inspect_block"
-          if grep -Eq 'az [^\n]*[[:space:]](create|update|set|delete|assign|add|remove)([[:space:]]|$)|AZURE_CLIENT_SECRET' <<<"$inspect_block"; then
+          grep -Fq 'steps.publish.outcome' <<<"$inspect_block"
+
+          for sample in \
+            'az identity create -g rg -n uami' \
+            'az role assignment create --role Reader --scope /x' \
+            'x="$(az webapp config appsettings set -g rg -n app --settings A=B)"' \
+            'az resource update --ids /x'; do
+            if ! grep -Eq "$mutation_re" <<<"$sample"; then
+              echo "::error::Mutation guard missed prohibited sample: $sample" >&2
+              exit 1
+            fi
+          done
+          if grep -Eq "$mutation_re" <<< 'az role assignment list --scope /x'; then
+            echo '::error::Mutation guard rejected a read-only Azure command.' >&2
+            exit 1
+          fi
+          if grep -Eq "$mutation_re" <<<"$inspect_block" || grep -Fq 'AZURE_CLIENT_SECRET' <<<"$inspect_block"; then
             echo '::error::Deployer authority inspection must remain Azure-read-only and secretless.' >&2
             exit 1
           fi
@@ -79,12 +98,14 @@ jobs:
           echo "subscription_id=$subscription_id" >> "$GITHUB_OUTPUT"
 
       - name: Publish pending authority statuses
+        id: pending
         continue-on-error: true
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          set -euo pipefail
+          set -u
+          failed=0
           for context in \
             azure/oidc-uami-write \
             azure/oidc-uami-assign \
@@ -93,13 +114,13 @@ jobs:
             azure/oidc-plan-join \
             azure/oidc-rbac-write-kv \
             azure/oidc-rbac-write-acr \
-            azure/oidc-kv-access-policy-write
-          do
+            azure/oidc-kv-access-policy-write; do
             gh api --method POST -H 'Accept: application/vnd.github+json' \
               "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
               -f state='pending' -f context="$context" \
-              -f description='read-only Azure authority inspection in progress'
+              -f description='read-only Azure authority inspection in progress' || failed=1
           done
+          exit "$failed"
 
       - name: Login to Azure with GitHub OIDC
         uses: azure/login@v2
@@ -126,9 +147,9 @@ jobs:
           PRINCIPAL_ID="$(TOKEN="$ARM_TOKEN" python3 - <<'PY'
           import base64, json, os
           token = os.environ['TOKEN']
-          part = token.split('.')[1]
-          part += '=' * (-len(part) % 4)
-          payload = json.loads(base64.urlsafe_b64decode(part.encode()))
+          payload_part = token.split('.')[1]
+          payload_part += '=' * (-len(payload_part) % 4)
+          payload = json.loads(base64.urlsafe_b64decode(payload_part.encode()))
           oid = payload.get('oid') or payload.get('sub')
           if not oid:
               raise SystemExit('OID claim not found in ARM token')
@@ -139,15 +160,48 @@ jobs:
           test -n "$PRINCIPAL_ID"
           echo "::add-mask::$PRINCIPAL_ID"
 
-          az role assignment list \
-            --assignee-object-id "$PRINCIPAL_ID" \
-            --all \
-            --include-inherited \
-            --fill-principal-name false \
-            -o json > /tmp/assignments.json
+          fetch_permissions() {
+            local first_url="$1" out="$2" page='/tmp/permission-page.json' merged='/tmp/permission-merged.json'
+            printf '{"value":[]}\n' > "$out"
+            local url="$first_url" pages=0
+            while [[ -n "$url" ]]; do
+              pages=$((pages + 1))
+              [[ "$pages" -le 100 ]] || { echo '::error::Permission pagination exceeded 100 pages.' >&2; return 1; }
+              az rest --method GET --url "$url" > "$page"
+              jq -s '{value: ((.[0].value // []) + (.[1].value // []))}' "$out" "$page" > "$merged"
+              mv "$merged" "$out"
+              url="$(jq -r '.nextLink // empty' "$page")"
+            done
+          }
+
+          fetch_permissions "https://management.azure.com${RG_ID}/providers/Microsoft.Authorization/permissions?api-version=2022-04-01" /tmp/rg-permissions.json
+          fetch_permissions "https://management.azure.com${VAULT_ID}/providers/Microsoft.Authorization/permissions?api-version=2022-04-01" /tmp/vault-permissions.json
+          fetch_permissions "https://management.azure.com${ACR_ID}/providers/Microsoft.Authorization/permissions?api-version=2022-04-01" /tmp/acr-permissions.json
+          fetch_permissions "https://management.azure.com${PLAN_ID}/providers/Microsoft.Authorization/permissions?api-version=2022-04-01" /tmp/plan-permissions.json
+
+          role_context() {
+            local scope="$1" out="$2"
+            if az role assignment list \
+              --assignee "$PRINCIPAL_ID" \
+              --scope "$scope" \
+              --include-inherited \
+              --include-groups \
+              --fill-principal-name false \
+              --fill-role-definition-name false \
+              -o json > "$out"; then
+              return 0
+            fi
+            printf '[]\n' > "$out"
+            return 1
+          }
+
+          VAULT_ROLE_CONTEXT=true
+          ACR_ROLE_CONTEXT=true
+          role_context "$VAULT_ID" /tmp/vault-role-assignments.json || VAULT_ROLE_CONTEXT=false
+          role_context "$ACR_ID" /tmp/acr-role-assignments.json || ACR_ROLE_CONTEXT=false
 
           : > /tmp/roledefs.jsonl
-          jq -r '.[].roleDefinitionId' /tmp/assignments.json | sort -u | while IFS= read -r role_definition_id; do
+          jq -r '.[].roleDefinitionId' /tmp/vault-role-assignments.json /tmp/acr-role-assignments.json | sort -u | while IFS= read -r role_definition_id; do
             [[ -n "$role_definition_id" ]] || continue
             role_guid="${role_definition_id##*/}"
             az role definition list --name "$role_guid" -o json \
@@ -155,37 +209,30 @@ jobs:
               >> /tmp/roledefs.jsonl
           done
 
-          az rest --method GET --url "https://management.azure.com${RG_ID}/providers/Microsoft.Authorization/permissions?api-version=2022-04-01" > /tmp/rg-permissions.json
-          az rest --method GET --url "https://management.azure.com${VAULT_ID}/providers/Microsoft.Authorization/permissions?api-version=2022-04-01" > /tmp/vault-permissions.json
-          az rest --method GET --url "https://management.azure.com${ACR_ID}/providers/Microsoft.Authorization/permissions?api-version=2022-04-01" > /tmp/acr-permissions.json
-          az rest --method GET --url "https://management.azure.com${PLAN_ID}/providers/Microsoft.Authorization/permissions?api-version=2022-04-01" > /tmp/plan-permissions.json
-
-          export RG_ID VAULT_ID ACR_ID PLAN_ID
+          export VAULT_ROLE_CONTEXT ACR_ROLE_CONTEXT
           python3 - <<'PY' > /tmp/authority.json
-          import fnmatch
-          import json
-          import os
+          import fnmatch, json, os
 
-          with open('/tmp/assignments.json', encoding='utf-8') as fh:
-              assignments = json.load(fh)
+          def load(path):
+              with open(path, encoding='utf-8') as fh:
+                  return json.load(fh)
+
+          docs = {
+              'rg': load('/tmp/rg-permissions.json'),
+              'vault': load('/tmp/vault-permissions.json'),
+              'acr': load('/tmp/acr-permissions.json'),
+              'plan': load('/tmp/plan-permissions.json'),
+          }
+          assignments = {
+              'vault': load('/tmp/vault-role-assignments.json'),
+              'acr': load('/tmp/acr-role-assignments.json'),
+          }
           roledefs = {}
           with open('/tmp/roledefs.jsonl', encoding='utf-8') as fh:
               for line in fh:
                   if line.strip():
                       item = json.loads(line)
                       roledefs[item['id'].lower()] = item
-
-          permission_docs = {}
-          for name in ('rg', 'vault', 'acr', 'plan'):
-              with open(f'/tmp/{name}-permissions.json', encoding='utf-8') as fh:
-                  permission_docs[name] = json.load(fh)
-
-          scopes = {
-              'rg': os.environ['RG_ID'].lower().rstrip('/'),
-              'vault': os.environ['VAULT_ID'].lower().rstrip('/'),
-              'acr': os.environ['ACR_ID'].lower().rstrip('/'),
-              'plan': os.environ['PLAN_ID'].lower().rstrip('/'),
-          }
 
           targets = {
               'uami_write': ('rg', 'microsoft.managedidentity/userassignedidentities/write'),
@@ -201,125 +248,114 @@ jobs:
           def matches(pattern, target):
               return fnmatch.fnmatchcase(target, (pattern or '').lower())
 
-          def block_grants(block, target):
-              allowed = block.get('actions') or []
-              denied = block.get('notActions') or []
+          def grants(block, target, allow='actions', deny='notActions'):
+              allowed = block.get(allow) or []
+              denied = block.get(deny) or []
               return any(matches(x, target) for x in allowed) and not any(matches(x, target) for x in denied)
 
-          def scope_applies(assignment_scope, target_scope):
-              assignment_scope = (assignment_scope or '').lower().rstrip('/')
-              return bool(assignment_scope) and (target_scope == assignment_scope or target_scope.startswith(assignment_scope + '/'))
+          def permission_api(scope_key, action):
+              return any(grants(block, action) for block in docs[scope_key].get('value') or [])
 
-          def caller_permissions_grant(doc, target):
-              for block in doc.get('value') or []:
-                  if block_grants(block, target):
-                      return True
-              return False
+          def unconditional_role_grants(scope_key, action):
+              rows = []
+              conditioned = []
+              for assignment in assignments[scope_key]:
+                  role = roledefs.get((assignment.get('roleDefinitionId') or '').lower())
+                  if not role or not any(grants(block, action) for block in role.get('permissions') or []):
+                      continue
+                  role_name = role.get('roleName') or assignment.get('roleDefinitionName') or 'unknown'
+                  row = {'role': role_name, 'scope': assignment.get('scope') or ''}
+                  (conditioned if assignment.get('condition') else rows).append(row)
+              return rows, conditioned
 
           result = {}
           for key, (scope_key, action) in targets.items():
-              target_scope = scopes[scope_key]
-              unconditioned = []
-              conditioned = []
-              for assignment in assignments:
-                  if not scope_applies(assignment.get('scope'), target_scope):
-                      continue
-                  role = roledefs.get((assignment.get('roleDefinitionId') or '').lower())
-                  if not role:
-                      continue
-                  if not any(block_grants(block, action) for block in (role.get('permissions') or [])):
-                      continue
-                  row = {
-                      'role': role.get('roleName') or assignment.get('roleDefinitionName') or 'unknown',
-                      'scope': assignment.get('scope') or '',
-                  }
-                  if assignment.get('condition'):
-                      conditioned.append(row)
-                  else:
-                      unconditioned.append(row)
-
-              permission_api = caller_permissions_grant(permission_docs[scope_key], action)
-              proven = permission_api and bool(unconditioned)
-              result[key] = {
+              api_effective = permission_api(scope_key, action)
+              entry = {
                   'action': action,
-                  'scope': target_scope,
-                  'permissionApi': permission_api,
-                  'unconditionedRoleGrant': bool(unconditioned),
-                  'conditionedRoleGrantOnly': (not unconditioned and bool(conditioned)),
-                  'proven': proven,
-                  'roles': sorted({x['role'] for x in unconditioned}),
-                  'roleScopes': sorted({f"{x['role']}@{x['scope']}" for x in unconditioned}),
+                  'permissionApi': api_effective,
+                  'proven': api_effective,
+                  'roleContextAvailable': True,
+                  'unconditionedRoleGrant': None,
+                  'conditionedRoleGrantOnly': False,
+                  'roles': [],
               }
+              if key in ('rbac_write_kv', 'rbac_write_acr'):
+                  context_available = os.environ['VAULT_ROLE_CONTEXT' if scope_key == 'vault' else 'ACR_ROLE_CONTEXT'].lower() == 'true'
+                  rows, conditioned = unconditional_role_grants(scope_key, action) if context_available else ([], [])
+                  entry['roleContextAvailable'] = context_available
+                  entry['unconditionedRoleGrant'] = bool(rows)
+                  entry['conditionedRoleGrantOnly'] = (not rows and bool(conditioned))
+                  entry['roles'] = sorted({row['role'] for row in rows})
+                  entry['proven'] = api_effective and context_available and bool(rows)
+              result[key] = entry
 
           print(json.dumps(result, sort_keys=True, separators=(',', ':')))
           PY
 
           for key in uami_write uami_assign webapp_write webapp_config_write plan_join rbac_write_kv rbac_write_acr kv_access_policy_write; do
-            value="$(jq -r --arg key "$key" '.[$key].proven' /tmp/authority.json)"
-            conditioned="$(jq -r --arg key "$key" '.[$key].conditionedRoleGrantOnly' /tmp/authority.json)"
-            roles="$(jq -r --arg key "$key" '.[$key].roles | join(",")' /tmp/authority.json)"
-            echo "${key}=$value" >> "$GITHUB_OUTPUT"
-            echo "${key}_conditioned=$conditioned" >> "$GITHUB_OUTPUT"
-            echo "${key}_roles=$roles" >> "$GITHUB_OUTPUT"
+            echo "${key}=$(jq -r --arg key "$key" '.[$key].proven' /tmp/authority.json)" >> "$GITHUB_OUTPUT"
+            echo "${key}_api=$(jq -r --arg key "$key" '.[$key].permissionApi' /tmp/authority.json)" >> "$GITHUB_OUTPUT"
+            echo "${key}_role_context=$(jq -r --arg key "$key" '.[$key].roleContextAvailable' /tmp/authority.json)" >> "$GITHUB_OUTPUT"
+            echo "${key}_conditioned=$(jq -r --arg key "$key" '.[$key].conditionedRoleGrantOnly' /tmp/authority.json)" >> "$GITHUB_OUTPUT"
+            echo "${key}_roles=$(jq -r --arg key "$key" '.[$key].roles | join(",")' /tmp/authority.json)" >> "$GITHUB_OUTPUT"
           done
 
-          rm -f /tmp/assignments.json /tmp/roledefs.jsonl /tmp/rg-permissions.json /tmp/vault-permissions.json /tmp/acr-permissions.json /tmp/plan-permissions.json /tmp/authority.json
+          rm -f /tmp/permission-page.json /tmp/permission-merged.json /tmp/rg-permissions.json /tmp/vault-permissions.json /tmp/acr-permissions.json /tmp/plan-permissions.json /tmp/vault-role-assignments.json /tmp/acr-role-assignments.json /tmp/roledefs.jsonl /tmp/authority.json
 
-      - name: Publish proven authority statuses
+      - name: Publish terminal authority statuses
+        id: publish
         if: steps.authority.outcome == 'success'
+        continue-on-error: true
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           UAMI_WRITE: ${{ steps.authority.outputs.uami_write }}
-          UAMI_WRITE_ROLES: ${{ steps.authority.outputs.uami_write_roles }}
           UAMI_ASSIGN: ${{ steps.authority.outputs.uami_assign }}
-          UAMI_ASSIGN_ROLES: ${{ steps.authority.outputs.uami_assign_roles }}
           WEBAPP_WRITE: ${{ steps.authority.outputs.webapp_write }}
-          WEBAPP_WRITE_ROLES: ${{ steps.authority.outputs.webapp_write_roles }}
           WEBAPP_CONFIG_WRITE: ${{ steps.authority.outputs.webapp_config_write }}
-          WEBAPP_CONFIG_WRITE_ROLES: ${{ steps.authority.outputs.webapp_config_write_roles }}
           PLAN_JOIN: ${{ steps.authority.outputs.plan_join }}
-          PLAN_JOIN_ROLES: ${{ steps.authority.outputs.plan_join_roles }}
           RBAC_WRITE_KV: ${{ steps.authority.outputs.rbac_write_kv }}
+          RBAC_WRITE_KV_API: ${{ steps.authority.outputs.rbac_write_kv_api }}
+          RBAC_WRITE_KV_CONTEXT: ${{ steps.authority.outputs.rbac_write_kv_role_context }}
           RBAC_WRITE_KV_CONDITIONED: ${{ steps.authority.outputs.rbac_write_kv_conditioned }}
           RBAC_WRITE_KV_ROLES: ${{ steps.authority.outputs.rbac_write_kv_roles }}
           RBAC_WRITE_ACR: ${{ steps.authority.outputs.rbac_write_acr }}
+          RBAC_WRITE_ACR_API: ${{ steps.authority.outputs.rbac_write_acr_api }}
+          RBAC_WRITE_ACR_CONTEXT: ${{ steps.authority.outputs.rbac_write_acr_role_context }}
           RBAC_WRITE_ACR_CONDITIONED: ${{ steps.authority.outputs.rbac_write_acr_conditioned }}
           RBAC_WRITE_ACR_ROLES: ${{ steps.authority.outputs.rbac_write_acr_roles }}
           KV_POLICY_WRITE: ${{ steps.authority.outputs.kv_access_policy_write }}
-          KV_POLICY_WRITE_ROLES: ${{ steps.authority.outputs.kv_access_policy_write_roles }}
         run: |
-          set -euo pipefail
-
+          set -u
+          failed=0
           publish() {
-            local context="$1" value="$2" roles="$3" extra="${4:-}"
-            local state=failure
+            local context="$1" value="$2" extra="${3:-}"
+            local state=failure desc="proven=$value"
             [[ "$value" == true ]] && state=success
-            local desc="proven=$value"
-            [[ -z "$roles" ]] || desc="$desc; roles=$roles"
             [[ -z "$extra" ]] || desc="$desc; $extra"
-            desc="${desc:0:140}"
             gh api --method POST -H 'Accept: application/vnd.github+json' \
               "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
-              -f state="$state" -f context="$context" -f description="$desc"
+              -f state="$state" -f context="$context" -f description="${desc:0:140}" || failed=1
           }
+          publish azure/oidc-uami-write "$UAMI_WRITE"
+          publish azure/oidc-uami-assign "$UAMI_ASSIGN"
+          publish azure/oidc-webapp-write "$WEBAPP_WRITE"
+          publish azure/oidc-webapp-config-write "$WEBAPP_CONFIG_WRITE"
+          publish azure/oidc-plan-join "$PLAN_JOIN"
+          publish azure/oidc-rbac-write-kv "$RBAC_WRITE_KV" "api=$RBAC_WRITE_KV_API; roleContext=$RBAC_WRITE_KV_CONTEXT; conditionalOnly=$RBAC_WRITE_KV_CONDITIONED; roles=$RBAC_WRITE_KV_ROLES"
+          publish azure/oidc-rbac-write-acr "$RBAC_WRITE_ACR" "api=$RBAC_WRITE_ACR_API; roleContext=$RBAC_WRITE_ACR_CONTEXT; conditionalOnly=$RBAC_WRITE_ACR_CONDITIONED; roles=$RBAC_WRITE_ACR_ROLES"
+          publish azure/oidc-kv-access-policy-write "$KV_POLICY_WRITE"
+          exit "$failed"
 
-          publish azure/oidc-uami-write "$UAMI_WRITE" "$UAMI_WRITE_ROLES"
-          publish azure/oidc-uami-assign "$UAMI_ASSIGN" "$UAMI_ASSIGN_ROLES"
-          publish azure/oidc-webapp-write "$WEBAPP_WRITE" "$WEBAPP_WRITE_ROLES"
-          publish azure/oidc-webapp-config-write "$WEBAPP_CONFIG_WRITE" "$WEBAPP_CONFIG_WRITE_ROLES"
-          publish azure/oidc-plan-join "$PLAN_JOIN" "$PLAN_JOIN_ROLES"
-          publish azure/oidc-rbac-write-kv "$RBAC_WRITE_KV" "$RBAC_WRITE_KV_ROLES" "conditionalOnly=$RBAC_WRITE_KV_CONDITIONED"
-          publish azure/oidc-rbac-write-acr "$RBAC_WRITE_ACR" "$RBAC_WRITE_ACR_ROLES" "conditionalOnly=$RBAC_WRITE_ACR_CONDITIONED"
-          publish azure/oidc-kv-access-policy-write "$KV_POLICY_WRITE" "$KV_POLICY_WRITE_ROLES"
-
-      - name: Publish inspection failure statuses
-        if: always() && steps.authority.outcome != 'success'
+      - name: Finalize authority statuses on inspection or publication failure
+        if: always() && (steps.authority.outcome != 'success' || steps.publish.outcome != 'success')
+        continue-on-error: true
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          set -euo pipefail
+          set -u
           for context in \
             azure/oidc-uami-write \
             azure/oidc-uami-assign \
@@ -328,12 +364,11 @@ jobs:
             azure/oidc-plan-join \
             azure/oidc-rbac-write-kv \
             azure/oidc-rbac-write-acr \
-            azure/oidc-kv-access-policy-write
-          do
+            azure/oidc-kv-access-policy-write; do
             gh api --method POST -H 'Accept: application/vnd.github+json' \
               "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
               -f state='failure' -f context="$context" \
-              -f description='authority inspection failed before proof; no mutation performed'
+              -f description='authority proof incomplete; no Azure mutation performed' || true
           done
 
       - name: Record authority summary
@@ -350,7 +385,7 @@ jobs:
           KV_POLICY_WRITE: ${{ steps.authority.outputs.kv_access_policy_write }}
         run: |
           {
-            echo '## GitHub OIDC deployer authority proof'
+            echo '## GitHub OIDC deployer authority proof v2'
             echo '- Azure mutation performed: no'
             echo "- create UAMI: $UAMI_WRITE"
             echo "- assign UAMI: $UAMI_ASSIGN"
