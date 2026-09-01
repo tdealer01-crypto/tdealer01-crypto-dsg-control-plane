@@ -49,7 +49,7 @@ Configure a federated GitHub OIDC identity and these GitHub Environment secrets:
 Configure these non-secret Environment variables:
 
 - `AZURE_OIDC_PRINCIPAL_OBJECT_ID` (required by `seed` for RBAC assignment);
-- `AZURE_KEY_VAULT_NAME` (default `dsg-kv-tdealer01-0468`);
+- `AZURE_KEY_VAULT_NAME` (default `dsg-shared-secrets`);
 - `AZURE_WEBAPP_NAME` (default `dsg-control-plane`);
 - `AZURE_RESOURCE_GROUP` (default `rg-t.dealer01-0468`).
 
@@ -67,7 +67,7 @@ prints values:
 ```bash
 export AZURE_RESOURCE_GROUP=rg-t.dealer01-0468
 export AZURE_WEBAPP_NAME=dsg-control-plane
-export AZURE_KEY_VAULT_NAME=dsg-kv-tdealer01-0468
+export AZURE_KEY_VAULT_NAME=dsg-shared-secrets
 
 npm run secrets:bootstrap
 npm run secrets:put -- supabase-service-role-key /secure/path/value.txt
