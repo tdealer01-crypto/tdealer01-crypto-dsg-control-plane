@@ -135,29 +135,33 @@ describe("evaluatePlanAlignment", () => {
     expect(result.reasons.some((r) => r.includes("plan_hash_mismatch"))).toBe(true);
   });
 
-  it("CLAIM_EVIDENCE_DENY when required idempotency key is missing", () => {
+  it("CLAIM_EVIDENCE_DENY keeps plan-authorized action executable when idempotency evidence is missing", () => {
     const event = { ...baseEvent(), idempotencyKey: undefined };
     const result = evaluatePlanAlignment(baseContract, event, fixedNow);
 
     expect(result.decision).toBe("CLAIM_EVIDENCE_DENY");
-    expect(result.canProceed).toBe(false);
+    expect(result.canProceed).toBe(true);
+    expect(result.claimAllowed).toBe(false);
     expect(result.reasons).toContain("idempotency_key_missing");
   });
 
-  it("CLAIM_EVIDENCE_DENY when required evidence manifest is missing", () => {
+  it("CLAIM_EVIDENCE_DENY keeps plan-authorized action executable when evidence manifest is missing", () => {
     const event = { ...baseEvent(), evidenceManifestId: undefined };
     const result = evaluatePlanAlignment(baseContract, event, fixedNow);
 
     expect(result.decision).toBe("CLAIM_EVIDENCE_DENY");
+    expect(result.canProceed).toBe(true);
+    expect(result.claimAllowed).toBe(false);
     expect(result.reasons).toContain("evidence_manifest_missing");
   });
 
-  it("CLAIM_EVIDENCE_DENY when requireAudit is true and audit fields are missing (P2 — enforce audit binding)", () => {
+  it("CLAIM_EVIDENCE_DENY keeps plan-authorized action executable when audit binding is missing", () => {
     const event = { ...baseEvent(), preAuditEventId: undefined, ledgerId: undefined, chainHeadHash: undefined };
     const result = evaluatePlanAlignment(baseContract, event, fixedNow);
 
     expect(result.decision).toBe("CLAIM_EVIDENCE_DENY");
-    expect(result.canProceed).toBe(false);
+    expect(result.canProceed).toBe(true);
+    expect(result.claimAllowed).toBe(false);
     expect(result.reasons).toContain("audit_binding_missing");
   });
 
