@@ -24,19 +24,19 @@ const quickstart = [
   {
     title: '1. Register integration',
     description: 'Create the organization binding, managed agent, policy binding, and one-time API key. Store the key once; DSG stores only its hash.',
-    command: "curl -s -X POST https://YOUR_DSG_DOMAIN/api/integrations/register \\\n  -H 'content-type: application/json' \\\n  -d '{\"email\":\"dev@yourcompany.com\",\"app_name\":\"Your App\"}'",
+    command: "curl -s -X POST https://YOUR_DSG_DOMAIN/api/integrations/register -H 'content-type: application/json' -d '{\"email\":\"dev@yourcompany.com\",\"app_name\":\"Your App\"}'",
     response: 'Returns: org_id, agent_id, api_key',
   },
   {
     title: '2. Attach callback',
     description: 'Register the webhook URL and allowed browser origins so governance decisions can be delivered back to your system.',
-    command: "curl -s -X POST https://YOUR_DSG_DOMAIN/api/integrations/webhooks \\\n  -H 'content-type: application/json' \\\n  -H 'Authorization: Bearer $DSG_API_KEY' \\\n  -d '{\"agent_id\":\"agt_xxx\",\"webhook_url\":\"https://yourapp.com/dsg/events\",\"allowed_origins\":[\"https://yourapp.com\"]}'",
+    command: "curl -s -X POST https://YOUR_DSG_DOMAIN/api/integrations/webhooks -H 'content-type: application/json' -H 'Authorization: Bearer $DSG_API_KEY' -d '{\"agent_id\":\"agt_xxx\",\"webhook_url\":\"https://yourapp.com/dsg/events\",\"allowed_origins\":[\"https://yourapp.com\"]}'",
     response: 'Returns: integration profile with normalized allowed_origins',
   },
   {
     title: '3. Execute one governed action',
     description: 'Send one action through DSG. Read the decision and decision hash before expanding the rollout.',
-    command: "curl -s -X POST https://YOUR_DSG_DOMAIN/api/execute \\\n  -H 'content-type: application/json' \\\n  -H 'Authorization: Bearer $DSG_API_KEY' \\\n  -d '{\"agent_id\":\"agt_xxx\",\"action\":\"approve_invoice\",\"input\":{\"invoice_id\":\"INV-001\",\"amount\":1250}}'",
+    command: "curl -s -X POST https://YOUR_DSG_DOMAIN/api/execute -H 'content-type: application/json' -H 'Authorization: Bearer $DSG_API_KEY' -d '{\"agent_id\":\"agt_xxx\",\"action\":\"approve_invoice\",\"input\":{\"invoice_id\":\"INV-001\",\"amount\":1250}}'",
     response: 'Returns: decision, latency_ms, policy context, audit evidence',
   },
 ];
@@ -241,7 +241,7 @@ export default function IntegrationsPage() {
           <div className="mt-5 grid gap-3 md:grid-cols-2">
             {productionRequirements.map((item) => (
               <div key={item} className="flex items-start gap-3 rounded-2xl border border-white/[0.07] bg-black/20 p-4">
-                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-white/15 text-[10px] text-slate-500">✓</span>
+                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-white/15 text-[10px] text-slate-500">•</span>
                 <p className="text-sm leading-6 text-slate-300">{item}</p>
               </div>
             ))}
