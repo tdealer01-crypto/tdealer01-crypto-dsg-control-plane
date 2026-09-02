@@ -14,15 +14,15 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <div className="min-h-screen bg-[#07080b] text-white">
-      <header className="sticky top-0 z-40 border-b border-white/[0.07] bg-[#07080b]/92 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-[1480px] items-center gap-5 px-4 py-3 sm:px-6">
-          <Link href="/dashboard/governance-live" className="flex shrink-0 items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full border border-amber-300/30 bg-amber-300/10 text-xs font-black tracking-[0.12em] text-amber-100">
+      <header className="sticky top-0 z-40 border-b border-white/[0.07] bg-[#08090c]/92 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-[1480px] items-center gap-4 px-4 py-3 sm:px-6">
+          <Link href="/dashboard/governance-live" className="flex shrink-0 items-center gap-3" aria-label="DSG Control Plane home">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-blue-300/20 bg-blue-300/[0.07] text-[11px] font-black tracking-[0.12em] text-blue-100">
               DSG
             </span>
-            <span className="hidden sm:block">
-              <span className="block text-xs uppercase tracking-[0.2em] text-slate-500">Control Plane</span>
-              <span className="block text-sm font-semibold text-white">Governance</span>
+            <span className="hidden lg:block">
+              <span className="block text-[10px] font-bold uppercase tracking-[0.22em] text-slate-600">Control Plane</span>
+              <span className="block text-sm font-semibold text-white">Agent Governance</span>
             </span>
           </Link>
 
@@ -39,7 +39,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
           </div>
         </div>
       </header>
-      {children}
+
+      <div className="pb-20 md:pb-0">{children}</div>
       {user && <AgentChatWidget />}
     </div>
   );
