@@ -1,10 +1,8 @@
 import Link from 'next/link';
 import CopyButton from '../../../components/CopyButton';
 
-// Build the Live mode Stripe OAuth install URL from env vars.
-// NEXT_PUBLIC_STRIPE_CLIENT_ID is the canonical variable set in Vercel for
-// the Live mode app client_id (format: ca_...).
-// Falls back to the server-side install route which applies the same logic.
+// Build the Stripe OAuth install URL from deployment environment variables.
+// Falls back to the server-side install route, which applies the same logic.
 function buildStripeInstallUrl(): string {
   const clientId = process.env.NEXT_PUBLIC_STRIPE_CLIENT_ID;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';
@@ -14,11 +12,9 @@ function buildStripeInstallUrl(): string {
       : '/stripe/oauth/callback';
     return `https://marketplace.stripe.com/oauth/v2/authorize?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}`;
   }
-  // Explicit override (e.g. a branded marketplace listing URL)
   if (process.env.NEXT_PUBLIC_STRIPE_INSTALL_URL) {
     return process.env.NEXT_PUBLIC_STRIPE_INSTALL_URL;
   }
-  // Server-side route builds the correct URL at request time
   return '/api/stripe/connect/install';
 }
 
@@ -26,187 +22,232 @@ const STRIPE_INSTALL_URL = buildStripeInstallUrl();
 
 const quickstart = [
   {
-    title: '1. Register your integration',
-    description: 'Creates an org, managed agent, policy binding, and a one-time API key for server-to-server calls. Store the key once — DSG only keeps a hash.',
-    command: "curl -s -X POST https://YOUR_DSG_DOMAIN/api/integrations/register \
-  -H 'content-type: application/json' \
-  -d '{\"email\":\"dev@yourcompany.com\",\"app_name\":\"Your App\"}'",
+    title: '1. Register integration',
+    description: 'Create the organization binding, managed agent, policy binding, and one-time API key. Store the key once; DSG stores only its hash.',
+    command: "curl -s -X POST https://YOUR_DSG_DOMAIN/api/integrations/register -H 'content-type: application/json' -d '{\"email\":\"dev@yourcompany.com\",\"app_name\":\"Your App\"}'",
     response: 'Returns: org_id, agent_id, api_key',
   },
   {
-    title: '2. Attach a webhook callback',
-    description: 'Connect your app back to DSG so governance decisions can be delivered as events. Set the webhook URL and allowed browser origins.',
-    command: "curl -s -X POST https://YOUR_DSG_DOMAIN/api/integrations/webhooks \
-  -H 'content-type: application/json' \
-  -H 'Authorization: Bearer $DSG_API_KEY' \
-  -d '{\"agent_id\":\"agt_xxx\",\"webhook_url\":\"https://yourapp.com/dsg/events\",\"allowed_origins\":[\"https://yourapp.com\"]}'",
+    title: '2. Attach callback',
+    description: 'Register the webhook URL and allowed browser origins so governance decisions can be delivered back to your system.',
+    command: "curl -s -X POST https://YOUR_DSG_DOMAIN/api/integrations/webhooks -H 'content-type: application/json' -H 'Authorization: Bearer $DSG_API_KEY' -d '{\"agent_id\":\"agt_xxx\",\"webhook_url\":\"https://yourapp.com/dsg/events\",\"allowed_origins\":[\"https://yourapp.com\"]}'",
     response: 'Returns: integration profile with normalized allowed_origins',
   },
   {
-    title: '3. Run your first governed action',
-    description: 'Send one action through DSG. Verify the ALLOW/REVIEW/BLOCK response and check the decision hash before rolling out to production.',
-    command: "curl -s -X POST https://YOUR_DSG_DOMAIN/api/execute \
-  -H 'content-type: application/json' \
-  -H 'Authorization: Bearer $DSG_API_KEY' \
-  -d '{\"agent_id\":\"agt_xxx\",\"action\":\"approve_invoice\",\"input\":{\"invoice_id\":\"INV-001\",\"amount\":1250}}'",
-    response: 'Returns: decision (ALLOW/REVIEW/BLOCK), latency_ms, policy context, audit evidence',
+    title: '3. Execute one governed action',
+    description: 'Send one action through DSG. Read the decision and decision hash before expanding the rollout.',
+    command: "curl -s -X POST https://YOUR_DSG_DOMAIN/api/execute -H 'content-type: application/json' -H 'Authorization: Bearer $DSG_API_KEY' -d '{\"agent_id\":\"agt_xxx\",\"action\":\"approve_invoice\",\"input\":{\"invoice_id\":\"INV-001\",\"amount\":1250}}'",
+    response: 'Returns: decision, latency_ms, policy context, audit evidence',
   },
 ];
 
-const connectorCards = [
+const connectors = [
   {
     name: 'Stripe',
-    use: 'Marketplace review, account connection, payment and billing governance',
-    hint: 'Install Stripe / Connect Stripe',
+    label: 'OAuth install',
+    body: 'Connect a Stripe account for payment and billing governance.',
+    href: STRIPE_INSTALL_URL,
+    external: true,
   },
   {
     name: 'REST API',
-    use: 'ERP wrappers, CRM, finance ops, internal services',
-    hint: '/api/integrations/register + /api/execute',
+    label: 'Universal',
+    body: 'Use the register and execute endpoints with ERP, CRM, internal services, or custom agents.',
+    href: '#api-quickstart',
+    external: false,
   },
   {
     name: 'Webhook',
-    use: 'Event-driven apps, callbacks, quick pilots without system replacement',
-    hint: 'Register callback URL + allowed origins',
+    label: 'Event-driven',
+    body: 'Add DSG before the final side effect and receive governance results through your callback.',
+    href: '#api-quickstart',
+    external: false,
   },
   {
-    name: 'Zapier / Make',
-    use: 'Business teams on no-code automation stacks',
-    hint: 'Add DSG as a policy gate before the final action step',
+    name: 'MCP / OpenAPI',
+    label: 'Agent tools',
+    body: 'Route existing agent tool calls through the governance surface without rebuilding the agent.',
+    href: '/docs',
+    external: false,
   },
-  {
-    name: 'n8n / Workato',
-    use: 'Ops teams with existing workflow engines',
-    hint: 'Add DSG as an HTTP node before high-risk actions',
-  },
-  {
-    name: 'GitHub / Vercel',
-    use: 'Release, deploy, and go/no-go controls',
-    hint: 'Route deployment claims through proof checks',
-  },
-  {
-    name: 'CSV / SFTP',
-    use: 'Legacy finance or audit batch workflows',
-    hint: 'Import evidence first, automate the gate later',
-  },
-];
+] as const;
 
-const evidenceChecklist = [
-  { item: 'agent_id is bound to one org', done: true },
-  { item: 'api_key is hashed server-side (never stored in plaintext)', done: true },
-  { item: 'Policy is resolved before every action', done: true },
-  { item: 'Approval state is visible when a review is required', done: true },
-  { item: 'Replay protection: nonce + idempotency key + request hash present', done: true },
-  { item: 'Audit hook visible before production claim', done: true },
-];
+const productionRequirements = [
+  'agent_id is bound to one organization',
+  'API key is stored as a server-side hash, not plaintext',
+  'Policy is resolved before the governed action',
+  'Review-required actions expose approval state',
+  'Replay protection data is present for protected execution paths',
+  'Audit evidence is available before making a production claim',
+] as const;
 
 export default function IntegrationsPage() {
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100">
-      <div className="mx-auto max-w-7xl px-6 py-10">
-
-        {/* Hero */}
-        <section className="rounded-3xl border border-white/10 bg-[linear-gradient(135deg,rgba(16,185,129,0.16),rgba(15,23,42,0.92)_45%,rgba(245,197,92,0.08))] p-6">
+    <main className="min-h-screen bg-[#07080b] text-slate-100">
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
+        <header className="border-b border-white/[0.07] pb-8">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
-              <p className="text-xs font-bold uppercase tracking-[0.24em] text-emerald-200">Enterprise Setup</p>
-              <h1 className="mt-3 text-4xl font-black tracking-tight text-white md:text-5xl">
-                Connect your existing workflow in 3 steps.
-              </h1>
-              <p className="mt-4 text-sm leading-7 text-slate-300">
-                No migration required. Register one integration, attach a callback, run one governed action, then export proof. Works with any system that supports REST or webhooks.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <a href={STRIPE_INSTALL_URL} target="_blank" rel="noopener noreferrer" className="rounded-2xl bg-amber-300 px-5 py-3 text-sm font-black text-slate-950">
-                Install Stripe
-              </a>
-              <Link href="/enterprise-ready" className="rounded-2xl border border-emerald-300/40 bg-emerald-300/10 px-5 py-3 text-sm font-bold text-emerald-100">
-                View enterprise flow
-              </Link>
-              <Link href="/enterprise-proof/demo" className="rounded-2xl bg-amber-300 px-5 py-3 text-sm font-black text-slate-950">
-                Run proof demo
-              </Link>
-              <Link href="/dashboard" className="rounded-2xl border border-white/15 px-5 py-3 text-sm font-bold text-slate-200">
-                Back to dashboard
-              </Link>
-            </div>
-          </div>
-        </section>
-
-        {/* Stripe install */}
-        <section className="mt-8 rounded-3xl border border-amber-300/25 bg-amber-300/[0.06] p-6 shadow-2xl shadow-amber-950/20">
-          <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.25em] text-amber-200/70">Stripe Marketplace Review</p>
-              <h2 className="mt-2 text-2xl font-black text-amber-50">Install Stripe / Connect Stripe</h2>
-              <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300">
-                Use this direct install entry point to authorize DSG Governance Gate on a Stripe account. After authorization, Stripe returns to the configured OAuth callback.
-              </p>
-            </div>
-            <a
-              href={STRIPE_INSTALL_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex shrink-0 items-center justify-center rounded-2xl bg-amber-300 px-5 py-4 text-sm font-black text-slate-950 transition hover:bg-amber-200"
-            >
-              Install Stripe / Connect Stripe
-            </a>
-          </div>
-        </section>
-
-        {/* Quickstart steps */}
-        <section className="mt-8 grid gap-4 md:grid-cols-3">
-          {quickstart.map((step) => (
-            <article key={step.title} className="rounded-3xl border border-slate-800 bg-slate-900 p-5">
-              <h2 className="text-base font-black text-white">{step.title}</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-400">{step.description}</p>
-              <div className="relative mt-4">
-                <pre className="overflow-x-auto rounded-2xl border border-slate-700 bg-slate-950 p-4 pr-16 text-xs leading-6 text-emerald-200">
-                  <code>{step.command}</code>
-                </pre>
-                <CopyButton text={step.command} />
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full border border-blue-300/20 bg-blue-300/[0.07] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-blue-100">
+                  Connect
+                </span>
+                <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                  Start with one workflow
+                </span>
               </div>
-              <p className="mt-3 rounded-xl border border-emerald-400/10 bg-emerald-400/5 px-3 py-2 text-xs font-medium text-emerald-300">
-                {step.response}
+              <h1 className="mt-5 text-3xl font-bold tracking-[-0.035em] text-white sm:text-5xl">
+                Connect one existing workflow in minutes.
+              </h1>
+              <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-400 sm:text-base">
+                Do not migrate the whole stack. Connect one system, execute one governed action, then verify the live decision and evidence before expanding.
               </p>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <Link href="/dashboard/governance-live" className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white">
+                Open live governance
+              </Link>
+              <Link href="/dashboard/integration" className="rounded-xl border border-white/10 px-4 py-3 text-sm font-semibold text-slate-400">
+                System truth
+              </Link>
+            </div>
+          </div>
+        </header>
+
+        <section className="mt-8 grid gap-3 lg:grid-cols-3">
+          {[
+            ['01', 'Connect', 'Choose the smallest existing workflow that can produce one real governed event.'],
+            ['02', 'Run', 'Execute one governed action through the same API or tool path your system will actually use.'],
+            ['03', 'Verify', 'Read the decision, reason, evidence, and audit trail before adding more workflows.'],
+          ].map(([index, title, body]) => (
+            <article key={index} className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5">
+              <span className="text-xs font-bold text-blue-200">{index}</span>
+              <h2 className="mt-4 text-lg font-bold text-white">{title}</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-500">{body}</p>
             </article>
           ))}
         </section>
 
-        {/* Connector options */}
-        <section className="mt-8 rounded-3xl border border-white/10 bg-[#0b0d10] p-6">
-          <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Connector options</p>
-          <h2 className="mt-3 text-2xl font-black text-white">Use your existing stack — no migration required.</h2>
-          <div className="mt-6 grid gap-4 md:grid-cols-3">
-            {connectorCards.map((card) => (
-              <article key={card.name} className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-                <h3 className="text-lg font-black text-white">{card.name}</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-300">{card.use}</p>
-                <p className="mt-3 rounded-xl border border-amber-300/20 bg-amber-300/10 px-3 py-2 text-xs font-semibold text-amber-100">
-                  {card.hint}
+        <section className="mt-10">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-600">Choose a connection</p>
+              <h2 className="mt-2 text-2xl font-bold text-white">Use the stack you already have.</h2>
+            </div>
+            <p className="max-w-xl text-sm leading-6 text-slate-500">Start with the connector that creates the shortest path to one real action. More integrations can be added after the first proof.</p>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            {connectors.map((connector) => {
+              const classes = 'group rounded-2xl border border-white/[0.08] bg-white/[0.025] p-5 transition hover:border-white/15 hover:bg-white/[0.045]';
+              const content = (
+                <>
+                  <div className="flex items-center justify-between gap-4">
+                    <h3 className="text-lg font-bold text-white">{connector.name}</h3>
+                    <span className="rounded-full border border-white/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">
+                      {connector.label}
+                    </span>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-slate-400">{connector.body}</p>
+                  <p className="mt-5 text-xs font-bold text-blue-200 group-hover:text-blue-100">Open setup →</p>
+                </>
+              );
+
+              return connector.external ? (
+                <a key={connector.name} href={connector.href} target="_blank" rel="noopener noreferrer" className={classes}>
+                  {content}
+                </a>
+              ) : (
+                <Link key={connector.name} href={connector.href} className={classes}>
+                  {content}
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+
+        <section id="api-quickstart" className="mt-10 rounded-3xl border border-white/[0.08] bg-[#0a0c10] p-5 sm:p-6">
+          <div className="max-w-3xl">
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-600">API quickstart</p>
+            <h2 className="mt-2 text-2xl font-bold text-white">Three calls to the first governed result.</h2>
+            <p className="mt-3 text-sm leading-7 text-slate-500">
+              These commands are explicit so the user can inspect what will be created and sent. Replace the placeholder domain and values with the deployment you are actually using.
+            </p>
+          </div>
+
+          <div className="mt-6 space-y-3">
+            {quickstart.map((step, index) => (
+              <details key={step.title} open={index === 0} className="group rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5">
+                <summary className="cursor-pointer list-none">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h3 className="text-base font-bold text-white">{step.title}</h3>
+                      <p className="mt-2 text-sm leading-6 text-slate-500">{step.description}</p>
+                    </div>
+                    <span className="mt-1 text-xs font-bold text-slate-600 group-open:rotate-45">+</span>
+                  </div>
+                </summary>
+                <div className="relative mt-4">
+                  <pre className="overflow-x-auto rounded-xl border border-white/[0.08] bg-black/35 p-4 pr-16 text-xs leading-6 text-emerald-200">
+                    <code>{step.command}</code>
+                  </pre>
+                  <CopyButton text={step.command} />
+                </div>
+                <p className="mt-3 rounded-xl border border-white/[0.07] bg-white/[0.025] px-3 py-2 text-xs font-medium text-slate-400">
+                  {step.response}
                 </p>
-              </article>
+              </details>
             ))}
           </div>
         </section>
 
-        {/* Evidence checklist */}
-        <section className="mt-8 rounded-3xl border border-white/10 bg-white/[0.02] p-6">
-          <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Before making an enterprise claim</p>
-          <h2 className="mt-3 text-xl font-black text-white">Verify all 6 evidence requirements are met.</h2>
+        <section className="mt-10 grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="rounded-3xl border border-blue-300/15 bg-blue-300/[0.045] p-6">
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-blue-200">After the first action</p>
+            <h2 className="mt-3 text-xl font-bold text-white">The output should be visible without reading raw logs.</h2>
+            <div className="mt-5 grid gap-3">
+              {[
+                ['/dashboard/governance-live', 'Live decision', 'PASS / BLOCKED / WAITING_PERMISSION / UNVERIFIED plus the five governance stages.'],
+                ['/dashboard/proofs', 'Evidence', 'Supporting proof and evidence references used by the governance result.'],
+                ['/dashboard/audit', 'Audit', 'Persisted execution record for review and follow-up.'],
+              ].map(([href, title, body]) => (
+                <Link key={href} href={href} className="rounded-2xl border border-white/[0.08] bg-black/20 p-4 transition hover:border-white/15">
+                  <p className="text-sm font-bold text-white">{title}</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">{body}</p>
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-white/[0.08] bg-white/[0.025] p-6">
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-amber-200">Quota-aware rollout</p>
+            <h2 className="mt-3 text-xl font-bold text-white">Prove one path before scaling the integration.</h2>
+            <p className="mt-3 text-sm leading-7 text-slate-500">
+              Keep hosting, API, and provider quotas visible during rollout. A larger rollout is not a success if the first governed action cannot be repeated reliably.
+            </p>
+            <ol className="mt-5 space-y-3 text-sm text-slate-400">
+              <li>1. Connect one workflow.</li>
+              <li>2. Run one real governed action.</li>
+              <li>3. Verify decision + evidence + audit.</li>
+              <li>4. Expand only after the same path is repeatable.</li>
+            </ol>
+          </div>
+        </section>
+
+        <section className="mt-10 rounded-3xl border border-white/[0.08] bg-white/[0.02] p-6">
+          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-600">Production claim boundary</p>
+          <h2 className="mt-3 text-xl font-bold text-white">Verify these requirements before calling the integration production-ready.</h2>
           <div className="mt-5 grid gap-3 md:grid-cols-2">
-            {evidenceChecklist.map(({ item, done }) => (
-              <div key={item} className="flex items-start gap-3 rounded-2xl border border-white/10 bg-black/20 p-4">
-                <span className={`mt-0.5 shrink-0 text-base ${done ? 'text-emerald-400' : 'text-slate-600'}`}>
-                  {done ? '✓' : '○'}
-                </span>
-                <p className="text-sm text-slate-200">{item}</p>
+            {productionRequirements.map((item) => (
+              <div key={item} className="flex items-start gap-3 rounded-2xl border border-white/[0.07] bg-black/20 p-4">
+                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-white/15 text-[10px] text-slate-500">•</span>
+                <p className="text-sm leading-6 text-slate-300">{item}</p>
               </div>
             ))}
           </div>
+          <p className="mt-4 text-xs leading-5 text-slate-600">This checklist describes required evidence. It does not claim the current deployment has passed every item.</p>
         </section>
-
       </div>
     </main>
   );

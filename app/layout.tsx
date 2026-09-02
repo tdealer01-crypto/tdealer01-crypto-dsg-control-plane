@@ -8,14 +8,14 @@ import { ToastProvider } from '../components/ToastProvider';
 import { LanguageProvider } from '@/lib/i18n/language-context';
 
 export const metadata: Metadata = {
-  title: 'DSG ONE — ProofGate Runtime Control Plane',
-  description: 'red, gold, and blue-sapphire runtime governance for AI, workflow, finance, and deployment actions before execution.',
+  title: 'DSG Control Plane — Runtime governance for AI agents',
+  description: 'Connect existing agents and workflows, inspect plan alignment, permissions and evidence, and record auditable execution decisions before downstream actions continue.',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-slate-950 text-slate-100 antialiased">
+      <body className="min-h-screen bg-[#07080b] text-slate-100 antialiased">
         <LanguageProvider>
           <ToastProvider>
             <GlobalNav />
