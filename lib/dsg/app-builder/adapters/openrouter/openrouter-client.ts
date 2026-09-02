@@ -59,7 +59,7 @@ export async function callOpenRouter(input: OpenRouterCallInput): Promise<OpenRo
         headers: {
           authorization: `Bearer ${apiKey}`,
           'content-type': 'application/json',
-          'http-referer': process.env.OPENROUTER_SITE_URL || 'https://dsg-one-v1.vercel.app',
+          'http-referer': process.env.OPENROUTER_SITE_URL || 'https://dsg-control-plane.azurewebsites.net',
           'x-title': process.env.OPENROUTER_APP_TITLE || 'DSG One App Builder',
         },
         body: JSON.stringify({

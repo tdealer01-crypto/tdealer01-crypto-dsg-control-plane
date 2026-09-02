@@ -138,7 +138,7 @@ export async function generateDraftPlan(input: PlannerGenerateInput): Promise<Pl
       headers: {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.OPENROUTER_SITE_URL || 'https://tdealer01-crypto-dsg-control-plane.vercel.app',
+        'HTTP-Referer': process.env.OPENROUTER_SITE_URL || 'https://dsg-control-plane.azurewebsites.net',
         'X-Title': process.env.OPENROUTER_APP_NAME || 'DSG ONE',
       },
       body: JSON.stringify({
