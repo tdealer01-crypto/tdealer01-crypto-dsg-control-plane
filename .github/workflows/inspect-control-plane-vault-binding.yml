@@ -1,0 +1,187 @@
+name: Inspect Control Plane Vault Binding
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/inspect-control-plane-vault-binding.yml'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/inspect-control-plane-vault-binding.yml'
+
+permissions:
+  contents: read
+  id-token: write
+  statuses: write
+
+concurrency:
+  group: inspect-control-plane-vault-binding
+  cancel-in-progress: false
+
+jobs:
+  validate-contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate read-only vault-binding inspection
+        shell: bash
+        run: |
+          set -euo pipefail
+          file='.github/workflows/inspect-control-plane-vault-binding.yml'
+          block="$(awk '/^  inspect-binding:/{found=1} found{print}' "$file")"
+          grep -Fq '/config/configreferences/appsettings?api-version=2026-03-15' <<<"$block"
+          grep -Fq 'properties.vaultName' <<<"$block"
+          grep -Fq 'azure/runtime-keyvault-binding' <<<"$block"
+          grep -Fq 'az keyvault list' <<<"$block"
+          if grep -Fq 'az webapp config appsettings list' <<<"$block"; then
+            echo '::error::Do not read raw App Service app-setting values.' >&2
+            exit 1
+          fi
+          if grep -Eq '(^|[^[:alnum:]_])az[[:space:]][^[:cntrl:]]*[[:space:]](create|update|set|delete|assign|add|remove)([[:space:]]|$)' <<<"$block"; then
+            echo '::error::Vault-binding inspector must remain Azure-read-only.' >&2
+            exit 1
+          fi
+
+  inspect-binding:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: prod
+    timeout-minutes: 10
+    env:
+      AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP || 'rg-t.dealer01-0468' }}
+      AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME || 'dsg-control-plane' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve proven Azure GitHub OIDC identity
+        id: identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          file='config/azure-github-oidc-identity.json'
+          client_id="$(jq -er '.clientId' "$file")"
+          tenant_id="$(jq -er '.tenantId' "$file")"
+          subscription_id="$(jq -er '.subscriptionId' "$file")"
+          test "$(jq -er '.federatedSubject' "$file")" = 'repo:tdealer01-crypto/tdealer01-crypto-dsg-control-plane:environment:prod'
+          echo "::add-mask::$client_id"
+          echo "::add-mask::$tenant_id"
+          echo "::add-mask::$subscription_id"
+          echo "client_id=$client_id" >> "$GITHUB_OUTPUT"
+          echo "tenant_id=$tenant_id" >> "$GITHUB_OUTPUT"
+          echo "subscription_id=$subscription_id" >> "$GITHUB_OUTPUT"
+
+      - name: Publish pending binding status
+        continue-on-error: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --method POST -H 'Accept: application/vnd.github+json' \
+            "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state='pending' -f context='azure/runtime-keyvault-binding' \
+            -f description='read-only App Service Key Vault binding inspection in progress'
+
+      - name: Login to Azure with GitHub OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ steps.identity.outputs.client_id }}
+          tenant-id: ${{ steps.identity.outputs.tenant_id }}
+          subscription-id: ${{ steps.identity.outputs.subscription_id }}
+
+      - name: Inspect App Service Key Vault references
+        id: binding
+        shell: bash
+        env:
+          SUBSCRIPTION_ID: ${{ steps.identity.outputs.subscription_id }}
+        run: |
+          set -euo pipefail
+          umask 077
+
+          APP_ID="$(az webapp show -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" --query id -o tsv)"
+          test -n "$APP_ID"
+
+          az rest --method GET \
+            --url "https://management.azure.com${APP_ID}/config/configreferences/appsettings?api-version=2026-03-15" \
+            > /tmp/configreferences.json
+          az keyvault list --query '[].{name:name,resourceGroup:resourceGroup,id:id}' -o json > /tmp/vaults.json
+
+          REFERENCE_COUNT="$(jq '[.value[]?] | length' /tmp/configreferences.json)"
+          VAULT_NAMES="$(jq -r '[.value[]?.properties.vaultName // empty] | map(select(length > 0)) | map(ascii_downcase) | sort | unique | join(",")' /tmp/configreferences.json)"
+          VAULT_COUNT="$(jq '[.value[]?.properties.vaultName // empty] | map(select(length > 0)) | map(ascii_downcase) | sort | unique | length' /tmp/configreferences.json)"
+
+          BINDING_VISIBLE_COUNT=0
+          BINDING_RESOURCE_GROUP=''
+          if [[ "$VAULT_COUNT" -eq 1 ]]; then
+            BINDING_VISIBLE_COUNT="$(jq --arg name "$VAULT_NAMES" '[.[] | select((.name|ascii_downcase)==$name)] | length' /tmp/vaults.json)"
+            if [[ "$BINDING_VISIBLE_COUNT" -eq 1 ]]; then
+              BINDING_RESOURCE_GROUP="$(jq -r --arg name "$VAULT_NAMES" '.[] | select((.name|ascii_downcase)==$name) | .resourceGroup' /tmp/vaults.json)"
+            fi
+          fi
+
+          echo "reference_count=$REFERENCE_COUNT" >> "$GITHUB_OUTPUT"
+          echo "vault_count=$VAULT_COUNT" >> "$GITHUB_OUTPUT"
+          echo "vault_names=$VAULT_NAMES" >> "$GITHUB_OUTPUT"
+          echo "visible_count=$BINDING_VISIBLE_COUNT" >> "$GITHUB_OUTPUT"
+          echo "vault_resource_group=$BINDING_RESOURCE_GROUP" >> "$GITHUB_OUTPUT"
+
+          rm -f /tmp/configreferences.json /tmp/vaults.json
+
+      - name: Publish terminal binding evidence
+        id: publish
+        if: steps.binding.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REFERENCE_COUNT: ${{ steps.binding.outputs.reference_count }}
+          VAULT_COUNT: ${{ steps.binding.outputs.vault_count }}
+          VAULT_NAMES: ${{ steps.binding.outputs.vault_names }}
+          VISIBLE_COUNT: ${{ steps.binding.outputs.visible_count }}
+          VAULT_RG: ${{ steps.binding.outputs.vault_resource_group }}
+        run: |
+          set -euo pipefail
+          state=failure
+          if [[ "$VAULT_COUNT" == 1 && "$VISIBLE_COUNT" == 1 ]]; then
+            state=success
+          fi
+          desc="refs=$REFERENCE_COUNT uniqueVaults=$VAULT_COUNT visibleExact=$VISIBLE_COUNT"
+          [[ -z "$VAULT_NAMES" ]] || desc="$desc vault=$VAULT_NAMES"
+          [[ -z "$VAULT_RG" ]] || desc="$desc rg=$VAULT_RG"
+          gh api --method POST -H 'Accept: application/vnd.github+json' \
+            "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state="$state" -f context='azure/runtime-keyvault-binding' \
+            -f description="${desc:0:140}"
+
+      - name: Finalize incomplete binding proof
+        if: always() && (steps.binding.outcome != 'success' || steps.publish.outcome != 'success')
+        continue-on-error: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --method POST -H 'Accept: application/vnd.github+json' \
+            "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state='failure' -f context='azure/runtime-keyvault-binding' \
+            -f description='vault-binding proof incomplete; no Azure mutation performed' || true
+
+      - name: Record binding summary
+        if: steps.binding.outcome == 'success'
+        shell: bash
+        env:
+          REFERENCE_COUNT: ${{ steps.binding.outputs.reference_count }}
+          VAULT_COUNT: ${{ steps.binding.outputs.vault_count }}
+          VAULT_NAMES: ${{ steps.binding.outputs.vault_names }}
+          VISIBLE_COUNT: ${{ steps.binding.outputs.visible_count }}
+          VAULT_RG: ${{ steps.binding.outputs.vault_resource_group }}
+        run: |
+          {
+            echo '## Control Plane Key Vault binding proof'
+            echo '- Azure mutation performed: no'
+            echo '- raw app-setting values read: no'
+            echo "- Key Vault references: $REFERENCE_COUNT"
+            echo "- unique referenced vaults: $VAULT_COUNT"
+            echo "- referenced vault names: $VAULT_NAMES"
+            echo "- referenced vault exact visible matches: $VISIBLE_COUNT"
+            echo "- referenced vault resource group: $VAULT_RG"
+          } >> "$GITHUB_STEP_SUMMARY"
