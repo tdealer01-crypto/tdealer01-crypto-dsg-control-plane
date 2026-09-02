@@ -13,7 +13,7 @@ type Article = {
 
 async function getArticle(slug: string): Promise<Article | null> {
   try {
-    const base = process.env.NEXT_PUBLIC_APP_URL ?? 'https://tdealer01-crypto-dsg-control-plane.vercel.app';
+    const base = process.env.NEXT_PUBLIC_APP_URL ?? 'https://dsg-control-plane.azurewebsites.net';
     const res = await fetch(`${base}/api/blog/${slug}`, { next: { revalidate: 3600 } });
     if (!res.ok) return null;
     return res.json() as Promise<Article>;
