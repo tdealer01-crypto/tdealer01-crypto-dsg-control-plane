@@ -30,7 +30,7 @@ async function callOpenRouter(message: string): Promise<string | null> {
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'https://tdealer01-crypto-dsg-control-plane.vercel.app',
+        'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'https://dsg-control-plane.azurewebsites.net',
         'X-Title': 'DSG ONE Assistant',
       },
       body: JSON.stringify({
