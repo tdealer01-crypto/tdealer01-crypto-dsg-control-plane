@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic';
 const BASE_URL =
   process.env.NEXT_PUBLIC_APP_URL ??
   process.env.APP_URL ??
-  'https://tdealer01-crypto-dsg-control-plane.vercel.app';
+  'https://dsg-control-plane.azurewebsites.net';
 
 // Public pages that exist as routes in app/ and are worth indexing.
 const STATIC_PATHS: Array<{ path: string; priority: number }> = [
