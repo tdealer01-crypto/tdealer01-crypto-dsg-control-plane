@@ -34,7 +34,7 @@ export default function HomePage() {
           <nav className="flex items-center gap-2">
             <Link href="#how-it-works" className="hidden rounded-full px-4 py-2 text-sm font-semibold text-slate-400 hover:text-white sm:block">How it works</Link>
             <Link href="/docs" className="hidden rounded-full px-4 py-2 text-sm font-semibold text-slate-400 hover:text-white sm:block">Docs</Link>
-            <Link href="/login" className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white">Sign in</Link>
+            <Link href="/login" className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white">Continue with email</Link>
           </nav>
         </div>
       </header>
