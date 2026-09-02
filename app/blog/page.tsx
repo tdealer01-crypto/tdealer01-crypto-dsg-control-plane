@@ -17,7 +17,7 @@ type Article = {
 
 async function getArticles(): Promise<Article[]> {
   try {
-    const base = process.env.NEXT_PUBLIC_APP_URL ?? 'https://tdealer01-crypto-dsg-control-plane.vercel.app';
+    const base = process.env.NEXT_PUBLIC_APP_URL ?? 'https://dsg-control-plane.azurewebsites.net';
     const res = await fetch(`${base}/api/blog`, { next: { revalidate: 3600 } });
     if (!res.ok) return [];
     const data = await res.json() as { articles: Article[] };
