@@ -1,16 +1,126 @@
-# DSG Control Plane
+# DSG ONE
 
-Governance and evidence layer for AI agents, MCP servers, and automated workflows.
+**Govern AI actions. Prove the result.**
 
-Connect an existing agent or automation to DSG. DSG checks what the agent is trying to do against the approved plan, permissions, constraints, and available evidence, then records what actually happened.
+DSG ONE is a governance and evidence layer for AI agents, MCP tools, APIs, browsers, CI/CD and automated workflows. It is designed to sit between an existing agent and execution so operators can answer four questions clearly:
 
-You do not need to replace your existing agent framework.
+1. What is the agent trying to do?
+2. Was that action approved and permitted?
+3. What actually executed?
+4. Where is the evidence?
+
+**Website:** https://www.dsg.pics  
+**Control Plane:** https://dsg-control-plane.azurewebsites.net  
+**Market-Ready product surface:** https://dsg-cinema-production.nicetree-a005fe99.westus3.azurecontainerapps.io/dashboard
+
+---
+
+## Current product experience
+
+The current DSG ONE customer flow is organized around getting to a **first verified result**, not merely showing a connected badge.
+
+```text
+Choose installation path
+        ↓
+Account / target
+        ↓
+Repository / environment scope
+        ↓
+Minimum permission review
+        ↓
+Authorization / admin approval
+        ↓
+Provision
+        ↓
+Verify hashes + installation state
+        ↓
+INSTALLATION_INTEGRITY_PROOF
+        ↓
+HEALTHY
+```
+
+### Install with Web, AI or CLI
+
+The Market-Ready customer surface supports three entry paths that converge on the same provisioner and verification model:
+
+- **Web Install** — guided integration, account, scope, permission and verification flow.
+- **AI Install Wizard** — detects the project stack, proposes setup and keeps approval/permission boundaries explicit.
+- **CLI Install** — automation-oriented install, status, Doctor and first-result operations through `dsgctl`.
+
+Supported framework detection currently includes:
+
+- Next.js
+- React
+- Node.js
+- Python
+- FastAPI
+- Docker
+- Monorepo
+- Static Web
+
+### Installation reliability
+
+The product includes:
+
+- account / target selection;
+- repository and environment scope;
+- minimum-permission review;
+- request-admin-approval state;
+- signed callback binding;
+- automatic provisioning;
+- framework detection;
+- Installation Doctor;
+- Repair;
+- tamper/hash detection;
+- installation lifecycle tracking;
+- automatic first installation proof.
+
+The primary lifecycle is:
+
+```text
+PENDING
+  ↓
+AUTHORIZED
+  ↓
+PROVISIONED
+  ↓
+VERIFIED
+  ↓
+HEALTHY
+```
+
+---
+
+## What the first proof means
+
+After installation verification, DSG can create:
+
+```text
+INSTALLATION_INTEGRITY_PROOF
+```
+
+That proof is intentionally scoped. It can cover:
+
+- callback binding;
+- selected scope;
+- provisioned artifacts;
+- source lineage;
+- artifact hashes;
+- installation verification state.
+
+It **does not** claim that every future AI response or workload is correct. Installation integrity and workload correctness are separate claims and require separate evidence.
+
+---
+
+## Runtime governance
+
+DSG can operate as an observation layer or as a pre-execution governance gate.
 
 ```text
 Your Agent / MCP / Automation
             │
             ▼
-     DSG Control Plane
+        DSG ONE
             │
      ┌──────┴──────┐
      │             │
@@ -20,108 +130,35 @@ Your Agent / MCP / Automation
      │             │
      └──────┬──────┘
             ▼
-       External API
+       External Tool
 ```
 
-## What problem does DSG solve?
+A governed action is evaluated across operational surfaces such as:
 
-AI agents can call APIs, modify infrastructure, deploy software, operate browsers, and execute automated workflows.
-
-The question is not only whether an agent can perform an action. The operational question is whether that action was approved, permitted, verified, and recorded.
-
-DSG adds that governance layer between an agent and execution.
-
-```text
-Approved Plan
-     ↓
-Preflight
-     ↓
-Plan Alignment
-     ↓
-Permission / Constraints
-     ↓
-Execution
-     ↓
-Evidence
-     ↓
-Verification
-     ↓
-Audit
-```
-
-DSG must not block an action merely because governance exists. An action covered by the user-approved plan should be allowed to proceed when its required permissions and constraints are satisfied. Unsupported claims or out-of-plan actions must not silently become successful results.
-
-## Operating modes
-
-### OBSERVE
-
-Use DSG as an evidence and audit layer without making DSG the execution blocker.
-
-```text
-Agent Action
-     ↓
-DSG observes
-     ↓
-Record plan alignment
-Record permissions
-Record evidence
-Record execution result
-     ↓
-Existing API / Tool
-```
-
-This is useful when introducing governance into an existing workflow without immediately changing execution behavior.
-
-### ENFORCE
-
-Use DSG as the pre-execution governance gate.
-
-```text
-Agent Action
-     ↓
-DSG Preflight
-     ↓
-PASS ─────────────────→ Execute
-BLOCKED ──────────────→ Stop
-WAITING_PERMISSION ───→ Request required permission
-UNVERIFIED ───────────→ Require evidence / verification
-```
-
-Core rule:
-
-```text
-Inside approved plan + required permission + supported evidence
-                         ↓
-                       PASS
-
-Outside approved plan
-                         ↓
-                      BLOCKED
-```
-
-## What the operator should see
-
-DSG should expose governance information as operational results rather than forcing users to reconstruct state from raw logs.
-
-A useful runtime view consists of five surfaces:
-
-1. **ACTION** — what the agent is attempting to do.
-2. **PLAN ALIGNMENT** — whether the requested action belongs to the approved plan.
+1. **ACTION** — what the agent is attempting.
+2. **PLAN ALIGNMENT** — whether the action belongs to the approved plan.
 3. **PERMISSION** — whether the execution context has the required authority.
-4. **EVIDENCE** — what proves the result.
+4. **EVIDENCE** — what supports the decision and result.
 5. **EXECUTION / AUDIT** — what actually happened and what was recorded.
 
-This separates:
+Core behavior:
 
 ```text
-what was requested
-what was approved
-what was permitted
-what was executed
-what was proven
+Inside approved plan
++ required permission
++ satisfied constraints
++ supported evidence
+        ↓
+      PASS
+
+Outside approved plan
+        ↓
+     BLOCKED
 ```
 
-## Result states
+DSG must not block actions merely because governance exists. Approved actions should proceed when their required conditions are satisfied. Unsupported claims and out-of-plan actions must not silently become successful results.
+
+### Result states
 
 | State | Meaning |
 |---|---|
@@ -132,11 +169,11 @@ what was proven
 | `REVIEW` | Human or additional verification is required |
 | `FAILED` | Execution or verification failed |
 
-The exact state used depends on the applicable runtime contract and policy.
+---
 
 ## Designed for existing systems
 
-DSG is intended to sit between existing automation and the systems it already uses.
+DSG is not intended to force teams to rebuild their agents.
 
 ```text
 Microsoft Foundry Agent ─┐
@@ -146,29 +183,61 @@ MCP Client ──────────────┤
 CI/CD Workflow ──────────┤
 Automation ──────────────┤
                          ▼
-                  DSG Control Plane
+                       DSG
                          │
                          ▼
                   Existing Systems
 ```
 
-The objective is:
+The target architecture is:
 
 ```text
 existing agent
 +
-DSG governance
+governed execution
 +
 evidence
 +
 auditability
 ```
 
-not to force users to rebuild their agent stack.
+---
+
+## Production evidence
+
+### Control Plane repository
+
+This repository is bound to **Azure App Service** as its authoritative production platform.
+
+- Production URL: `https://dsg-control-plane.azurewebsites.net`
+- Deployment binding: [`config/production-deployment-target.json`](config/production-deployment-target.json)
+- Runtime environment guidance: [`docs/ops/azure-runtime-env-sync.md`](docs/ops/azure-runtime-env-sync.md)
+- Azure deployment evidence: [`qa-logs/azure-production/`](qa-logs/azure-production/)
+
+The deployment binding is fail-closed: configuration alone is not treated as proof that the latest deployment passed.
+
+### Market-Ready / Cinema production surface
+
+The related DSG Cinema production path has current executable evidence for the Market-Ready customer surface:
+
+- Market-Ready product merge commit: `e16e4f2d964f44b4934a99a9297ab3fecfac7208`
+- production Azure deploy: passed;
+- direct Z3 production proof: passed;
+- Cinema → Z3 production E2E and replay: passed;
+- marketplace/CORS checks: passed;
+- revenue truth checks: passed;
+- exact live UI attestation: passed;
+- UI-attestation workflow commit: `b076a0db98009d1a5c479ebbee48655d5b1e711b`.
+
+The live UI attestation fetches production `/dashboard`, `/styles.css`, `/app.js` and `/config.js` and requires exact SHA-256 equality with the sandbox-tested Market-Ready source.
+
+This is production runtime evidence. It is **not** a certification, legal-compliance or universal-correctness claim.
+
+---
 
 ## MCP
 
-The repository contains MCP-related implementation for connecting compatible agents and tooling to DSG governance capabilities.
+The repository contains MCP implementation for connecting compatible agents and tools to DSG governance capabilities.
 
 ```text
 MCP Client
@@ -183,68 +252,23 @@ Preflight / Governance
 Controlled execution
 ```
 
-Before relying on an MCP capability in production, verify the current server configuration, exposed tools, authentication requirements, and deployed runtime.
+Before relying on an MCP capability in production, verify the current exposed tools, authentication requirements, runtime configuration and live deployment state.
 
-## Production
-
-**Authoritative production platform: Azure App Service**
-
-- Production URL: `https://dsg-control-plane.azurewebsites.net`
-- Deployment target: [`config/production-deployment-target.json`](config/production-deployment-target.json)
-- Azure deployment evidence: [`qa-logs/azure-production/`](qa-logs/azure-production/)
-- Runtime environment guidance: [`docs/ops/azure-runtime-env-sync.md`](docs/ops/azure-runtime-env-sync.md)
-
-The configured production target explicitly binds DSG to Azure App Service. Vercel and Render are not active DSG production targets.
-
-A configured deployment target does not by itself prove that the latest production deployment passed. Production success must be established from current deployment, runtime, database, and evidence checks.
-
-## Production deployment model
-
-The configured deployment path is designed around governed promotion and exact artifact identity.
-
-```text
-approved/promoted change
-        ↓
-exact commit identity
-        ↓
-container build
-        ↓
-Azure Container Registry
-        ↓
-staging deployment
-        ↓
-runtime verification
-        ↓
-health verification
-        ↓
-proof/evidence checks
-        ↓
-production promotion
-```
-
-The repository also defines Azure rollback behavior. Verification mismatches are expected to fail closed rather than being represented as successful deployment.
-
-## Health
-
-The configured production health probe is:
-
-```text
-GET /api/health
-```
-
-Do not treat an HTTP health response alone as proof that every DSG capability is production-ready. Full verification may additionally require authenticated runtime checks, database state, evidence persistence, deployment identity, and workflow verification.
+---
 
 ## Repository structure
 
 - `app/` — Next.js application and API surfaces.
-- `lib/` — governance, runtime, security, billing, evidence, and supporting implementation.
+- `lib/` — governance, runtime, security, billing, evidence and supporting implementation.
 - `mcp/` — MCP implementation.
 - `tests/` — automated verification.
 - `.github/workflows/` — CI/CD and governed deployment workflows.
 - `qa-logs/` — captured QA and deployment evidence.
 - `supabase/` — database migrations and schema-related resources.
-- `config/production-deployment-target.json` — canonical production deployment binding.
-- `docs/` — architecture, operating procedures, deployment guidance, and supporting documentation.
+- `config/production-deployment-target.json` — canonical production deployment binding for this repository.
+- `docs/` — architecture, operations, deployment and supporting documentation.
+
+---
 
 ## Local development
 
@@ -252,7 +276,7 @@ Requirements:
 
 - Node.js `>=24`
 - npm
-- Runtime services and secrets required by the capability being tested
+- runtime services and secrets required by the capability being tested
 
 ```bash
 git clone https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane.git
@@ -263,24 +287,23 @@ npm test
 npm run build
 ```
 
-A successful local build proves the local build passed. It does not prove that production deployment, production database connectivity, external integrations, or full live E2E execution passed.
+A successful local build proves the local build passed. It does not by itself prove production deployment, external integrations, production database connectivity or live E2E behavior.
+
+---
 
 ## Evidence-first verification
 
-For any important DSG capability, verify against executable evidence.
+For important DSG capabilities, verify against executable evidence such as:
 
-Useful evidence sources include:
-
-- `tests/`
-- `qa-logs/`
-- GitHub Actions
-- runtime API responses
-- deployment status
-- database records
-- commit SHA
-- container/image digest
-- audit records
-- verification output
+- automated tests;
+- GitHub Actions;
+- runtime API responses;
+- deployment status;
+- commit SHA;
+- container/image digest;
+- database records;
+- audit records;
+- proof and replay output.
 
 The evidence chain should make it possible to answer:
 
@@ -293,23 +316,27 @@ The evidence chain should make it possible to answer:
 7. What passed or failed?
 8. What must happen next?
 
+---
+
 ## Truth boundary
 
-Do not claim `production-ready`, `FULL LIVE E2E PASS`, certified compliance, successful deployment, verified proof, or external solver execution unless current evidence supports that specific claim.
+Do not claim `production-ready`, `FULL LIVE E2E PASS`, certified compliance, successful deployment, verified proof or external solver execution unless current evidence supports that specific claim.
 
 Configuration is not execution evidence. Source code is not production evidence. A successful command is not necessarily proof of the resulting external state.
 
-Missing evidence remains `UNVERIFIED`, `REVIEW`, or `BLOCKED` according to the applicable policy.
+Missing evidence remains `UNVERIFIED`, `REVIEW` or `BLOCKED` according to the applicable policy.
+
+---
 
 ## Secrets
 
 Never commit live credentials to this repository.
 
-Production credentials should use the approved Azure secret/environment-management path. Example environment files document required configuration names; they are not evidence that the corresponding production secret currently exists.
+Production credentials should use the approved Azure secret/environment-management path. Example environment files document configuration names; they are not evidence that the corresponding production secret currently exists.
+
+---
 
 ## Core principle
-
-DSG exists to make agent execution answerable.
 
 ```text
 Agent wants to act
@@ -320,15 +347,9 @@ Is it inside the plan?
         ↓
 Does it have permission?
         ↓
-Can it execute?
+What executed?
         ↓
-What actually happened?
-        ↓
-Where is the evidence?
+What proves the result?
 ```
 
-The goal is not to add more steps for the operator. The goal is to expose governed execution as clear operational outcomes such as `PASS`, `BLOCKED`, `WAITING_PERMISSION`, `UNVERIFIED`, or `FAILED`, together with the reason, evidence, and next action.
-
----
-
-**DSG Control Plane — govern the action, preserve the evidence, verify the result.**
+**DSG ONE — govern the action, preserve the evidence, verify the result.**
