@@ -8,8 +8,17 @@ import { ToastProvider } from '../components/ToastProvider';
 import { LanguageProvider } from '@/lib/i18n/language-context';
 
 export const metadata: Metadata = {
-  title: 'DSG ONE — ProofGate Runtime Control Plane',
-  description: 'red, gold, and blue-sapphire runtime governance for AI, workflow, finance, and deployment actions before execution.',
+  title: 'DSG ONE — Govern AI Actions. Prove the Result.',
+  description: 'Install with Web, AI or CLI. Govern AI-agent actions against approved plans, permissions and evidence, then preserve verification and audit proof.',
+  metadataBase: new URL('https://www.dsg.pics'),
+  alternates: { canonical: '/' },
+  openGraph: {
+    title: 'DSG ONE — Govern AI Actions. Prove the Result.',
+    description: 'Governed execution and evidence for AI agents, MCP tools and automated workflows.',
+    url: 'https://www.dsg.pics',
+    siteName: 'DSG ONE',
+    type: 'website',
+  },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
