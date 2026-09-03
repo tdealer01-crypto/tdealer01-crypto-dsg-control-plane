@@ -76,6 +76,9 @@ export default function HomePage() {
               <Link href="/login?next=/dashboard/integrations" className="rounded-2xl border border-white/10 bg-white/[0.04] px-6 py-3.5 text-sm font-bold text-white transition hover:border-white/20">
                 Connect an agent
               </Link>
+              <Link href="/login" className="rounded-2xl border border-white/10 px-6 py-3.5 text-sm font-bold text-slate-300 transition hover:text-white">
+                Continue with email
+              </Link>
               <Link href="#proof" className="rounded-2xl border border-white/10 px-6 py-3.5 text-sm font-bold text-slate-300 transition hover:text-white">
                 See what is proven
               </Link>
