@@ -105,7 +105,7 @@ export default function PricingPage() {
             AI Governance, Designed to Scale
           </h1>
           <p className="text-lg text-slate-300 max-w-2xl mx-auto">
-            Two products — Delivery Proof Scanning and the DSG Gate API — so teams can inspect evidence before expanding production usage.
+            DSG Spacetime, Delivery Proof and the DSG Gate API cover governed execution, delivery evidence and deterministic pre-execution decisions.
           </p>
           <Link
             href="/start"
@@ -114,6 +114,51 @@ export default function PricingPage() {
             See connection and install paths →
           </Link>
         </div>
+
+        <section id="spacetime" className="mb-20">
+          <div className="mb-8">
+            <span className="inline-block px-3 py-1 text-xs font-bold uppercase tracking-widest rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30 mb-3">
+              DSG Spacetime
+            </span>
+            <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">
+              Governed Execution Runtime for AI Agents and MCP
+            </h2>
+            <p className="text-slate-400 max-w-2xl">
+              Customer-hosted compiled runtime with a deployment-bound entitlement, governed Route execution and verifiable ALLOW/BLOCK evidence.
+            </p>
+          </div>
+
+          <div className="rounded-3xl border border-sky-400/30 bg-sky-400/[0.06] p-7 md:p-8">
+            <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
+              <div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <h3 className="text-2xl font-bold text-white">1 Governed Route</h3>
+                  <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-emerald-300">
+                    P0-1 Verified
+                  </span>
+                </div>
+                <p className="mt-3 text-sm leading-7 text-slate-400 max-w-2xl">
+                  One-time commercial license for a customer-owned deployment. Includes the compiled Linux AMD64 runtime, automatic installer, signed entitlement, public verification key and one Route activation. Production source code is not included.
+                </p>
+                <div className="mt-5 flex flex-wrap gap-2 text-xs text-slate-300">
+                  {['MCP', 'BOUND', 'ALLOW', 'Evidence VALID', 'Wrong deployment BLOCK'].map((item) => (
+                    <span key={item} className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5">{item}</span>
+                  ))}
+                </div>
+              </div>
+              <div className="min-w-[230px] rounded-2xl border border-white/10 bg-black/20 p-6 text-center">
+                <div className="text-4xl font-bold text-white">$299</div>
+                <div className="mt-1 text-sm text-slate-500">one-time</div>
+                <Link
+                  href="/spacetime"
+                  className="mt-5 block rounded-xl bg-sky-300 px-5 py-3 text-sm font-bold text-slate-950 transition hover:bg-sky-200"
+                >
+                  View DSG Spacetime →
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
 
         <section id="dsg-gate" className="mb-20">
           <div className="mb-8">
@@ -203,6 +248,12 @@ export default function PricingPage() {
         <div className="text-center mt-4">
           <p className="text-slate-400 mb-4">Ready to connect DSG ONE?</p>
           <div className="flex gap-4 justify-center flex-wrap">
+            <Link
+              href="/spacetime"
+              className="px-6 py-3 rounded-xl bg-sky-300 text-slate-950 font-bold hover:bg-sky-200 transition"
+            >
+              View DSG Spacetime →
+            </Link>
             <Link
               href="/start"
               className="px-6 py-3 rounded-xl bg-violet-500 text-white font-bold hover:bg-violet-400 transition"
