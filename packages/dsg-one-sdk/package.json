@@ -1,6 +1,6 @@
 {
-  "name": "@dsg-one/sdk",
-  "version": "0.1.0",
+  "name": "dsg-one-sdk",
+  "version": "0.1.1",
   "description": "DSG ONE SDK - TypeScript client for the Deterministic Security Gateway governed execution API",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
