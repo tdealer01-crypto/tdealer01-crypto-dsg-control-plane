@@ -19,7 +19,7 @@
   "scripts": {
     "build": "tsc",
     "build:dev": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --config vitest.config.ts",
     "prepublishOnly": "npm run build",
     "publish:dry": "npm publish --dry-run"
   },
