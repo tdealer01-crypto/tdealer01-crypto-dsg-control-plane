@@ -15,21 +15,21 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      - name: Disable every other workflow in this repository
+      - name: Disable workflows except quota guard and SDK release
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           gh api --paginate "/repos/${GITHUB_REPOSITORY}/actions/workflows?per_page=100" \
-            --jq '.workflows[] | select(.path != ".github/workflows/quota-emergency-stop.yml") | [.id,.path] | @tsv' \
+            --jq '.workflows[] | select(.path != ".github/workflows/quota-emergency-stop.yml" and .path != ".github/workflows/publish-dsg-one-sdk.yml") | [.id,.path] | @tsv' \
           | while IFS=$'\t' read -r workflow_id workflow_path; do
               [[ -n "$workflow_id" ]] || continue
               echo "Disabling $workflow_path ($workflow_id)"
               gh api --method PUT "/repos/${GITHUB_REPOSITORY}/actions/workflows/${workflow_id}/disable" || true
             done
 
-      - name: Drain queued and in-progress runs
+      - name: Drain queued and in-progress runs except SDK release
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -44,7 +44,7 @@ jobs:
             for status in queued in_progress; do
               mapfile -t run_ids < <(
                 gh api --paginate "/repos/${GITHUB_REPOSITORY}/actions/runs?status=${status}&per_page=100" \
-                  --jq '.workflow_runs[].id'
+                  --jq '.workflow_runs[] | select(.path != ".github/workflows/publish-dsg-one-sdk.yml") | .id'
               )
 
               for run_id in "${run_ids[@]}"; do
@@ -68,8 +68,10 @@ jobs:
 
           echo "Final verification after cancellation rounds"
           remaining="$({
-            gh api "/repos/${GITHUB_REPOSITORY}/actions/runs?status=queued&per_page=100" --jq '.total_count'
-            gh api "/repos/${GITHUB_REPOSITORY}/actions/runs?status=in_progress&per_page=100" --jq '.workflow_runs | map(select(.id != ('"$THIS_RUN_ID"'))) | length'
+            gh api "/repos/${GITHUB_REPOSITORY}/actions/runs?status=queued&per_page=100" \
+              --jq '[.workflow_runs[] | select(.path != ".github/workflows/publish-dsg-one-sdk.yml")] | length'
+            gh api "/repos/${GITHUB_REPOSITORY}/actions/runs?status=in_progress&per_page=100" \
+              --jq '[.workflow_runs[] | select(.id != ('"$THIS_RUN_ID"') and .path != ".github/workflows/publish-dsg-one-sdk.yml")] | length'
           } | awk '{s+=$1} END {print s+0}')"
 
           if [[ "$remaining" != "0" ]]; then
