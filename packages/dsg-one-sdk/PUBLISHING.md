@@ -1,6 +1,17 @@
-# Publishing @dsg-one/sdk to npm
+# Publishing dsg-one-sdk to npm
 
 This guide defines the canonical release path for the DSG ONE SDK.
+
+## Package identity
+
+The production npm package is the existing unscoped package:
+
+- Package: `dsg-one-sdk`
+- Current published baseline: `0.1.0`
+- Repository package path: `packages/dsg-one-sdk`
+- Next repository version: `0.1.1`
+
+Do not use the unavailable `@dsg-one/sdk` scope. The `dsg-one` npm organization name is not available to this account, while `dsg-one-sdk` is already owned by the npm maintainer account used for DSG releases.
 
 ## Canonical release path
 
@@ -15,11 +26,9 @@ Production npm releases use **GitHub Actions + npm Trusted Publishing (OIDC)** t
 
 Do not recreate expired write tokens such as `tar` or `dsg` for this CI publish path.
 
-## One-time npm configuration
+## One-time npm Trusted Publisher configuration
 
-Trusted Publishing is configured on npmjs.com for the package, not in GitHub Secrets.
-
-Open the package settings and add a GitHub Actions trusted publisher with these exact values:
+Because `dsg-one-sdk` already exists on npm, no first-publish bootstrap is required. Open the **dsg-one-sdk** package settings on npmjs.com and add a GitHub Actions trusted publisher with these exact values:
 
 | Field | Value |
 |---|---|
@@ -30,26 +39,6 @@ Open the package settings and add a GitHub Actions trusted publisher with these 
 | Environment | Leave empty unless a matching GitHub environment is deliberately added |
 
 The workflow filename is case-sensitive and npm expects only the filename, not `.github/workflows/`.
-
-### First publish bootstrap
-
-npm requires a package to already exist on the registry before a Trusted Publisher can be attached to it.
-
-If `@dsg-one/sdk` has never been published, perform exactly one authenticated maintainer publish first:
-
-```bash
-cd packages/dsg-one-sdk
-npm install --package-lock=false
-npm test
-npm run build
-npm pack --dry-run
-npm login
-npm publish --access public
-```
-
-Complete the interactive 2FA challenge when npm requests it. After the package exists, configure the Trusted Publisher above and use GitHub Actions for subsequent releases.
-
-Do not create a new long-lived CI write token merely to bootstrap Trusted Publishing.
 
 ## Release checks
 
@@ -104,9 +93,9 @@ No `NPM_TOKEN` or `NODE_AUTH_TOKEN` is supplied to the publish step.
 After the workflow succeeds:
 
 ```bash
-npm view @dsg-one/sdk version
-npm view @dsg-one/sdk dist-tags
-npm install @dsg-one/sdk
+npm view dsg-one-sdk version
+npm view dsg-one-sdk dist-tags
+npm install dsg-one-sdk
 ```
 
 For releases made through Trusted Publishing from this public GitHub repository, npm generates provenance automatically.
@@ -119,21 +108,21 @@ The SDK currently declares no runtime dependencies and does not require a privat
 
 ## Manual Termux fallback
 
-`npm-publish-termux.sh` is retained only for first-publish bootstrap or emergency manual releases. It uses interactive npm authentication and does not provision a CI write token.
+`npm-publish-termux.sh` is retained only for emergency manual releases. It uses `npm login --auth-type=web`, keeps the test/build/pack/version guards, and does not provision a CI write token or pass a custom `--otp` value.
 
-`npm-token-fix-termux.sh` is deprecated as a token-creation helper. It now explains the OIDC migration instead of attempting `npm token create`.
+`npm-token-fix-termux.sh` is deprecated as a token-creation helper. It explains the OIDC migration instead of attempting `npm token create`.
 
 ## Failure guide
 
 | Failure | Meaning / action |
 |---|---|
-| `ENEEDAUTH` / unable to authenticate | Confirm the npm Trusted Publisher fields exactly match this repository and `publish-dsg-one-sdk.yml` |
-| OIDC error | Confirm workflow has `id-token: write` and runs on GitHub-hosted runner |
-| Package does not exist when configuring trust | Complete the one-time first publish bootstrap, then configure Trusted Publishing |
+| `ENEEDAUTH` / unable to authenticate | Confirm the npm Trusted Publisher fields exactly match `dsg-one-sdk`, this repository, and `publish-dsg-one-sdk.yml` |
+| OIDC error | Confirm workflow has `id-token: write` and runs on a GitHub-hosted runner |
 | Version already exists | Bump `package.json` version; npm versions are immutable |
 | Tag/version mismatch | Use `dsg-one-sdk-vX.Y.Z` matching `package.json` exactly |
 | Build/test failure | Fix the failing SDK code/test; publishing remains blocked |
 | Private dependency install fails | Add a read-only `NPM_READ_TOKEN` only for the install step if genuinely required |
+| `404 Scope not found` for `@dsg-one/sdk` | Wrong package identity; use the existing unscoped `dsg-one-sdk` package |
 
 ## References
 
