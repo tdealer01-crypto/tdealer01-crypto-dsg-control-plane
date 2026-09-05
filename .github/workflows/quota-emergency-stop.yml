@@ -1,0 +1,36 @@
+name: Emergency Actions Quota Guard
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/quota-emergency-stop.yml'
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  cancel-other-runs:
+    name: Cancel queued and in-progress runs
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Cancel all other queued/in-progress runs in this repository
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          THIS_RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          for status in queued in_progress; do
+            gh api --paginate "/repos/${GITHUB_REPOSITORY}/actions/runs?status=${status}&per_page=100" \
+              --jq '.workflow_runs[].id' | while IFS= read -r run_id; do
+                if [[ -z "$run_id" || "$run_id" == "$THIS_RUN_ID" ]]; then
+                  continue
+                fi
+                echo "Cancelling run $run_id ($status)"
+                gh api --method POST "/repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/cancel" || true
+              done
+          done
