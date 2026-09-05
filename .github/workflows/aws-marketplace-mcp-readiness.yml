@@ -1,0 +1,56 @@
+name: AWS Marketplace MCP Readiness
+
+on:
+  pull_request:
+    paths:
+      - 'config/aws-marketplace-mcp-server.json'
+      - 'config/production-deployment-target.json'
+      - 'app/api/mcp/governance/**'
+      - 'app/api/dsg/governance/**'
+      - 'lib/dsg/governance-plugin.ts'
+      - 'scripts/verify-aws-marketplace-mcp-package.mjs'
+      - 'docs/AWS_MARKETPLACE_MCP_SERVER_PACKAGE_2026-09-05.md'
+      - '.github/workflows/aws-marketplace-mcp-readiness.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'config/aws-marketplace-mcp-server.json'
+      - 'config/production-deployment-target.json'
+      - 'app/api/mcp/governance/**'
+      - 'app/api/dsg/governance/**'
+      - 'lib/dsg/governance-plugin.ts'
+      - 'scripts/verify-aws-marketplace-mcp-package.mjs'
+      - '.github/workflows/aws-marketplace-mcp-readiness.yml'
+  workflow_dispatch:
+    inputs:
+      live_base_url:
+        description: 'Optional exact production origin, e.g. https://host.example.com'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  static-package-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify static AWS Marketplace MCP package contract
+        run: node scripts/verify-aws-marketplace-mcp-package.mjs
+
+  live-discovery:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.live_base_url != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify live MCP discovery and OpenAPI surfaces
+        env:
+          AWS_MARKETPLACE_MCP_BASE_URL: ${{ inputs.live_base_url }}
+        run: node scripts/verify-aws-marketplace-mcp-package.mjs
