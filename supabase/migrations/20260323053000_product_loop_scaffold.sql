@@ -95,22 +95,45 @@ create index if not exists idx_audit_logs_org_created_at on public.audit_logs(or
 create index if not exists idx_usage_events_agent_created_at on public.usage_events(agent_id, created_at desc);
 create index if not exists idx_usage_counters_agent_period on public.usage_counters(agent_id, billing_period);
 
-insert into public.policies (id, name, version, status, description, config)
-values (
-  'policy_default',
-  'Default DSG Policy',
-  'v1',
-  'active',
-  'Baseline deterministic policy for scaffold execution routes.',
-  jsonb_build_object(
-    'block_risk_score', 0.8,
-    'stabilize_risk_score', 0.4
-  )
-)
-on conflict (id) do update set
-  name = excluded.name,
-  version = excluded.version,
-  status = excluded.status,
-  description = excluded.description,
-  config = excluded.config,
-  updated_at = now();
+-- Legacy preview databases can already contain public.policies with a UUID id
+-- column. CREATE TABLE IF NOT EXISTS preserves that old shape, so inserting the
+-- canonical text id `policy_default` would fail before the later full-schema
+-- sync can rebuild the table. Seed only when the existing id column is
+-- text-compatible; the canonical full-schema migration performs the seed after
+-- recreating public.policies with id text.
+do $$
+declare
+  v_id_type text;
+begin
+  select format_type(a.atttypid, a.atttypmod)
+    into v_id_type
+  from pg_attribute a
+  where a.attrelid = 'public.policies'::regclass
+    and a.attname = 'id'
+    and a.attnum > 0
+    and not a.attisdropped;
+
+  if v_id_type in ('text', 'character varying') then
+    insert into public.policies (id, name, version, status, description, config)
+    values (
+      'policy_default',
+      'Default DSG Policy',
+      'v1',
+      'active',
+      'Baseline deterministic policy for scaffold execution routes.',
+      jsonb_build_object(
+        'block_risk_score', 0.8,
+        'stabilize_risk_score', 0.4
+      )
+    )
+    on conflict (id) do update set
+      name = excluded.name,
+      version = excluded.version,
+      status = excluded.status,
+      description = excluded.description,
+      config = excluded.config,
+      updated_at = now();
+  else
+    raise notice 'Skipping policy_default seed because public.policies.id type is %, expected text-compatible legacy shape', v_id_type;
+  end if;
+end $$;
