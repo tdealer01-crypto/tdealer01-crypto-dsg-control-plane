@@ -3,60 +3,58 @@
 **Assessment date:** 2026-09-05  
 **Repository:** `tdealer01-crypto/tdealer01-crypto-dsg-control-plane`  
 **Product candidate:** **DSG Spacetime — Governed MCP Execution Gateway**  
-**Marketplace product path:** **API-Based Agents & Tools → MCP → MCP server**  
-**Decision:** **ACT NOW on packaging; NO-GO for paid public launch until seller + Marketplace commercial integration + live E2E evidence pass.**
+**Marketplace path:** **API-Based Agents & Tools → MCP → MCP server**  
+**Decision:** **GO for packaging; NO-GO for paid launch until live runtime, seller, commercial binding and real E2E gates pass.**
 
-This document supersedes the *packaging decision* in `docs/AWS_MARKETPLACE_PRIVATE_OFFER_READINESS_2026-08-12.md`. That earlier document remains valid historical evidence for the commercial integration gaps it found. It does not need to be deleted.
+This document supersedes the packaging decision in `docs/AWS_MARKETPLACE_PRIVATE_OFFER_READINESS_2026-08-12.md`. The older file remains historical evidence for the commercial integration gaps it identified.
 
-## 1. Why this path is now the shortest valid AWS route
+## 1. Why this is the shortest AWS route
 
-AWS Marketplace now has a dedicated SaaS API-based AI agents and tools listing flow. The listing wizard explicitly supports:
+AWS Marketplace now has a dedicated SaaS API-based AI agents and tools flow that supports:
 
-- Delivery method: API-Based Agents & Tools
-- AI tool type: MCP Server
-- Integration protocol: MCP
-- static or dynamic MCP endpoint URL
-- Redirect to Website or Quick Launch fulfillment
-- API key or OAuth authentication
-- optional Amazon Bedrock AgentCore integration
+- tool type: MCP Server;
+- integration protocol: MCP;
+- static or dynamic endpoints;
+- API key or OAuth authentication;
+- Redirect to Website or Quick Launch fulfillment;
+- optional Amazon Bedrock AgentCore integration.
 
-Official AWS references:
+A vendor-hosted API endpoint can be used. DSG therefore does not need to move the Azure runtime to AWS merely to package this product. The separate **Deployed on AWS** designation is not claimed.
+
+Official references:
 
 - https://docs.aws.amazon.com/marketplace/latest/userguide/listing-saas-ai-agents.html
 - https://docs.aws.amazon.com/marketplace/latest/userguide/integrating-api-ai-agents-tools.html
+- https://docs.aws.amazon.com/marketplace/latest/userguide/integrating-mcp.html
 - https://docs.aws.amazon.com/marketplace/latest/userguide/bedrock-agentcore-gateway.html
 - https://docs.aws.amazon.com/marketplace/latest/userguide/seller-eligibility.html
-- https://docs.aws.amazon.com/marketplace/latest/userguide/creating-private-offer.html
 
-AWS also allows the API deployment option to use vendor-hosted endpoints. A product does not need to move its runtime to AWS merely to be an API-based Marketplace product. The separate **Deployed on AWS** designation has stricter hosting requirements and is not claimed here.
+## 2. Existing DSG product surface
 
-## 2. Repo evidence: the MCP product surface already exists
-
-The correct Marketplace surface is **not** the broad `/api/mcp` gateway. The narrow product surface already exists:
+The Marketplace surface should be the narrow governance server, not the broad `/api/mcp` gateway:
 
 ```text
 /api/mcp/governance
 ```
 
-It exposes one focused MCP tool:
+It exposes:
 
 ```text
 dsg.governance.preflight
 ```
 
-The current code provides:
+Verified repository capabilities:
 
-1. MCP JSON-RPC over HTTP
-2. `initialize`
-3. `tools/list`
-4. `tools/call`
-5. API-key authentication through `validateStoredUnifiedMcpKey`
-6. approved-plan lookup
-7. deterministic plan-alignment evaluation
-8. execution-role check
-9. `PASS | BLOCKED | WAITING_PERMISSION | UNVERIFIED`
-10. `DO_NOT_EXECUTE | CONTINUE_TO_TARGET`
-11. persisted hash-linked audit evidence in `dsg_audit_events`
+1. MCP JSON-RPC over HTTP.
+2. `initialize`, `tools/list`, `tools/call`.
+3. API-key authentication through `validateStoredUnifiedMcpKey`.
+4. approved-plan lookup.
+5. deterministic plan-alignment evaluation.
+6. execution-role checks.
+7. `PASS | BLOCKED | WAITING_PERMISSION | UNVERIFIED`.
+8. `DO_NOT_EXECUTE | CONTINUE_TO_TARGET`.
+9. hash-linked audit persistence in `dsg_audit_events`.
+10. OpenAPI 3.1 governance surface with `x-dsg-api-key`.
 
 Relevant code:
 
@@ -64,234 +62,247 @@ Relevant code:
 - `lib/dsg/governance-plugin.ts`
 - `app/api/dsg/governance/openapi/route.ts`
 
-The OpenAPI route already declares `x-dsg-api-key` authentication and the corresponding REST governance preflight operation. This gives DSG a code surface compatible with the AWS-documented AgentCore option for API-key-authenticated MCP/API products, subject to AWS-side validation.
+This is the correct product positioning: **governed execution gateway**, not a generic agent platform.
 
-## 3. Production hosting boundary
+## 3. MCP protocol compatibility boundary
 
-Current production authority is:
+The current dedicated MCP route returns:
+
+```text
+protocolVersion = 2024-11-05
+```
+
+AWS Marketplace's published MCP integration requirements require JSON-RPC 2.0, capability discovery, authentication/session handling, and error handling. The listing documentation does not identify one single MCP protocol version as the only accepted version.
+
+For DSG's current **API key** authentication path, AWS documents AgentCore integration through the existing OpenAPI specification. Direct MCP endpoint integration into AgentCore without OpenAPI is the separate two-legged OAuth path.
+
+Therefore this package does **not** change the protocol version merely to advertise a newer number. A real AWS Marketplace-compatible client validation remains a launch gate. Compatibility must be demonstrated rather than inferred.
+
+## 4. Production hosting and verified live blocker
+
+Production authority:
 
 ```text
 config/production-deployment-target.json
 provider = AZURE_APP_SERVICE
 ```
 
-The repository explicitly states that Vercel and Render are not active DSG production targets.
-
-Marketplace package candidate:
+Candidate origin:
 
 ```text
-Static MCP endpoint path:
-/api/mcp/governance
-
-Candidate Azure origin from current production authority:
 https://dsg-control-plane.azurewebsites.net
+```
 
-Candidate listing endpoint:
+Candidate Marketplace MCP endpoint:
+
+```text
 https://dsg-control-plane.azurewebsites.net/api/mcp/governance
 ```
 
-**Important:** the candidate URL is not marked LIVE merely because the route and Azure origin exist in the repository. Run the live verifier against the exact production origin before entering the URL in AWS Marketplace.
+GitHub Actions run `33954260838` observed on 2026-09-05T08:04:30Z:
 
-## 4. Recommended first listing configuration
+| Path | HTTP |
+|---|---:|
+| `/api/health` | 200 |
+| `/api/dsg/v1/runtime` | 404 |
+| `/api/mcp/governance` | 404 |
+| `/api/dsg/governance/openapi` | 404 |
 
-Use the minimum product surface needed to sell the existing capability:
+The Azure application is alive, but the deployed bundle does not contain the current governance/runtime routes. The governance MCP route entered `main` on 2026-09-01, while the latest checked-in Azure production proof found during this work predates that merge.
 
-| AWS field | DSG candidate | Current status |
-|---|---|---|
-| Product title | DSG Spacetime — Governed MCP Execution Gateway | LOCKED FOR PACKAGE |
-| Delivery method | API-Based Agents & Tools | PACKAGE PASS |
-| Type | MCP server | PACKAGE PASS |
-| Integration protocol | MCP | PACKAGE PASS |
-| Endpoint | `/api/mcp/governance` on exact production origin | LIVE VERIFY REQUIRED |
-| Endpoint type | Static | RECOMMENDED |
-| Authentication | API Key | CODE EXISTS |
-| Fulfillment | Redirect to Website | RECOMMENDED INITIAL PATH |
-| Quick Launch | Later | NOT IMPLEMENTED |
-| AgentCore integration | OpenAPI path for API-key-authenticated product | CODE SURFACE EXISTS; AWS VALIDATION REQUIRED |
-| Paid pricing | Select only after seller + billing integration design | BLOCKED |
-| Private offer | After active public listing | BLOCKED |
-
-### Why Redirect to Website first
-
-DSG already has its own account and API-key lifecycle. Redirect to Website therefore avoids building Quick Launch delivery before the first Marketplace validation.
-
-This does **not** remove AWS Marketplace billing/customer identity requirements. Once a customer subscribes through Marketplace, DSG still has to perform the AWS-required registration and pricing-model integration instead of treating the customer as an ordinary Stripe buyer.
-
-## 5. Commercial integration gaps that still block paid launch
-
-The direct MCP product type reduces packaging work. It does not make the existing Stripe path an AWS Marketplace fulfillment implementation.
-
-Current repository code search still does **not** prove the following Marketplace integration:
-
-- `ResolveCustomer`
-- contract entitlement verification / subscription state appropriate to the chosen pricing model
-- Concurrent Agreements-safe AWS buyer/agreement identity
-- Marketplace usage metering when usage pricing is selected
-- subscription/entitlement change processing
-- provider isolation proving AWS Marketplace buyers cannot be double-billed through Stripe
-- Quick Launch `PutDeploymentParameter` integration
-
-Therefore the paid product status remains:
+Current machine-readable state:
 
 ```text
-MCP PRODUCT SURFACE:      READY FOR PACKAGE VALIDATION
-LIVE MCP DISCOVERY:       NOT YET PROVED BY THIS PR
+BLOCKED_STALE_PRODUCTION_IMAGE_HTTP_404
+```
+
+See `docs/evidence/AWS_MARKETPLACE_MCP_LIVE_BLOCK_2026-09-05.md`.
+
+## 5. First-product fulfillment decision
+
+Recommended first product:
+
+```text
+Fulfillment = Redirect to Website
+Authentication = API Key
+Endpoint = static /api/mcp/governance
+AgentCore = OpenAPI integration path
+```
+
+Reason: DSG already owns customer onboarding and API-key lifecycle, so Redirect to Website minimizes new delivery work for the first enterprise pilot.
+
+### Important irreversible choice
+
+AWS states that **the fulfillment method cannot be changed after the product is published**.
+
+Therefore:
+
+- `Redirect to Website` is not described as a temporary phase that can later be switched to Quick Launch on the same published product;
+- if Quick Launch is required, choose it before publication or use a separate listing/product strategy;
+- Quick Launch would additionally require the AWS Marketplace Deployment API path and key delivery workflow.
+
+The current package deliberately selects Redirect to Website **before publication**, subject to final seller validation.
+
+## 6. Recommended listing configuration
+
+| AWS field | DSG candidate | Status |
+|---|---|---|
+| Product title | DSG Spacetime — Governed MCP Execution Gateway | PACKAGE LOCKED |
+| Delivery method | API-Based Agents & Tools | PASS |
+| Type | MCP server | PASS |
+| Integration protocol | MCP | PASS |
+| Endpoint | `/api/mcp/governance` on Azure production origin | BLOCKED: LIVE 404 |
+| Endpoint type | Static | SELECTED |
+| Authentication | API Key | CODE EXISTS |
+| Fulfillment | Redirect to Website | SELECTED, NOT PUBLISHED |
+| Quick Launch | Not selected for this product | N/A |
+| AgentCore | OpenAPI path for API-key product | CODE SURFACE EXISTS; AWS VALIDATION PENDING |
+| Pricing | Decide only with commercial adapter design | BLOCKED |
+| Private offer | After public-listing prerequisite | BLOCKED |
+
+## 7. Commercial integration gaps
+
+The direct MCP product type reduces packaging work. It does not turn the Stripe billing path into AWS Marketplace fulfillment.
+
+Repository inspection does not prove implementation of:
+
+- `ResolveCustomer`;
+- contract entitlement/subscription processing for the selected pricing model;
+- AWS account/license/agreement identity suitable for concurrent agreements;
+- Marketplace usage metering when usage pricing is selected;
+- subscription/entitlement change processing;
+- provider isolation proving an AWS Marketplace buyer cannot also enter the Stripe charge path.
+
+The current `billing_subscriptions` model is Stripe-specific (`stripe_subscription_id`, `stripe_customer_id`). The entitlement decision layer can be reused, but AWS Marketplace identity/agreement state should not be forced into Stripe identifiers.
+
+Paid launch status:
+
+```text
+MCP PACKAGE:              READY
+AZURE LIVE MCP:           BLOCKED — stale deployed bundle
+AWS CLIENT COMPATIBILITY: PENDING REAL VALIDATION
 SELLER ELIGIBILITY:       UNVERIFIED OUTSIDE REPO
 AWS COMMERCIAL BINDING:   NOT IMPLEMENTED
 PAID PUBLIC LAUNCH:       NO-GO
 PRIVATE OFFER:            NO-GO
 ```
 
-## 6. Seller eligibility is an external hard gate
+## 8. Seller eligibility boundary
 
-AWS currently requires paid-product sellers to be a permanent resident/citizen of an eligible jurisdiction or a business entity organized/incorporated in an eligible jurisdiction, plus required tax, bank and verification steps.
+Seller eligibility, tax, banking/KYC and AWS Marketplace account approval are external account facts. The repository cannot prove them.
 
-The current AWS eligible-jurisdiction list does **not** include Thailand.
+Do not mark a paid listing eligible until AWS Partner Central / Marketplace seller state is checked directly for the actual selling entity.
 
-This repository does not prove the seller's legal entity, residency, bank jurisdiction, tax status, KYC state or AWS Marketplace seller approval. Therefore:
+## 9. Required E2E evidence
 
-- do **not** mark the paid listing eligible from repo evidence alone;
-- if the intended seller is Thailand-only, AWS's current paid-seller jurisdiction rule is a blocker;
-- if an eligible-jurisdiction business entity/residency exists, verify it directly in AWS Partner Central / Marketplace seller settings before paid listing work proceeds.
-
-A free listing has different eligibility requirements, but it does not satisfy a revenue objective by itself.
-
-## 7. Required E2E proof before Marketplace submission
-
-### A. Discovery proof
+### A. Live discovery
 
 ```text
-AWS test client
-  → GET /api/mcp/governance
+AWS-compatible client
   → POST initialize
   → POST tools/list
-  → dsg.governance.preflight discovered
+  → discovers dsg.governance.preflight
 ```
 
-Evidence required:
+Required evidence:
 
-- exact production URL
-- HTTP status
-- MCP server identity
-- protocol version
-- tool name/schema
-- timestamp / commit SHA where available
+- exact production URL;
+- HTTP status;
+- server identity;
+- protocol version;
+- tool/schema;
+- authentication/error behavior;
+- timestamp and deployed commit where available.
 
-### B. Approved-plan ALLOW proof
+### B. Approved-plan ALLOW
 
 ```text
-real authenticated Marketplace-style client
+real API key
+  → real stored approved planHash
   → dsg.governance.preflight
-  → real approved planHash already persisted for the org
-  → plan alignment PASS
-  → execution permission PASS
   → policyAllowsAction = true
   → shouldBlock = false
   → audit persisted = true
   → CONTINUE_TO_TARGET
 ```
 
-Do not invent an approved plan fixture. Use a real stored plan and a real issued DSG API key.
-
-### C. Outside-plan BLOCK proof
+### C. Outside-plan BLOCK
 
 ```text
-same authenticated client/org in ENFORCE mode
-  → action outside the stored approved plan
+same authenticated org in ENFORCE mode
+  → operation outside approved plan
   → status = BLOCKED
   → shouldBlock = true
   → audit persisted = true
   → DO_NOT_EXECUTE
 ```
 
-Observe mode is not sufficient evidence for this case because Observe intentionally does not block downstream execution.
+No fake plan fixture or API key is permitted. Missing real inputs means the authenticated E2E remains pending.
 
-## 8. Verifier added by this package
+## 10. Verification added in PR #1218
 
-Static verification:
-
-```bash
-node scripts/verify-aws-marketplace-mcp-package.mjs
-```
-
-Expected final line when repository contracts pass:
+Static verifier:
 
 ```text
-AWS_MARKETPLACE_MCP_PACKAGE=STATIC_PASS_LIVE_AND_COMMERCIAL_VALIDATION_PENDING
+scripts/verify-aws-marketplace-mcp-package.mjs
 ```
 
-Live discovery verification:
-
-```bash
-AWS_MARKETPLACE_MCP_BASE_URL=https://<exact-production-origin> \
-  node scripts/verify-aws-marketplace-mcp-package.mjs
-```
-
-Authenticated ALLOW/BLOCK verification additionally requires:
-
-```text
-DSG_MARKETPLACE_MCP_API_KEY
-DSG_MARKETPLACE_ALLOW_CASE_JSON
-DSG_MARKETPLACE_BLOCK_CASE_JSON
-```
-
-The two JSON fixtures must describe real plan-bound cases. The verifier intentionally skips authenticated E2E rather than fabricating data when they are absent.
-
-CI workflow:
+CI:
 
 ```text
 .github/workflows/aws-marketplace-mcp-readiness.yml
 ```
 
-PR/push runs the static package contract. `workflow_dispatch` can run live discovery against an operator-supplied exact production origin.
+The workflow has two distinct meanings:
 
-## 9. AWS seller/listing execution order
+- static package checks verify repository contracts;
+- live-state checks verify that the declared production state matches observed HTTPS behavior.
+
+When the contract says `BLOCKED_STALE_PRODUCTION_IMAGE_HTTP_404`, CI expects health=200 and the current runtime/MCP/OpenAPI routes=404 and reports:
 
 ```text
-1. Verify AWS Marketplace seller profile/account
-2. Verify paid-seller jurisdiction + tax + banking/KYC state
-3. Run live MCP discovery against exact Azure production endpoint
-4. Create API-Based Agents & Tools product
-5. Select MCP Server + MCP + static endpoint
-6. Choose Redirect to Website for the initial package
-7. Enter usage/auth documentation and existing OpenAPI surface
-8. Choose pricing model
-9. Implement the corresponding AWS Marketplace registration/billing adapter
-10. Prove no Stripe/AWS double billing
-11. Run approved-plan ALLOW E2E with audit evidence
-12. Run outside-plan BLOCK E2E with audit evidence
-13. Submit limited-visibility/test listing and validate AWS review feedback
-14. Publish public listing only after all launch gates pass
-15. Create private offer only after at least one active public listing exists
+AWS_MARKETPLACE_MCP_LIVE_STATE=BLOCKED_AS_DECLARED
 ```
 
-## 10. What not to reuse as proof
+That is **not** a live MCP pass. After a governed Azure deployment changes those responses, CI must fail until the contract is updated and full live discovery succeeds.
 
-Do not use these historical artifacts as current paid-fulfillment proof:
+Authenticated ALLOW/BLOCK verification remains optional only because it requires real secret/plan inputs. Absence of those inputs produces SKIP, never fabricated evidence.
 
-- `docs/analysis/dsg_aws_marketplace_readiness.md` — contains older hosting/packaging assumptions and should not override current Azure production authority.
-- `docs/AWS-MARKETPLACE-WEBHOOK-SETUP.md` — lead-capture webhook documentation is not Marketplace subscription/entitlement fulfillment evidence.
-- Stripe billing implementation — valid for direct Stripe customers, not proof of AWS Marketplace customer entitlement or metering.
+## 11. Execution order
 
-## 11. Go / No-Go matrix
+```text
+1. Merge the packaging PR after relevant CI passes.
+2. Resolve the exact new current-main SHA.
+3. Create the audited pending production promotion through the existing authenticated promotion API.
+4. Run the protected Azure production promotion workflow.
+5. Re-run AWS Marketplace MCP live discovery.
+6. Validate MCP discovery/auth/error handling with a real AWS-compatible client.
+7. Run real approved-plan ALLOW + audit proof.
+8. Run real outside-plan BLOCK + audit proof.
+9. Verify the actual AWS Marketplace seller account/entity eligibility.
+10. Create the API-Based Agents & Tools product with MCP Server + MCP + static endpoint.
+11. Keep Redirect to Website as the chosen fulfillment method for this product.
+12. Choose the pricing model.
+13. Implement the corresponding AWS Marketplace registration/entitlement/metering adapter.
+14. Prove AWS/Stripe provider isolation and no double billing.
+15. Validate the limited-visibility listing with test buyer account(s).
+16. Request public visibility only after all gates pass.
+17. Create private offers only when the AWS prerequisite is actually satisfied.
+```
 
-| Gate | Status |
-|---|---|
-| Focused MCP governance route exists | PASS (code) |
-| Plan alignment + execution decision exists | PASS (code) |
-| Audit persistence path exists | PASS (code) |
-| OpenAPI for API-key surface exists | PASS (code) |
-| Azure production authority exists | PASS (repo authority) |
-| Exact live MCP endpoint discovery | PENDING LIVE TEST |
-| Real ALLOW case + audit | PENDING LIVE TEST |
-| Real BLOCK case + audit | PENDING LIVE TEST |
-| AWS paid-seller eligibility | UNVERIFIED EXTERNAL |
-| AWS Marketplace customer registration/billing adapter | BLOCKER |
-| Provider isolation / no double billing | BLOCKER |
-| Public AWS listing | NOT YET |
-| Private offer | BLOCKED UNTIL PUBLIC LISTING |
+## 12. What is not valid proof
 
-### Current verdict
+Do not use these as paid AWS fulfillment proof:
 
-**GO for AWS Marketplace MCP packaging and validation.**  
-**NO-GO for paid launch/private offer until the external seller gate, AWS commercial binding and live ALLOW/BLOCK evidence pass.**
+- old AWS Marketplace readiness documents with superseded hosting assumptions;
+- lead-capture webhook docs;
+- Stripe checkout/webhook success;
+- static route existence without live deployment;
+- `BLOCKED_AS_DECLARED` CI success;
+- a generic HTTP client test in place of an AWS-compatible client compatibility test.
+
+## Current verdict
+
+**GO:** package DSG Spacetime as an AWS Marketplace MCP Server using the existing governed MCP surface and Azure runtime.  
+**BLOCKED:** current Azure deployment does not yet expose the route.  
+**NO-GO:** paid launch/private offer until live MCP, real ALLOW/BLOCK evidence, seller validation and AWS commercial binding all pass.
