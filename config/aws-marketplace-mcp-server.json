@@ -1,6 +1,6 @@
 {
   "schemaVersion": "dsg.aws-marketplace-mcp-package.v1",
-  "status": "PACKAGING_CANDIDATE_LIVE_AND_SELLER_VALIDATION_REQUIRED",
+  "status": "PACKAGING_READY_LIVE_DEPLOYMENT_BLOCKED",
   "product": {
     "title": "DSG Spacetime — Governed MCP Execution Gateway",
     "deliveryMethod": "API-Based Agents & Tools",
@@ -14,7 +14,16 @@
     "endpointType": "static",
     "endpointPath": "/api/mcp/governance",
     "candidateEndpointUrl": "https://dsg-control-plane.azurewebsites.net/api/mcp/governance",
-    "endpointLiveStatus": "LIVE_VERIFICATION_REQUIRED",
+    "endpointLiveStatus": "BLOCKED_STALE_PRODUCTION_IMAGE_HTTP_404",
+    "liveObservation": {
+      "observedAtUtc": "2026-09-05T08:04:30Z",
+      "evidenceWorkflowRun": 33954260838,
+      "healthHttp": 200,
+      "runtimeProvenanceHttp": 404,
+      "mcpGovernanceHttp": 404,
+      "governanceOpenApiHttp": 404,
+      "interpretation": "Azure App Service is healthy but the deployed image predates current production/runtime and governance MCP routes. A governed current-main promotion/deployment is required before live MCP validation."
+    },
     "openApiPath": "/api/dsg/governance/openapi",
     "openApiCandidateUrl": "https://dsg-control-plane.azurewebsites.net/api/dsg/governance/openapi"
   },
@@ -73,6 +82,7 @@
   "truthBoundary": {
     "staticPackagePassIsMarketplaceEligibility": false,
     "staticPackagePassIsLiveEndpointProof": false,
+    "declaredLiveBlockIsLiveEndpointPass": false,
     "mcpDiscoveryPassIsPaidFulfillmentProof": false,
     "privateOfferReady": false
   }
