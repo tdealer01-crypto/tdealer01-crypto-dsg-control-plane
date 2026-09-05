@@ -15,6 +15,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
+      - name: Disable remaining scheduled security workflow
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api --method PUT "/repos/${GITHUB_REPOSITORY}/actions/workflows/security-evidence.yml/disable"
+          echo "Disabled security-evidence.yml while Actions quota emergency mode is active."
+
       - name: Cancel all other queued/in-progress runs in this repository
         shell: bash
         env:
