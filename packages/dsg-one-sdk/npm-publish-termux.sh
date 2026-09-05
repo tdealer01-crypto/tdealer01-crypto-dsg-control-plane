@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REGISTRY_HOST="//registry.npmjs.org/"
-NPMRC="${HOME}/.npmrc"
+REGISTRY="https://registry.npmjs.org/"
 
 ensure_node() {
   if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
@@ -12,84 +11,85 @@ ensure_node() {
   fi
 }
 
-open_tokens_page() {
-  URL="https://www.npmjs.com/settings/tokens"
-  echo "[OPEN] $URL"
-  am start -a android.intent.action.VIEW -d "$URL" >/dev/null 2>&1 || true
-  echo "ถ้า browser ไม่เปิด ให้ copy URL นี้ไปเปิดเอง:"
-  echo "$URL"
-}
-
 verify_package() {
   if [ ! -f package.json ]; then
-    echo "[BLOCK] ไม่เจอ package.json"
-    echo "ให้ cd เข้าโฟลเดอร์ package ก่อน เช่น:"
-    echo "cd your-package-folder"
+    echo "[BLOCK] package.json not found"
+    echo "Run this from the package directory, for example:"
+    echo "cd packages/dsg-one-sdk"
     exit 1
   fi
 
   node <<'NODE'
 const fs = require("fs");
 const p = JSON.parse(fs.readFileSync("package.json", "utf8"));
-
 const issues = [];
 if (!p.name) issues.push("missing name");
 if (!p.version) issues.push("missing version");
 if (p.private === true) issues.push("private=true");
-
 if (issues.length) {
-  console.error("[BLOCK] package.json ยังไม่พร้อม:", issues.join(", "));
+  console.error("[BLOCK] package.json is not publishable:", issues.join(", "));
   process.exit(1);
 }
-
 console.log(`[OK] Package: ${p.name}@${p.version}`);
 NODE
 }
 
-set_token() {
-  echo
-  echo "Paste NPM token ที่ขึ้นต้นด้วย npm_"
-  read -r -s -p "NPM_TOKEN: " TOKEN
-  echo
+print_ci_path() {
+  cat <<'EOF'
+[INFO] Canonical production release path:
+  GitHub Actions -> npm Trusted Publishing (OIDC)
+  .github/workflows/publish-dsg-one-sdk.yml
 
-  case "$TOKEN" in
-    npm_*) ;;
-    *)
-      echo "[BLOCK] token ดูไม่ใช่รูปแบบ npm_..."
-      exit 1
-      ;;
-  esac
+This Termux script is only for first-publish bootstrap or emergency manual publishing.
+It does not create or store a dedicated CI publish token.
+EOF
+}
 
-  touch "$NPMRC"
-  chmod 600 "$NPMRC"
+login_interactive() {
+  echo "[LOGIN] Opening interactive npm login for ${REGISTRY}"
+  npm login --registry="$REGISTRY"
+  echo "[CHECK] npm identity:"
+  npm whoami --registry="$REGISTRY"
+}
 
-  sed -i.bak "\|^${REGISTRY_HOST}:_authToken=|d" "$NPMRC" 2>/dev/null || true
-  printf '%s:_authToken=%s\n' "$REGISTRY_HOST" "$TOKEN" >> "$NPMRC"
-
-  unset TOKEN
-
-  echo "[OK] ตั้งค่า token แล้ว"
-  echo "[CHECK] npm whoami:"
-  npm whoami
+verify_release() {
+  verify_package
+  echo "[TEST] Running package tests"
+  npm test
+  echo "[BUILD] Building package"
+  npm run build
+  echo "[DRY RUN] Inspecting npm package contents"
+  npm pack --dry-run
 }
 
 publish_package() {
-  verify_package
+  verify_release
 
-  echo
-  echo "[DRY RUN] ตรวจแพ็กเกจก่อน publish จริง"
-  npm publish --access public --dry-run
+  if ! npm whoami --registry="$REGISTRY" >/dev/null 2>&1; then
+    echo "[BLOCK] No interactive npm session is available."
+    echo "Run option 2 (npm login) first."
+    exit 1
+  fi
 
-  echo
-  read -r -p "ถ้าพร้อม publish จริง พิมพ์ YES: " CONFIRM
-  if [ "$CONFIRM" != "YES" ]; then
-    echo "[CANCEL] ยกเลิก publish"
-    exit 0
+  PACKAGE_NAME="$(node -p "require('./package.json').name")"
+  PACKAGE_VERSION="$(node -p "require('./package.json').version")"
+
+  if npm view "${PACKAGE_NAME}@${PACKAGE_VERSION}" version --json >/dev/null 2>&1; then
+    echo "[BLOCK] ${PACKAGE_NAME}@${PACKAGE_VERSION} already exists on npm."
+    echo "Bump package.json version before publishing."
+    exit 1
   fi
 
   echo
-  read -r -p "ใส่ OTP 6 หลัก ถ้ามี / ถ้าใช้ token bypass 2FA ให้กด Enter: " OTP
+  echo "[MANUAL RELEASE] ${PACKAGE_NAME}@${PACKAGE_VERSION}"
+  echo "For normal releases, use GitHub Actions OIDC instead."
+  read -r -p "Type YES to publish manually: " CONFIRM
+  if [ "$CONFIRM" != "YES" ]; then
+    echo "[CANCEL] Publish cancelled"
+    exit 0
+  fi
 
+  read -r -p "Enter npm OTP if requested by your account; otherwise press Enter: " OTP
   if [ -n "$OTP" ]; then
     npm publish --access public --otp "$OTP"
   else
@@ -97,35 +97,36 @@ publish_package() {
   fi
 }
 
-remove_token() {
-  npm config delete "${REGISTRY_HOST}:_authToken" 2>/dev/null || true
-  sed -i.bak "\|^${REGISTRY_HOST}:_authToken=|d" "$NPMRC" 2>/dev/null || true
-  echo "[OK] ลบ npm token ออกจาก Termux แล้ว"
+logout_interactive() {
+  npm logout --registry="$REGISTRY" || true
+  echo "[OK] npm interactive session removed where supported by npm."
 }
 
 main() {
   ensure_node
+  verify_package
 
   echo "Node: $(node -v)"
   echo "npm:  $(npm -v)"
   echo
-  echo "เลือกคำสั่ง:"
-  echo "1) เปิดหน้า npm token"
-  echo "2) ตั้งค่า NPM token"
-  echo "3) เช็ก npm whoami"
-  echo "4) publish package ปัจจุบัน"
-  echo "5) ลบ token ออกจาก Termux"
+  echo "1) Show canonical GitHub Actions OIDC release path"
+  echo "2) npm login (interactive bootstrap/fallback)"
+  echo "3) Check npm whoami"
+  echo "4) Test + build + npm pack --dry-run"
+  echo "5) Manual publish (bootstrap/fallback only)"
+  echo "6) npm logout"
   echo
 
-  read -r -p "เลือกเลข: " CHOICE
+  read -r -p "Choose: " CHOICE
 
   case "$CHOICE" in
-    1) open_tokens_page ;;
-    2) set_token ;;
-    3) npm whoami ;;
-    4) publish_package ;;
-    5) remove_token ;;
-    *) echo "[BLOCK] เลือกไม่ถูก"; exit 1 ;;
+    1) print_ci_path ;;
+    2) login_interactive ;;
+    3) npm whoami --registry="$REGISTRY" ;;
+    4) verify_release ;;
+    5) publish_package ;;
+    6) logout_interactive ;;
+    *) echo "[BLOCK] Invalid choice"; exit 1 ;;
   esac
 }
 
