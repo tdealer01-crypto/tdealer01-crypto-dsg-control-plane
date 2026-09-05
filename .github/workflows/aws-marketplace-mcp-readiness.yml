@@ -10,6 +10,7 @@ on:
       - 'lib/dsg/governance-plugin.ts'
       - 'scripts/verify-aws-marketplace-mcp-package.mjs'
       - 'docs/AWS_MARKETPLACE_MCP_SERVER_PACKAGE_2026-09-05.md'
+      - 'docs/evidence/AWS_MARKETPLACE_MCP_LIVE_BLOCK_2026-09-05.md'
       - '.github/workflows/aws-marketplace-mcp-readiness.yml'
   push:
     branches: [main]
@@ -20,6 +21,7 @@ on:
       - 'app/api/dsg/governance/**'
       - 'lib/dsg/governance-plugin.ts'
       - 'scripts/verify-aws-marketplace-mcp-package.mjs'
+      - 'docs/evidence/AWS_MARKETPLACE_MCP_LIVE_BLOCK_2026-09-05.md'
       - '.github/workflows/aws-marketplace-mcp-readiness.yml'
   workflow_dispatch:
     inputs:
@@ -42,14 +44,14 @@ jobs:
       - name: Verify static AWS Marketplace MCP package contract
         run: node scripts/verify-aws-marketplace-mcp-package.mjs
 
-  live-discovery:
+  live-state:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Resolve exact live production origin
+      - name: Resolve exact live production origin and declared state
         id: live
         env:
           INPUT_LIVE_BASE_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.live_base_url || '' }}
@@ -59,20 +61,27 @@ jobs:
           else
             BASE_URL="$(node -e "const fs=require('fs'); const c=JSON.parse(fs.readFileSync('config/aws-marketplace-mcp-server.json','utf8')); console.log(new URL(c.runtime.candidateEndpointUrl).origin)")"
           fi
+          LIVE_STATUS="$(node -e "const fs=require('fs'); const c=JSON.parse(fs.readFileSync('config/aws-marketplace-mcp-server.json','utf8')); console.log(c.runtime.endpointLiveStatus)")"
           echo "base_url=$BASE_URL" >> "$GITHUB_OUTPUT"
+          echo "live_status=$LIVE_STATUS" >> "$GITHUB_OUTPUT"
           echo "AWS_MARKETPLACE_MCP_BASE_URL=$BASE_URL"
+          echo "DECLARED_LIVE_STATUS=$LIVE_STATUS"
       - name: Capture Azure production diagnostics
+        id: diagnostics
         env:
           BASE_URL: ${{ steps.live.outputs.base_url }}
         shell: bash
         run: |
-          set -u
+          set -euo pipefail
           echo "### AWS Marketplace MCP live diagnostics" >> "$GITHUB_STEP_SUMMARY"
-          for path in /api/health /api/dsg/v1/runtime /api/mcp/governance /api/dsg/governance/openapi; do
+          for entry in health:/api/health runtime:/api/dsg/v1/runtime mcp:/api/mcp/governance openapi:/api/dsg/governance/openapi; do
+            key="${entry%%:*}"
+            path="${entry#*:}"
             body="$(mktemp)"
             headers="$(mktemp)"
             status="$(curl -sS -L --connect-timeout 10 --max-time 20 -D "$headers" -o "$body" -w '%{http_code}' "$BASE_URL$path" || true)"
             content_type="$(awk 'BEGIN{IGNORECASE=1} /^content-type:/ {gsub(/\r/,""); value=$0} END{sub(/^[^:]*:[[:space:]]*/,"",value); print value}' "$headers")"
+            echo "$key=${status:-CURL_ERROR}" >> "$GITHUB_OUTPUT"
             echo "PATH=$path HTTP=${status:-CURL_ERROR} CONTENT_TYPE=${content_type:-unknown}"
             echo "BODY_BEGIN"
             head -c 800 "$body" || true
@@ -81,7 +90,23 @@ jobs:
             printf -- '- `%s` → HTTP `%s`, content-type `%s`\n' "$path" "${status:-CURL_ERROR}" "${content_type:-unknown}" >> "$GITHUB_STEP_SUMMARY"
             rm -f "$body" "$headers"
           done
+      - name: Verify declared blocked production state
+        if: ${{ steps.live.outputs.live_status == 'BLOCKED_STALE_PRODUCTION_IMAGE_HTTP_404' }}
+        env:
+          HEALTH_HTTP: ${{ steps.diagnostics.outputs.health }}
+          RUNTIME_HTTP: ${{ steps.diagnostics.outputs.runtime }}
+          MCP_HTTP: ${{ steps.diagnostics.outputs.mcp }}
+          OPENAPI_HTTP: ${{ steps.diagnostics.outputs.openapi }}
+        run: |
+          set -euo pipefail
+          test "$HEALTH_HTTP" = "200" || { echo "::error::Declared stale-image block expected health=200, got $HEALTH_HTTP"; exit 1; }
+          test "$RUNTIME_HTTP" = "404" || { echo "::error::Declared stale-image block expected runtime=404, got $RUNTIME_HTTP"; exit 1; }
+          test "$MCP_HTTP" = "404" || { echo "::error::Declared stale-image block expected MCP=404, got $MCP_HTTP"; exit 1; }
+          test "$OPENAPI_HTTP" = "404" || { echo "::error::Declared stale-image block expected OpenAPI=404, got $OPENAPI_HTTP"; exit 1; }
+          echo "AWS_MARKETPLACE_MCP_LIVE_STATE=BLOCKED_AS_DECLARED"
+          echo "This is not a live endpoint PASS. A governed current-main Azure promotion/deployment remains required." >> "$GITHUB_STEP_SUMMARY"
       - name: Verify live MCP discovery and OpenAPI surfaces
+        if: ${{ steps.live.outputs.live_status != 'BLOCKED_STALE_PRODUCTION_IMAGE_HTTP_404' }}
         env:
           AWS_MARKETPLACE_MCP_BASE_URL: ${{ steps.live.outputs.base_url }}
         run: node scripts/verify-aws-marketplace-mcp-package.mjs
