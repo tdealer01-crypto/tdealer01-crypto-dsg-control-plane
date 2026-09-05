@@ -1,9 +1,19 @@
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Privacy',
+  description: 'DSG ONE privacy overview for workspace data, runtime records, operational metadata and support contact.',
+  alternates: { canonical: '/privacy' },
+};
+
 const covers = [
   'Workspace account information',
   'Runtime request and execution metadata',
   'Usage and audit visibility',
   'Organizational access boundaries',
 ];
+
+const BUSINESS_EMAIL = 't.dealer01@dsg.pics';
 
 export default function PrivacyPage() {
   return (
@@ -41,7 +51,12 @@ export default function PrivacyPage() {
 
       <section className="mt-6 rounded-[1.75rem] border border-white/10 bg-white/5 p-7">
         <h2 className="text-2xl font-semibold">Contact</h2>
-        <p className="mt-4 text-slate-200">For privacy questions, contact the DSG team through the support channel listed below.</p>
+        <p className="mt-4 text-slate-200">
+          For privacy or data-handling questions, email{' '}
+          <a className="text-sky-200 hover:text-sky-100" href={`mailto:${BUSINESS_EMAIL}`}>
+            {BUSINESS_EMAIL}
+          </a>.
+        </p>
       </section>
     </main>
   );
