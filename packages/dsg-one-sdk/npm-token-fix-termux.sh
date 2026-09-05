@@ -7,12 +7,13 @@ cat <<'EOF'
 Canonical release path:
   GitHub Actions -> npm Trusted Publishing (OIDC)
   Workflow: .github/workflows/publish-dsg-one-sdk.yml
+  Package: dsg-one-sdk
 
 Do NOT recreate expired read-write CI tokens such as "tar" or "dsg" for publishing.
 The publish workflow uses short-lived OIDC credentials and does not require NPM_TOKEN.
 
-If @dsg-one/sdk has never been published, use the one-time interactive bootstrap in:
-  packages/dsg-one-sdk/PUBLISHING.md
+The existing npm package is dsg-one-sdk. Do not use the unavailable @dsg-one/sdk scope.
+Configure Trusted Publishing on the existing dsg-one-sdk package, then release through GitHub Actions.
 
 If a future workflow must install private npm dependencies, create a READ-ONLY granular
 access token on npmjs.com and scope it only to those dependencies. Do not use it to publish.
