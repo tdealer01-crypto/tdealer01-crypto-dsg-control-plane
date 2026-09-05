@@ -46,8 +46,8 @@ EOF
 }
 
 login_interactive() {
-  echo "[LOGIN] Opening interactive npm login for ${REGISTRY}"
-  npm login --registry="$REGISTRY"
+  echo "[LOGIN] Opening npm browser authentication for ${REGISTRY}"
+  npm login --auth-type=web --registry="$REGISTRY"
   echo "[CHECK] npm identity:"
   npm whoami --registry="$REGISTRY"
 }
@@ -66,8 +66,8 @@ publish_package() {
   verify_release
 
   if ! npm whoami --registry="$REGISTRY" >/dev/null 2>&1; then
-    echo "[BLOCK] No interactive npm session is available."
-    echo "Run option 2 (npm login) first."
+    echo "[BLOCK] No npm session is available."
+    echo "Run option 2 (npm browser login) first."
     exit 1
   fi
 
@@ -83,18 +83,17 @@ publish_package() {
   echo
   echo "[MANUAL RELEASE] ${PACKAGE_NAME}@${PACKAGE_VERSION}"
   echo "For normal releases, use GitHub Actions OIDC instead."
+  echo "npm will handle any required 2FA/security-key challenge itself."
+  echo "Do not enter old token names such as tar or dsg as OTP values."
   read -r -p "Type YES to publish manually: " CONFIRM
   if [ "$CONFIRM" != "YES" ]; then
     echo "[CANCEL] Publish cancelled"
     exit 0
   fi
 
-  read -r -p "Enter npm OTP if requested by your account; otherwise press Enter: " OTP
-  if [ -n "$OTP" ]; then
-    npm publish --access public --otp "$OTP"
-  else
-    npm publish --access public
-  fi
+  # Do not pass --otp here. npm must select the account's configured
+  # second-factor method (including security-key/WebAuthn) itself.
+  npm publish --access public
 }
 
 logout_interactive() {
@@ -110,7 +109,7 @@ main() {
   echo "npm:  $(npm -v)"
   echo
   echo "1) Show canonical GitHub Actions OIDC release path"
-  echo "2) npm login (interactive bootstrap/fallback)"
+  echo "2) npm browser login (security key / WebAuthn)"
   echo "3) Check npm whoami"
   echo "4) Test + build + npm pack --dry-run"
   echo "5) Manual publish (bootstrap/fallback only)"
