@@ -1,10 +1,9 @@
 /**
  * app/sitemap.ts — Next.js metadata route serving /sitemap.xml
  *
- * Static entries cover every public marketing/SEO/selling surface.
- * Dynamic entries add published blog articles from `marketing_content`
- * (same query shape as app/api/blog/route.ts). Any Supabase failure
- * falls back to the static list so the build/request never breaks.
+ * Static entries cover public marketing, trust and business-identity surfaces.
+ * Dynamic entries add published blog articles from `marketing_content`.
+ * Supabase failures fall back to the static list.
  */
 
 import type { MetadataRoute } from 'next';
@@ -12,18 +11,24 @@ import { getSupabaseAdmin } from '../lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_APP_URL ??
-  process.env.APP_URL ??
-  'https://dsg-control-plane.azurewebsites.net';
+const BASE_URL = 'https://www.dsg.pics';
 
-// Public pages that exist as routes in app/ and are worth indexing.
 const STATIC_PATHS: Array<{ path: string; priority: number }> = [
   { path: '/', priority: 1.0 },
+  { path: '/about', priority: 0.9 },
+  { path: '/contact', priority: 0.9 },
   { path: '/pricing', priority: 0.9 },
   { path: '/delivery-proof', priority: 0.9 },
-  { path: '/finance-governance/pricing', priority: 0.9 },
+  { path: '/proofgate', priority: 0.9 },
+  { path: '/docs', priority: 0.8 },
+  { path: '/quickstart', priority: 0.8 },
+  { path: '/support', priority: 0.8 },
+  { path: '/privacy', priority: 0.8 },
+  { path: '/terms', priority: 0.8 },
+  { path: '/finance-governance', priority: 0.8 },
+  { path: '/finance-governance/pricing', priority: 0.8 },
   { path: '/finance-approval-gate', priority: 0.8 },
+  { path: '/automation', priority: 0.8 },
   { path: '/marketplace', priority: 0.8 },
   { path: '/marketplace/skills', priority: 0.8 },
   { path: '/blog', priority: 0.8 },
