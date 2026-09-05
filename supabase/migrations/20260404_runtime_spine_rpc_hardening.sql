@@ -4,7 +4,7 @@ create or replace function runtime_commit_execution(
   p_request_id uuid,
   p_decision text,
   p_reason text,
-  p_metadata jsonb default '{}'::jsonb,
+  p_metadata jsonb,
   p_canonical_hash text,
   p_canonical_json jsonb,
   p_latency_ms integer default 0,
