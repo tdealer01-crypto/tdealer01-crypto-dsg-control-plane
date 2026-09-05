@@ -51,6 +51,9 @@ before update on public.usage_counters
 for each row
 execute function public.set_row_updated_at();
 
+-- Legacy installations can use UUID identity columns while fresh scaffold
+-- migrations use text identities. Cast values to text before blank checks so
+-- the hardening migration preserves the same semantic rule for either shape.
 do $$
 begin
   if not exists (
@@ -58,7 +61,7 @@ begin
   ) then
     alter table public.users
       add constraint users_org_id_not_blank
-      check (btrim(org_id) <> '');
+      check (btrim(org_id::text) <> '');
   end if;
 
   if not exists (
@@ -74,7 +77,7 @@ begin
   ) then
     alter table public.policies
       add constraint policies_name_not_blank
-      check (btrim(name) <> '');
+      check (btrim(name::text) <> '');
   end if;
 
   if not exists (
@@ -82,7 +85,7 @@ begin
   ) then
     alter table public.policies
       add constraint policies_version_not_blank
-      check (btrim(version) <> '');
+      check (btrim(version::text) <> '');
   end if;
 
   if not exists (
@@ -98,7 +101,7 @@ begin
   ) then
     alter table public.agents
       add constraint agents_org_id_not_blank
-      check (btrim(org_id) <> '');
+      check (btrim(org_id::text) <> '');
   end if;
 
   if not exists (
@@ -106,7 +109,7 @@ begin
   ) then
     alter table public.agents
       add constraint agents_name_not_blank
-      check (btrim(name) <> '');
+      check (btrim(name::text) <> '');
   end if;
 
   if not exists (
@@ -114,7 +117,7 @@ begin
   ) then
     alter table public.agents
       add constraint agents_status_not_blank
-      check (btrim(status) <> '');
+      check (btrim(status::text) <> '');
   end if;
 
   if not exists (
@@ -130,7 +133,7 @@ begin
   ) then
     alter table public.executions
       add constraint executions_org_id_not_blank
-      check (btrim(org_id) <> '');
+      check (btrim(org_id::text) <> '');
   end if;
 
   if not exists (
@@ -154,7 +157,7 @@ begin
   ) then
     alter table public.audit_logs
       add constraint audit_logs_org_id_not_blank
-      check (btrim(org_id) <> '');
+      check (btrim(org_id::text) <> '');
   end if;
 
   if not exists (
@@ -170,7 +173,7 @@ begin
   ) then
     alter table public.usage_events
       add constraint usage_events_org_id_not_blank
-      check (btrim(org_id) <> '');
+      check (btrim(org_id::text) <> '');
   end if;
 
   if not exists (
@@ -178,7 +181,7 @@ begin
   ) then
     alter table public.usage_events
       add constraint usage_events_event_type_not_blank
-      check (btrim(event_type) <> '');
+      check (btrim(event_type::text) <> '');
   end if;
 
   if not exists (
@@ -186,7 +189,7 @@ begin
   ) then
     alter table public.usage_events
       add constraint usage_events_unit_not_blank
-      check (btrim(unit) <> '');
+      check (btrim(unit::text) <> '');
   end if;
 
   if not exists (
@@ -210,7 +213,7 @@ begin
   ) then
     alter table public.usage_counters
       add constraint usage_counters_org_id_not_blank
-      check (btrim(org_id) <> '');
+      check (btrim(org_id::text) <> '');
   end if;
 
   if not exists (
