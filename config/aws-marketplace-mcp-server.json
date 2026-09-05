@@ -1,0 +1,79 @@
+{
+  "schemaVersion": "dsg.aws-marketplace-mcp-package.v1",
+  "status": "PACKAGING_CANDIDATE_LIVE_AND_SELLER_VALIDATION_REQUIRED",
+  "product": {
+    "title": "DSG Spacetime — Governed MCP Execution Gateway",
+    "deliveryMethod": "API-Based Agents & Tools",
+    "integrationProtocol": "MCP",
+    "type": "MCP server",
+    "positioning": "Govern an existing agent action against an approved DSG plan before target execution."
+  },
+  "runtime": {
+    "productionAuthority": "config/production-deployment-target.json",
+    "provider": "AZURE_APP_SERVICE",
+    "endpointType": "static",
+    "endpointPath": "/api/mcp/governance",
+    "candidateEndpointUrl": "https://dsg-control-plane.azurewebsites.net/api/mcp/governance",
+    "endpointLiveStatus": "LIVE_VERIFICATION_REQUIRED",
+    "openApiPath": "/api/dsg/governance/openapi",
+    "openApiCandidateUrl": "https://dsg-control-plane.azurewebsites.net/api/dsg/governance/openapi"
+  },
+  "authentication": {
+    "mode": "API_KEY",
+    "header": "x-dsg-api-key",
+    "keyValidation": "validateStoredUnifiedMcpKey",
+    "oauthTwoLegged": false
+  },
+  "fulfillment": {
+    "recommendedInitialMethod": "REDIRECT_TO_WEBSITE",
+    "reason": "DSG already owns API-key issuance and account onboarding; use the existing customer surface while Marketplace billing identity and entitlement integration are implemented.",
+    "quickLaunchStatus": "NOT_IMPLEMENTED",
+    "deploymentApiStatus": "NOT_IMPLEMENTED"
+  },
+  "agentCore": {
+    "integrationPath": "OPENAPI_FOR_API_KEY_AUTHENTICATED_MCP",
+    "openApiCodeSurface": "app/api/dsg/governance/openapi/route.ts",
+    "status": "CODE_SURFACE_PRESENT_AWS_SIDE_INTEGRATION_UNVERIFIED"
+  },
+  "marketplaceCommercialIntegration": {
+    "status": "BLOCKED_PENDING_IMPLEMENTATION_AND_SELLER_VALIDATION",
+    "sellerEligibility": "UNVERIFIED_EXTERNAL_ACCOUNT_STATE",
+    "sellerTaxBankKyc": "UNVERIFIED_EXTERNAL_ACCOUNT_STATE",
+    "resolveCustomer": "NOT_IMPLEMENTED",
+    "entitlementOrSubscriptionState": "NOT_IMPLEMENTED",
+    "concurrentAgreementSafeIdentity": "NOT_IMPLEMENTED",
+    "metering": "NOT_IMPLEMENTED_IF_USAGE_PRICING_SELECTED",
+    "privateOffer": "BLOCKED_UNTIL_AT_LEAST_ONE_ACTIVE_PUBLIC_LISTING"
+  },
+  "capabilities": {
+    "mcpTool": "dsg.governance.preflight",
+    "decisionStatuses": [
+      "PASS",
+      "BLOCKED",
+      "WAITING_PERMISSION",
+      "UNVERIFIED"
+    ],
+    "proofSurfaces": [
+      "plan alignment",
+      "execution permission",
+      "evidence state",
+      "hash-chained execution audit"
+    ]
+  },
+  "requiredGoEvidence": [
+    "AWS Marketplace seller eligibility is verified in the seller account",
+    "Paid-seller tax, banking, KYC and bank-verification requirements are satisfied when applicable",
+    "AWS Marketplace pricing-model integration is implemented and tested",
+    "Production MCP initialize and tools/list pass against the exact listing endpoint",
+    "An authenticated approved-plan case returns policyAllowsAction=true and shouldBlock=false with persisted audit evidence",
+    "An authenticated outside-plan case returns BLOCKED and shouldBlock=true with persisted audit evidence",
+    "Marketplace customer identity and entitlement/subscription changes fail closed and cannot enter the Stripe billing path",
+    "At least one active public listing exists before a private offer is issued"
+  ],
+  "truthBoundary": {
+    "staticPackagePassIsMarketplaceEligibility": false,
+    "staticPackagePassIsLiveEndpointProof": false,
+    "mcpDiscoveryPassIsPaidFulfillmentProof": false,
+    "privateOfferReady": false
+  }
+}
