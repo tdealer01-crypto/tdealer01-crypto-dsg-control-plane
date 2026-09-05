@@ -10,50 +10,69 @@ permissions:
   contents: read
 
 jobs:
-  cancel-other-runs:
-    name: Cancel queued and in-progress runs
+  hard-stop-actions:
+    name: Hard-stop automatic Actions
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      - name: Disable remaining scheduled security workflow
+      - name: Disable every other workflow in this repository
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          set -u
-          if gh api --method PUT "/repos/${GITHUB_REPOSITORY}/actions/workflows/security-evidence.yml/disable"; then
-            echo "Disabled security-evidence.yml while Actions quota emergency mode is active."
-          else
-            echo "security-evidence.yml is already disabled or unavailable; continue quota cancellation."
-          fi
+          set -euo pipefail
+          gh api --paginate "/repos/${GITHUB_REPOSITORY}/actions/workflows?per_page=100" \
+            --jq '.workflows[] | select(.path != ".github/workflows/quota-emergency-stop.yml") | [.id,.path] | @tsv' \
+          | while IFS=$'\t' read -r workflow_id workflow_path; do
+              [[ -n "$workflow_id" ]] || continue
+              echo "Disabling $workflow_path ($workflow_id)"
+              gh api --method PUT "/repos/${GITHUB_REPOSITORY}/actions/workflows/${workflow_id}/disable" || true
+            done
 
-      - name: Cancel all other queued/in-progress runs in this repository
+      - name: Drain queued and in-progress runs
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           THIS_RUN_ID: ${{ github.run_id }}
         run: |
           set -euo pipefail
-          for status in queued in_progress; do
-            gh api --paginate "/repos/${GITHUB_REPOSITORY}/actions/runs?status=${status}&per_page=100" \
-              --jq '.workflow_runs[].id' | while IFS= read -r run_id; do
+
+          for round in $(seq 1 8); do
+            echo "Cancellation round $round"
+            found=0
+
+            for status in queued in_progress; do
+              mapfile -t run_ids < <(
+                gh api --paginate "/repos/${GITHUB_REPOSITORY}/actions/runs?status=${status}&per_page=100" \
+                  --jq '.workflow_runs[].id'
+              )
+
+              for run_id in "${run_ids[@]}"; do
                 if [[ -z "$run_id" || "$run_id" == "$THIS_RUN_ID" ]]; then
                   continue
                 fi
-                echo "Cancelling run $run_id ($status)"
-                gh api --method POST "/repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/cancel" || true
+                found=1
+                echo "Force-cancelling run $run_id ($status)"
+                gh api --method POST "/repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/force-cancel" || \
+                  gh api --method POST "/repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/cancel" || true
               done
+            done
+
+            if [[ "$found" == "0" ]]; then
+              echo "No other queued or in-progress runs remain."
+              exit 0
+            fi
+
+            sleep 5
           done
 
-          sleep 5
+          echo "Final verification after cancellation rounds"
+          remaining="$({
+            gh api "/repos/${GITHUB_REPOSITORY}/actions/runs?status=queued&per_page=100" --jq '.total_count'
+            gh api "/repos/${GITHUB_REPOSITORY}/actions/runs?status=in_progress&per_page=100" --jq '.workflow_runs | map(select(.id != ('"$THIS_RUN_ID"'))) | length'
+          } | awk '{s+=$1} END {print s+0}')"
 
-          for status in queued in_progress; do
-            gh api --paginate "/repos/${GITHUB_REPOSITORY}/actions/runs?status=${status}&per_page=100" \
-              --jq '.workflow_runs[].id' | while IFS= read -r run_id; do
-                if [[ -z "$run_id" || "$run_id" == "$THIS_RUN_ID" ]]; then
-                  continue
-                fi
-                echo "Force-cancelling stuck run $run_id ($status)"
-                gh api --method POST "/repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/force-cancel" || true
-              done
-          done
+          if [[ "$remaining" != "0" ]]; then
+            echo "::error::$remaining automatic Actions runs still remain after emergency drain."
+            exit 1
+          fi
