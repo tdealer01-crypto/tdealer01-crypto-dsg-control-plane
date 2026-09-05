@@ -16,8 +16,6 @@ on:
       - 'app/api/readiness/**'
       - 'app/api/finance-governance/readiness/**'
   workflow_dispatch:
-  schedule:
-    - cron: '0 3 * * *'
 
 env:
   DSG_PRODUCTION_BASE_URL: ${{ vars.DSG_PRODUCTION_BASE_URL || 'https://dsg-control-plane.azurewebsites.net' }}
