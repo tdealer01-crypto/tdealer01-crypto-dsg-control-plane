@@ -61,6 +61,26 @@ jobs:
           fi
           echo "base_url=$BASE_URL" >> "$GITHUB_OUTPUT"
           echo "AWS_MARKETPLACE_MCP_BASE_URL=$BASE_URL"
+      - name: Capture Azure production diagnostics
+        env:
+          BASE_URL: ${{ steps.live.outputs.base_url }}
+        shell: bash
+        run: |
+          set -u
+          echo "### AWS Marketplace MCP live diagnostics" >> "$GITHUB_STEP_SUMMARY"
+          for path in /api/health /api/dsg/v1/runtime /api/mcp/governance /api/dsg/governance/openapi; do
+            body="$(mktemp)"
+            headers="$(mktemp)"
+            status="$(curl -sS -L --connect-timeout 10 --max-time 20 -D "$headers" -o "$body" -w '%{http_code}' "$BASE_URL$path" || true)"
+            content_type="$(awk 'BEGIN{IGNORECASE=1} /^content-type:/ {gsub(/\r/,""); value=$0} END{sub(/^[^:]*:[[:space:]]*/,"",value); print value}' "$headers")"
+            echo "PATH=$path HTTP=${status:-CURL_ERROR} CONTENT_TYPE=${content_type:-unknown}"
+            echo "BODY_BEGIN"
+            head -c 800 "$body" || true
+            echo
+            echo "BODY_END"
+            printf -- '- `%s` → HTTP `%s`, content-type `%s`\n' "$path" "${status:-CURL_ERROR}" "${content_type:-unknown}" >> "$GITHUB_STEP_SUMMARY"
+            rm -f "$body" "$headers"
+          done
       - name: Verify live MCP discovery and OpenAPI surfaces
         env:
           AWS_MARKETPLACE_MCP_BASE_URL: ${{ steps.live.outputs.base_url }}
