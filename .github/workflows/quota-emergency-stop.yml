@@ -3,8 +3,6 @@ name: Emergency Actions Quota Guard
 on:
   push:
     branches: [main]
-    paths:
-      - '.github/workflows/quota-emergency-stop.yml'
   workflow_dispatch:
 
 permissions:
