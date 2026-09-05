@@ -27,6 +27,12 @@
     "openApiPath": "/api/dsg/governance/openapi",
     "openApiCandidateUrl": "https://dsg-control-plane.azurewebsites.net/api/dsg/governance/openapi"
   },
+  "mcpCompatibility": {
+    "currentInitializeProtocolVersion": "2024-11-05",
+    "awsMarketplaceCoreRequirements": "JSON_RPC_DISCOVERY_AUTH_ERROR_HANDLING",
+    "awsMarketplaceClientCompatibility": "PENDING_REAL_CLIENT_VALIDATION",
+    "agentCorePath": "API_KEY_PLUS_OPENAPI_NOT_DIRECT_TWO_LEGGED_OAUTH_MCP"
+  },
   "authentication": {
     "mode": "API_KEY",
     "header": "x-dsg-api-key",
@@ -34,10 +40,13 @@
     "oauthTwoLegged": false
   },
   "fulfillment": {
-    "recommendedInitialMethod": "REDIRECT_TO_WEBSITE",
-    "reason": "DSG already owns API-key issuance and account onboarding; use the existing customer surface while Marketplace billing identity and entitlement integration are implemented.",
-    "quickLaunchStatus": "NOT_IMPLEMENTED",
-    "deploymentApiStatus": "NOT_IMPLEMENTED"
+    "selectedMethodForFirstProduct": "REDIRECT_TO_WEBSITE",
+    "selectionStatus": "RECOMMENDED_NOT_PUBLISHED",
+    "reason": "Reuse DSG's existing customer account and API-key lifecycle while minimizing Marketplace-specific delivery work for the first enterprise pilot.",
+    "postPublishMutable": false,
+    "quickLaunchStatus": "NOT_SELECTED_FOR_THIS_PRODUCT",
+    "quickLaunchNote": "AWS does not allow changing fulfillment method after publication. If Quick Launch is required, choose it before publishing this product or create a separate listing strategy; do not claim it can be enabled later on the same published product.",
+    "deploymentApiStatus": "NOT_REQUIRED_FOR_REDIRECT_TO_WEBSITE"
   },
   "agentCore": {
     "integrationPath": "OPENAPI_FOR_API_KEY_AUTHENTICATED_MCP",
@@ -74,6 +83,7 @@
     "Paid-seller tax, banking, KYC and bank-verification requirements are satisfied when applicable",
     "AWS Marketplace pricing-model integration is implemented and tested",
     "Production MCP initialize and tools/list pass against the exact listing endpoint",
+    "A real AWS Marketplace-compatible client validates MCP capability discovery, authentication and error handling against the production endpoint",
     "An authenticated approved-plan case returns policyAllowsAction=true and shouldBlock=false with persisted audit evidence",
     "An authenticated outside-plan case returns BLOCKED and shouldBlock=true with persisted audit evidence",
     "Marketplace customer identity and entitlement/subscription changes fail closed and cannot enter the Stripe billing path",
@@ -83,6 +93,7 @@
     "staticPackagePassIsMarketplaceEligibility": false,
     "staticPackagePassIsLiveEndpointProof": false,
     "declaredLiveBlockIsLiveEndpointPass": false,
+    "mcpDiscoveryPassIsAwsClientCompatibilityProof": false,
     "mcpDiscoveryPassIsPaidFulfillmentProof": false,
     "privateOfferReady": false
   }
