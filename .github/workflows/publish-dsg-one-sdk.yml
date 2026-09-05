@@ -1,0 +1,81 @@
+name: Publish DSG ONE SDK
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type publish to confirm the npm release"
+        required: true
+        type: string
+  push:
+    tags:
+      - "dsg-one-sdk-v*"
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: npm-publish-dsg-one-sdk
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.event_name != 'workflow_dispatch' || inputs.confirm == 'publish'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/dsg-one-sdk
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js for npm trusted publishing
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+          package-manager-cache: false
+
+      - name: Ensure supported npm CLI
+        run: |
+          npm install --global npm@^11.15.0
+          node --version
+          npm --version
+
+      - name: Verify release tag matches package version
+        if: github.event_name == 'push'
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          EXPECTED_TAG="dsg-one-sdk-v${VERSION}"
+          if [ "${GITHUB_REF_NAME}" != "${EXPECTED_TAG}" ]; then
+            echo "::error::Release tag ${GITHUB_REF_NAME} does not match package version ${VERSION}. Expected ${EXPECTED_TAG}."
+            exit 1
+          fi
+
+      - name: Install SDK dependencies
+        run: npm install --package-lock=false --no-audit --no-fund
+
+      - name: Test SDK
+        run: npm test
+
+      - name: Build SDK
+        run: npm run build
+
+      - name: Inspect package contents
+        run: npm pack --dry-run
+
+      - name: Block duplicate version
+        run: |
+          PACKAGE_NAME="$(node -p "require('./package.json').name")"
+          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
+          if npm view "${PACKAGE_NAME}@${PACKAGE_VERSION}" version --json >/tmp/npm-existing-version.json 2>/dev/null; then
+            echo "::error::${PACKAGE_NAME}@${PACKAGE_VERSION} already exists on npm. Bump the version before publishing."
+            cat /tmp/npm-existing-version.json
+            exit 1
+          fi
+          echo "Publishing candidate: ${PACKAGE_NAME}@${PACKAGE_VERSION}"
+
+      - name: Publish with npm Trusted Publishing (OIDC)
+        run: npm publish --access public
