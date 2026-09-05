@@ -7,8 +7,6 @@ on:
         description: 'Production URL to check (defaults to main deployment)'
         required: false
         default: 'https://tdealer01-crypto-dsg-control-plane.vercel.app'
-  schedule:
-    - cron: '0 2 * * *' # Daily health check at 2 AM UTC
 
 concurrency:
   group: production-go-nogo
@@ -55,7 +53,6 @@ jobs:
         run: |
           npx ts-node scripts/production-gate.ts "${{ steps.url.outputs.url }}" > gate-result.json 2>&1 || true
 
-          # Parse result for GitHub output
           DECISION=$(jq -r '.decision' gate-result.json 2>/dev/null || echo "ERROR")
           echo "decision=${DECISION}" >> $GITHUB_OUTPUT
           echo "result=$(cat gate-result.json | jq -c .)" >> $GITHUB_OUTPUT
@@ -80,7 +77,6 @@ jobs:
             const checks = result.checks || [];
             const summary = result.summary || 'No summary available';
 
-            // Build comment markdown
             let comment = `## 🚀 Production GO/NO-GO Gate Report\n\n`;
             comment += `**Decision:** `;
 
@@ -112,7 +108,6 @@ jobs:
             comment += `${summary}\n\n`;
             comment += `**Rationale:** ${result.decision_rationale}\n`;
 
-            // Create or update issue
             const { data: issues } = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -122,7 +117,6 @@ jobs:
             });
 
             if (issues.length > 0) {
-              // Update existing issue
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -130,7 +124,6 @@ jobs:
                 body: comment
               });
             } else {
-              // Create new issue
               await github.rest.issues.create({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
