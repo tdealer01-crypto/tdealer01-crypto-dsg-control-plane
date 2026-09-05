@@ -20,9 +20,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          set -euo pipefail
-          gh api --method PUT "/repos/${GITHUB_REPOSITORY}/actions/workflows/security-evidence.yml/disable"
-          echo "Disabled security-evidence.yml while Actions quota emergency mode is active."
+          set -u
+          if gh api --method PUT "/repos/${GITHUB_REPOSITORY}/actions/workflows/security-evidence.yml/disable"; then
+            echo "Disabled security-evidence.yml while Actions quota emergency mode is active."
+          else
+            echo "security-evidence.yml is already disabled or unavailable; continue quota cancellation."
+          fi
 
       - name: Cancel all other queued/in-progress runs in this repository
         shell: bash
