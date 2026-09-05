@@ -24,7 +24,7 @@ on:
   workflow_dispatch:
     inputs:
       live_base_url:
-        description: 'Optional exact production origin, e.g. https://host.example.com'
+        description: 'Optional exact production origin override, e.g. https://host.example.com'
         required: false
         type: string
 
@@ -43,14 +43,25 @@ jobs:
         run: node scripts/verify-aws-marketplace-mcp-package.mjs
 
   live-discovery:
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.live_base_url != '' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - name: Resolve exact live production origin
+        id: live
+        env:
+          INPUT_LIVE_BASE_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.live_base_url || '' }}
+        run: |
+          if [ -n "$INPUT_LIVE_BASE_URL" ]; then
+            BASE_URL="$INPUT_LIVE_BASE_URL"
+          else
+            BASE_URL="$(node -e "const fs=require('fs'); const c=JSON.parse(fs.readFileSync('config/aws-marketplace-mcp-server.json','utf8')); console.log(new URL(c.runtime.candidateEndpointUrl).origin)")"
+          fi
+          echo "base_url=$BASE_URL" >> "$GITHUB_OUTPUT"
+          echo "AWS_MARKETPLACE_MCP_BASE_URL=$BASE_URL"
       - name: Verify live MCP discovery and OpenAPI surfaces
         env:
-          AWS_MARKETPLACE_MCP_BASE_URL: ${{ inputs.live_base_url }}
+          AWS_MARKETPLACE_MCP_BASE_URL: ${{ steps.live.outputs.base_url }}
         run: node scripts/verify-aws-marketplace-mcp-package.mjs
