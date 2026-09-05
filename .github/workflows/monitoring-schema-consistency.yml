@@ -1,8 +1,6 @@
 name: Schema Consistency Check
 
 on:
-  schedule:
-    - cron: '0 */6 * * *' # Every 6 hours
   workflow_dispatch:
   pull_request:
     paths:
@@ -72,9 +70,6 @@ jobs:
           provider="$(jq -r '.productionTarget.provider' schema-check.json)"
           deploy_enabled="$(jq -r '.productionTarget.productionDeployEnabled' schema-check.json)"
 
-          # A pull request represents a proposed target, not a deployed runtime.
-          # Live monitoring proof is therefore deferred until the same config is
-          # on main (push/schedule/workflow_dispatch), where it remains fail-closed.
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             echo "PR mode: live production monitoring is not claimed before deployment."
             jq '.externalMonitoringVerification = {
