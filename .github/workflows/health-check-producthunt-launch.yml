@@ -1,9 +1,6 @@
-name: 🚀 ProductHunt Launch - Health Check (Every 6 Hours)
+name: 🚀 ProductHunt Launch - Health Check (Manual Only)
 
 on:
-  schedule:
-    # Run every 6 hours: 00:00, 06:00, 12:00, 18:00 UTC
-    - cron: '0 */6 * * *'
   workflow_dispatch:
 
 concurrency:
@@ -20,7 +17,6 @@ jobs:
       - name: 📍 Determine Environment
         id: env
         run: |
-          # Target production API
           echo "api_url=https://tdealer01-crypto-dsg-control-plane.vercel.app" >> $GITHUB_OUTPUT
           echo "launch_date=2026-06-10T00:00:00Z" >> $GITHUB_OUTPUT
 
@@ -113,8 +109,6 @@ jobs:
           script: |
             const fs = require('fs');
             const timestamp = new Date().toISOString();
-
-            // Create GitHub issue for critical failures
             github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
