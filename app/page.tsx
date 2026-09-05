@@ -3,6 +3,8 @@ import { Suspense } from 'react';
 import RefTracker from '../components/RefTracker';
 
 const PRODUCT_URL = 'https://dsg-cinema-production.nicetree-a005fe99.westus3.azurecontainerapps.io/dashboard';
+const SPACETIME_HEALTH_URL = 'https://dsg-spacetime-prod.greenglacier-493f3f71.westus3.azurecontainerapps.io/health';
+const DOCS_URL = 'https://dsg-3.gitbook.io/dsg-docs/';
 
 const installPaths = [
   {
@@ -60,13 +62,14 @@ export default function HomePage() {
             <div className="flex flex-wrap gap-2">
               <span className="rounded-full border border-sky-300/20 bg-sky-300/10 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-sky-100">DSG ONE</span>
               <span className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-100">Production-backed evidence</span>
+              <span className="rounded-full border border-violet-300/20 bg-violet-300/10 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-violet-100">Spacetime verified on Azure</span>
             </div>
 
             <h1 className="mt-7 max-w-4xl text-5xl font-bold leading-[0.96] tracking-[-0.05em] text-white sm:text-6xl lg:text-7xl">
               Govern the action. Prove the result.
             </h1>
             <p className="mt-6 max-w-2xl text-base leading-8 text-slate-400 sm:text-lg">
-              DSG adds a governed execution and evidence layer to AI agents, MCP tools and automated workflows. Install with Web, AI or CLI, keep scope and permissions explicit, then follow every governed action through decision, execution and proof.
+              DSG adds a governed execution and evidence layer to AI agents, MCP tools and automated workflows. Core Spin keeps job/session history, while Spacetime independently authorizes Routes, executes approved capabilities and preserves its own tamper-evident evidence.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-3">
@@ -76,9 +79,9 @@ export default function HomePage() {
               <Link href="/login?next=/dashboard/integrations" className="rounded-2xl border border-white/10 bg-white/[0.04] px-6 py-3.5 text-sm font-bold text-white transition hover:border-white/20">
                 Connect an agent
               </Link>
-              <Link href="/login" className="rounded-2xl border border-white/10 px-6 py-3.5 text-sm font-bold text-slate-300 transition hover:text-white">
-                Continue with email
-              </Link>
+              <a href={DOCS_URL} className="rounded-2xl border border-white/10 px-6 py-3.5 text-sm font-bold text-slate-300 transition hover:text-white">
+                Read current docs
+              </a>
               <Link href="#proof" className="rounded-2xl border border-white/10 px-6 py-3.5 text-sm font-bold text-slate-300 transition hover:text-white">
                 See what is proven
               </Link>
@@ -87,7 +90,7 @@ export default function HomePage() {
             <div className="mt-9 grid max-w-3xl gap-3 sm:grid-cols-3">
               {[
                 ['INSTALL', 'Web · AI · CLI'],
-                ['GOVERN', 'Observe · Enforce'],
+                ['GOVERN', 'Plan · Route · Permission'],
                 ['PROVE', 'Evidence · Replay · Audit'],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4">
@@ -159,7 +162,7 @@ export default function HomePage() {
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <Link href="/dashboard/governance-live" className="rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-bold text-white">Live governance</Link>
-              <Link href="/docs" className="rounded-2xl border border-white/10 px-5 py-3 text-sm font-bold text-slate-300">Integration docs</Link>
+              <a href={DOCS_URL} className="rounded-2xl border border-white/10 px-5 py-3 text-sm font-bold text-slate-300">Integration docs</a>
             </div>
           </div>
 
@@ -178,6 +181,33 @@ export default function HomePage() {
       <section className="border-b border-white/[0.07] bg-[#080d18]">
         <div className="mx-auto max-w-7xl px-5 py-20 sm:px-6">
           <div className="max-w-3xl">
+            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-violet-200">Separated state, unified view</p>
+            <h2 className="mt-4 text-3xl font-bold tracking-[-0.03em] text-white sm:text-5xl">Core Spin and Spacetime do different jobs.</h2>
+            <p className="mt-4 text-base leading-8 text-slate-500">Core Spin owns job/session history and provider references. Spacetime independently owns authorization, execution receipts and its tamper-evident hash chain. The UI joins them by correlation references instead of mixing both ledgers into one store.</p>
+          </div>
+          <div className="mt-10 grid gap-4 lg:grid-cols-3">
+            <article className="rounded-3xl border border-white/[0.07] bg-white/[0.025] p-7">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-sky-200">Core Spin</p>
+              <h3 className="mt-4 text-xl font-bold text-white">Job + session memory</h3>
+              <p className="mt-3 text-sm leading-7 text-slate-500">Owns job status, workflow history, provider references, usage and the references that point to Spacetime receipts.</p>
+            </article>
+            <article className="rounded-3xl border border-white/[0.07] bg-white/[0.025] p-7">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-200">Spacetime</p>
+              <h3 className="mt-4 text-xl font-bold text-white">Authorization + evidence</h3>
+              <p className="mt-3 text-sm leading-7 text-slate-500">Validates the plan, Route, entitlement and agent binding before execution, then records decision/request/result hashes in its own evidence chain.</p>
+            </article>
+            <article className="rounded-3xl border border-white/[0.07] bg-white/[0.025] p-7">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-100">Unified read</p>
+              <h3 className="mt-4 text-xl font-bold text-white">One operator timeline</h3>
+              <p className="mt-3 text-sm leading-7 text-slate-500">Dashboards combine the two through evidence indexes/hashes and provider execution references without copying the Spacetime ledger into Core Spin.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-b border-white/[0.07]">
+        <div className="mx-auto max-w-7xl px-5 py-20 sm:px-6">
+          <div className="max-w-3xl">
             <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-sky-200">Operational reliability</p>
             <h2 className="mt-4 text-3xl font-bold tracking-[-0.03em] text-white sm:text-5xl">Installation should be diagnosable, repairable and provable.</h2>
           </div>
@@ -192,19 +222,32 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="proof" className="border-b border-white/[0.07]">
+      <section id="proof" className="border-b border-white/[0.07] bg-[#080d18]">
         <div className="mx-auto grid max-w-7xl gap-12 px-5 py-20 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-emerald-200">Proof, not just status</p>
-            <h2 className="mt-4 text-3xl font-bold tracking-[-0.03em] text-white sm:text-5xl">The first result is an integrity proof.</h2>
+            <h2 className="mt-4 text-3xl font-bold tracking-[-0.03em] text-white sm:text-5xl">Production claims stay tied to executable evidence.</h2>
             <p className="mt-4 max-w-2xl text-base leading-8 text-slate-500">
-              After installation verification, DSG can create an <span className="font-semibold text-slate-300">INSTALLATION_INTEGRITY_PROOF</span> covering callback binding, scope, provisioned artifacts, source lineage, hashes and verification state. It proves installation integrity; it does not claim that every future AI task is correct.
+              DSG separates implementation, configuration and live execution evidence. A green source build is not automatically a production claim; the exact deployed provider path and persisted evidence must pass.
             </p>
 
             <div className="mt-8 rounded-3xl border border-emerald-300/15 bg-emerald-300/[0.04] p-6">
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-200">Current production evidence</p>
-              <p className="mt-3 text-sm leading-7 text-slate-400">The current DSG Cinema production path has passed Azure deployment, direct Z3 verification, Cinema→Z3 E2E/replay and exact live Market-Ready UI byte attestation. This is runtime evidence, not a certification claim.</p>
-              <a href={PRODUCT_URL} className="mt-5 inline-flex text-sm font-bold text-emerald-200 hover:text-emerald-100">Open the attested product surface →</a>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-200">Spacetime production proof · 5 Sep 2026</p>
+                <span className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-3 py-1 text-[10px] font-bold text-emerald-100">AZURE_PROVIDER_STACK=PASS</span>
+              </div>
+              <p className="mt-3 text-sm leading-7 text-slate-400">The deployed Azure Container Apps runtime passed a governed GPT-6 Astra proposal turn, Claude Sonnet 5 Remote MCP execution, GPT-6 Astra final turn, fail-closed MCP authentication checks and Spacetime evidence persistence across a new revision.</p>
+              <p className="mt-3 text-xs leading-6 text-slate-600">Core Spin production persistence was verified separately in Supabase and keeps only correlation references to the Spacetime evidence chain. The two stores are not merged.</p>
+              <div className="mt-5 flex flex-wrap gap-4">
+                <a href={SPACETIME_HEALTH_URL} className="text-sm font-bold text-emerald-200 hover:text-emerald-100">Open Spacetime health →</a>
+                <a href={DOCS_URL} className="text-sm font-bold text-sky-200 hover:text-sky-100">Read verification record →</a>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-3xl border border-sky-300/15 bg-sky-300/[0.04] p-6">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-sky-200">Cinema production evidence</p>
+              <p className="mt-3 text-sm leading-7 text-slate-400">The DSG Cinema production path has separately passed Azure deployment, direct Z3 verification, Cinema→Z3 E2E/replay and live Market-Ready UI byte attestation. This remains runtime evidence, not a certification claim.</p>
+              <a href={PRODUCT_URL} className="mt-5 inline-flex text-sm font-bold text-sky-200 hover:text-sky-100">Open the attested product surface →</a>
             </div>
           </div>
 
@@ -232,7 +275,7 @@ export default function HomePage() {
             </div>
             <div className="mt-7 flex flex-wrap gap-3 lg:mt-0">
               <a href={PRODUCT_URL} className="rounded-2xl bg-sky-300 px-6 py-3.5 text-sm font-bold text-slate-950">Open DSG ONE</a>
-              <Link href="/login?next=/dashboard/integrations" className="rounded-2xl border border-white/10 bg-white/[0.04] px-6 py-3.5 text-sm font-bold text-white">Connect agent</Link>
+              <a href={DOCS_URL} className="rounded-2xl border border-white/10 bg-white/[0.04] px-6 py-3.5 text-sm font-bold text-white">Read docs</a>
             </div>
           </div>
         </div>
