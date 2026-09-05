@@ -79,6 +79,15 @@ check(contains(mcpRoute, "rpc.method === 'tools/list'"), 'Dedicated MCP implemen
 check(contains(mcpRoute, "rpc.method === 'tools/call'"), 'Dedicated MCP implements tools/call');
 check(contains(mcpRoute, 'validateStoredUnifiedMcpKey'), 'Dedicated MCP validates stored DSG MCP API keys');
 check(contains(mcpRoute, "transport: 'MCP JSON-RPC over HTTP'"), 'Dedicated endpoint declares MCP JSON-RPC over HTTP');
+check(
+  contains(mcpRoute, "protocolVersion: '2024-11-05'") &&
+    packageContract.mcpCompatibility?.currentInitializeProtocolVersion === '2024-11-05',
+  'Package records the exact MCP initialize protocol version implemented by the route',
+);
+check(
+  packageContract.mcpCompatibility?.awsMarketplaceClientCompatibility === 'PENDING_REAL_CLIENT_VALIDATION',
+  'AWS Marketplace client compatibility remains explicitly pending real-client validation',
+);
 
 check(contains(openApiRoute, "openapi: '3.1.0'"), 'Governance OpenAPI surface is present');
 check(contains(openApiRoute, "'/api/dsg/governance/preflight'"), 'OpenAPI exposes governance preflight');
@@ -92,6 +101,18 @@ check(contains(governancePlugin, "status = 'PASS'"), 'Governance runtime has an 
 check(contains(governancePlugin, ".from('dsg_audit_events').insert"), 'Governance runtime persists execution audit records');
 check(contains(governancePlugin, "'DO_NOT_EXECUTE'"), 'Blocked decisions emit DO_NOT_EXECUTE');
 check(contains(governancePlugin, "'CONTINUE_TO_TARGET'"), 'Plan-authorized decisions can emit CONTINUE_TO_TARGET');
+
+check(
+  packageContract.fulfillment?.selectedMethodForFirstProduct === 'REDIRECT_TO_WEBSITE' &&
+    packageContract.fulfillment?.selectionStatus === 'RECOMMENDED_NOT_PUBLISHED',
+  'First-product fulfillment choice is Redirect to Website and is not falsely claimed published',
+);
+check(
+  packageContract.fulfillment?.postPublishMutable === false &&
+    packageContract.fulfillment?.quickLaunchStatus === 'NOT_SELECTED_FOR_THIS_PRODUCT' &&
+    packageContract.fulfillment?.deploymentApiStatus === 'NOT_REQUIRED_FOR_REDIRECT_TO_WEBSITE',
+  'Fulfillment contract prevents the false claim that Quick Launch can be enabled later on the same published product',
+);
 
 check(
   packageContract.marketplaceCommercialIntegration?.sellerEligibility === 'UNVERIFIED_EXTERNAL_ACCOUNT_STATE',
@@ -108,8 +129,10 @@ check(
 check(
   packageContract.truthBoundary?.staticPackagePassIsMarketplaceEligibility === false &&
     packageContract.truthBoundary?.staticPackagePassIsLiveEndpointProof === false &&
+    packageContract.truthBoundary?.declaredLiveBlockIsLiveEndpointPass === false &&
+    packageContract.truthBoundary?.mcpDiscoveryPassIsAwsClientCompatibilityProof === false &&
     packageContract.truthBoundary?.privateOfferReady === false,
-  'Truth boundary prevents static packaging from being reported as Marketplace/private-offer readiness',
+  'Truth boundary prevents static/live-state packaging from being reported as Marketplace, client-compatibility, or private-offer readiness',
 );
 
 async function fetchJson(url, options = {}) {
@@ -154,6 +177,10 @@ async function verifyLive(baseUrl) {
   check(
     initialize.body?.result?.serverInfo?.name === 'dsg-governance-plugin',
     'Live MCP initialize returns expected server identity',
+  );
+  check(
+    initialize.body?.result?.protocolVersion === packageContract.mcpCompatibility?.currentInitializeProtocolVersion,
+    'Live MCP initialize protocol version matches the package contract',
   );
 
   const toolList = await fetchJson(mcpUrl, {
