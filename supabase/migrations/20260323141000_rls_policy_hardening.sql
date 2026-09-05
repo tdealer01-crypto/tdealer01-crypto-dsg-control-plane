@@ -17,7 +17,7 @@ stable
 security definer
 set search_path = public
 as $$
-  select u.org_id
+  select u.org_id::text
   from public.users u
   where u.auth_user_id = auth.uid()
     and u.is_active = true
@@ -90,6 +90,9 @@ create policy policies_select_active_user
   to authenticated
   using (public.current_user_is_active());
 
+-- Keep the helper return type stable as text while supporting legacy schemas
+-- where org_id is UUID. Casting the row identity to text makes the policy
+-- comparison type-stable for both UUID and text-backed installations.
 drop policy if exists agents_select_same_org on public.agents;
 drop policy if exists agents_select_active_user_same_org on public.agents;
 create policy agents_select_active_user_same_org
@@ -98,7 +101,7 @@ create policy agents_select_active_user_same_org
   to authenticated
   using (
     public.current_user_is_active()
-    and org_id = public.current_user_org_id()
+    and org_id::text = public.current_user_org_id()
   );
 
 drop policy if exists executions_select_same_org on public.executions;
@@ -109,7 +112,7 @@ create policy executions_select_active_user_same_org
   to authenticated
   using (
     public.current_user_is_active()
-    and org_id = public.current_user_org_id()
+    and org_id::text = public.current_user_org_id()
   );
 
 drop policy if exists audit_logs_select_same_org on public.audit_logs;
@@ -120,7 +123,7 @@ create policy audit_logs_select_active_user_same_org
   to authenticated
   using (
     public.current_user_is_active()
-    and org_id = public.current_user_org_id()
+    and org_id::text = public.current_user_org_id()
   );
 
 drop policy if exists usage_events_select_same_org on public.usage_events;
@@ -131,7 +134,7 @@ create policy usage_events_select_active_user_same_org
   to authenticated
   using (
     public.current_user_is_active()
-    and org_id = public.current_user_org_id()
+    and org_id::text = public.current_user_org_id()
   );
 
 drop policy if exists usage_counters_select_same_org on public.usage_counters;
@@ -142,5 +145,5 @@ create policy usage_counters_select_active_user_same_org
   to authenticated
   using (
     public.current_user_is_active()
-    and org_id = public.current_user_org_id()
+    and org_id::text = public.current_user_org_id()
   );
