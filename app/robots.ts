@@ -5,10 +5,7 @@
 
 import type { MetadataRoute } from 'next';
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_APP_URL ??
-  process.env.APP_URL ??
-  'https://dsg-control-plane.azurewebsites.net';
+const BASE_URL = 'https://www.dsg.pics';
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -16,9 +13,20 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: '*',
         allow: '/',
-        disallow: ['/dashboard', '/api/', '/approvals', '/gateway', '/app-shell', '/admin'],
+        disallow: [
+          '/dashboard',
+          '/api/',
+          '/approvals',
+          '/gateway',
+          '/app-shell',
+          '/admin',
+          '/auth/',
+          '/checkout/',
+          '/login',
+        ],
       },
     ],
     sitemap: `${BASE_URL}/sitemap.xml`,
+    host: BASE_URL,
   };
 }
