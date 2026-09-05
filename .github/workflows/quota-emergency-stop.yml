@@ -41,3 +41,16 @@ jobs:
                 gh api --method POST "/repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/cancel" || true
               done
           done
+
+          sleep 5
+
+          for status in queued in_progress; do
+            gh api --paginate "/repos/${GITHUB_REPOSITORY}/actions/runs?status=${status}&per_page=100" \
+              --jq '.workflow_runs[].id' | while IFS= read -r run_id; do
+                if [[ -z "$run_id" || "$run_id" == "$THIS_RUN_ID" ]]; then
+                  continue
+                fi
+                echo "Force-cancelling stuck run $run_id ($status)"
+                gh api --method POST "/repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/force-cancel" || true
+              done
+          done
