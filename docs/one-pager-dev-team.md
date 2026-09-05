@@ -4,7 +4,7 @@
 ---
 
 ## Hook
-> "Your AI agent (Claude Code, OpenHands, Aider, Cursor) writes code, runs commands, calls APIs — *before you see it*. DSG ONE puts a deterministic gate in front of every action. `npm i @dsg-one/sdk` → governed execution in 10 lines."
+> "Your AI agent (Claude Code, OpenHands, Aider, Cursor) writes code, runs commands, calls APIs — *before you see it*. DSG ONE puts a deterministic gate in front of every action. `npm i dsg-one-sdk` → governed execution in 10 lines."
 
 ---
 
@@ -19,10 +19,10 @@
 ## Solution (SDK-First, Verified)
 ```typescript
 // 1. Install
-npm i @dsg-one/sdk
+npm i dsg-one-sdk
 
 // 2. Initialize (one line with your key)
-import { DsgOneClient } from "@dsg-one/sdk";
+import { DsgOneClient } from "dsg-one-sdk";
 const dsg = new DsgOneClient({ apiKey: "dsg_live_..." });
 
 // 3. Wrap every agent action
@@ -79,7 +79,7 @@ console.log(result.audit_id, result.proof.proof_hash);
 ## SDK Status (Verified)
 | Component | Status |
 |-----------|--------|
-| `@dsg-one/sdk` package | **Built, type-checked, ready for `npm publish`** |
+| `dsg-one-sdk` package | **Published on npm; repository prepared for 0.1.1** |
 | TypeScript definitions | Full types for all requests/responses |
 | Error handling | `DsgOneError` with typed codes (RATE_LIMITED, UNAUTHENTICATED, etc.) |
 | Auth | Bearer `dsg_live_...` + SHA256 key hash |
@@ -110,7 +110,7 @@ console.log(result.audit_id, result.proof.proof_hash);
 ## Setup Time
 | Step | Time |
 |------|------|
-| `npm i @dsg-one/sdk` | 30 sec |
+| `npm i dsg-one-sdk` | 30 sec |
 | Create agent (`dsg.createAgent()`) | 10 sec |
 | First execute() call | 5 min |
 | See Decision Explainer in dashboard | Instant |
@@ -127,14 +127,14 @@ console.log(result.audit_id, result.proof.proof_hash);
 ---
 
 ## CTA
-> `npm i @dsg-one/sdk` → create agent → wrap one action → see gate decision in dashboard → **you're governed**
+> `npm i dsg-one-sdk` → create agent → wrap one action → see gate decision in dashboard → **you're governed**
 
 ---
 
 ## Truth Boundary
 | ✅ Verified | ⏳ Pending |
 |-------------|-----------|
-| SDK builds, types work | **Ready to publish** (npm credentials required; no live npm registry entry yet) |
+| `dsg-one-sdk@0.1.0` exists on npm; repository is prepared for `0.1.1` | Trusted Publisher must be attached to the existing npm package before tokenless CI publishing |
 | Gate returns decision + proof | Metered billing wired into execution; Stripe meter env not yet configured |
 | 2173 tests pass | GitHub App not yet live |
 | Edge gate <50ms latency | PyPI package not built |
@@ -152,4 +152,4 @@ console.log(result.audit_id, result.proof.proof_hash);
 ---
 
 ## Next Step
-**Watch for `@dsg-one/sdk` on npm** (publishing this week) → `npm i @dsg-one/sdk` → governed in 10 min.
+**Install `dsg-one-sdk` from npm** → create agent → wrap one action → governed in 10 min.
