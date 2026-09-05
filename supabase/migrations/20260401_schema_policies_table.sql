@@ -31,14 +31,36 @@ begin
   end if;
 end $$;
 
--- Seed default policy if not present
-insert into public.policies (id, name, version, status, description, config)
-values (
-  'policy_default',
-  'Default DSG Policy',
-  'v1',
-  'active',
-  'Baseline deterministic policy for scaffold execution routes.',
-  jsonb_build_object('block_risk_score', 0.8, 'stabilize_risk_score', 0.4)
-)
-on conflict (id) do nothing;
+-- A legacy preview database can already contain public.policies with a UUID
+-- primary key. CREATE TABLE IF NOT EXISTS preserves that old column type, so
+-- inserting the canonical text id `policy_default` would fail before the later
+-- full-schema sync recreates public.policies with id text. Seed only when the
+-- existing id column is text-compatible. The canonical full-schema migration
+-- performs the baseline seed after rebuilding the table.
+do $$
+declare
+  v_id_type text;
+begin
+  select format_type(a.atttypid, a.atttypmod)
+    into v_id_type
+  from pg_attribute a
+  where a.attrelid = 'public.policies'::regclass
+    and a.attname = 'id'
+    and a.attnum > 0
+    and not a.attisdropped;
+
+  if v_id_type in ('text', 'character varying') then
+    insert into public.policies (id, name, version, status, description, config)
+    values (
+      'policy_default',
+      'Default DSG Policy',
+      'v1',
+      'active',
+      'Baseline deterministic policy for scaffold execution routes.',
+      jsonb_build_object('block_risk_score', 0.8, 'stabilize_risk_score', 0.4)
+    )
+    on conflict (id) do nothing;
+  else
+    raise notice 'Skipping policy_default seed because public.policies.id type is %, expected text-compatible legacy shape', v_id_type;
+  end if;
+end $$;
