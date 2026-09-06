@@ -17,7 +17,7 @@ Primary technical evidence in this repository:
 - Formal solver artifact: `artifacts/formal/dsg_gate_proof.smt2`
 - Reproducible verifier: `artifacts/formal/verify.sh`
 - Runtime authorization and route roles: `lib/authz.ts`, `lib/runtime/permissions.ts`
-- Runtime commit path: `supabase/migrations/20260331_runtime_spine_rpc.sql`, `app/api/execute/route.ts`
+- Runtime commit path: `supabase/migrations/20260331000100_runtime_spine_rpc.sql`, `app/api/execute/route.ts`
 - Callback org scoping and reconciliation: `app/api/effect-callback/route.ts`, `lib/runtime/reconcile.ts`
 
 ---
