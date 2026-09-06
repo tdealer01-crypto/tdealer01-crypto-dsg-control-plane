@@ -1,8 +1,8 @@
 name: Emergency Actions Quota Guard
 
+# Quota emergency stop already ran successfully. Keep it available for explicit
+# operator use without spending runner minutes on every push.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
