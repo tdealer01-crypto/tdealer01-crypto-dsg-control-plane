@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "dsg.supabase-canonical-ledger-supplement.v1",
+  "projectRef": "zeyguilldygozufpgxms",
+  "capturedAt": "2026-09-06T08:22:04Z",
+  "source": "supabase_migrations.schema_migrations",
+  "reason": "Verified remote-applied migrations at or before canonical remoteHead that were absent from the 2026-08-28 canonical snapshot. This supplement preserves provider-applied history without rewriting the original snapshot.",
+  "migrations": [
+    {"version":"20260323053000","name":"product_loop_scaffold"},
+    {"version":"20260323054500","name":"product_loop_rls"},
+    {"version":"20260323110000","name":"billing_checkout_flow"},
+    {"version":"20260323140000","name":"schema_constraints_hardening"},
+    {"version":"20260323141000","name":"rls_policy_hardening"},
+    {"version":"20260329120000","name":"trial_signup_flow"},
+    {"version":"20260330","name":"monitor_stats"},
+    {"version":"20260331","name":"runtime_spine"},
+    {"version":"20260401","name":"runtime_rbac"},
+    {"version":"20260401093000","name":"batch3_enterprise_identity_rollout"},
+    {"version":"20260401120000","name":"enterprise_access_batch2"},
+    {"version":"20260401123000","name":"access_requests_org_scope"}
+  ]
+}
