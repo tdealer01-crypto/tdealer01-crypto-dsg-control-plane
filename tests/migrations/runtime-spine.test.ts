@@ -10,7 +10,7 @@ describe('runtime migration coverage', () => {
 
   it('supports upgrade paths with if not exists and rpc migration', () => {
     const sqlSpine = readFileSync('supabase/migrations/20260331_runtime_spine.sql', 'utf8');
-    const sqlRpc = readFileSync('supabase/migrations/20260331_runtime_spine_rpc.sql', 'utf8');
+    const sqlRpc = readFileSync('supabase/migrations/20260331000100_runtime_spine_rpc.sql', 'utf8');
     expect(sqlSpine).toMatch(/if not exists/g);
     expect(sqlRpc).toContain('create or replace function runtime_commit_execution');
   });
