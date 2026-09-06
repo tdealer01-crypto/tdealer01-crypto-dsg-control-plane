@@ -5,7 +5,9 @@ import { basename, dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const SCHEMA = 'dsg.supabase-canonical-ledger.v1';
-const VERSIONED_FILE = /^(\d{10}|\d{14})_(.+)\.sql$/;
+const SUPPLEMENT_SCHEMA = 'dsg.supabase-canonical-ledger-supplement.v1';
+const VERSION = /^(?:\d{8}|\d{10}|\d{14})$/;
+const VERSIONED_FILE = /^(\d{8}|\d{10}|\d{14})_(.+)\.sql$/;
 
 export class CanonicalMigrationError extends Error {
   constructor(message, code, details = {}) {
@@ -23,13 +25,13 @@ function assert(condition, message, code = 'INVALID_LEDGER', details = {}) {
 export function validateCanonicalLedger(input) {
   assert(input?.schemaVersion === SCHEMA, `Unsupported ledger schema: ${input?.schemaVersion ?? '(missing)'}`);
   assert(typeof input?.projectRef === 'string' && input.projectRef.length > 0, 'projectRef is required');
-  assert(/^\d{10}$|^\d{14}$/.test(input?.remoteHead ?? ''), 'remoteHead must be a 10- or 14-digit version');
+  assert(VERSION.test(input?.remoteHead ?? ''), 'remoteHead must be an 8-, 10-, or 14-digit version');
   assert(Array.isArray(input?.migrations) && input.migrations.length > 0, 'migrations must be a non-empty array');
 
   const seen = new Set();
   let previous = '';
   for (const migration of input.migrations) {
-    assert(/^\d{10}$|^\d{14}$/.test(migration?.version ?? ''), 'migration version is invalid');
+    assert(VERSION.test(migration?.version ?? ''), 'migration version is invalid');
     assert(typeof migration?.name === 'string' && migration.name.length > 0, `${migration.version} name is missing`);
     assert(!seen.has(migration.version), `duplicate canonical version: ${migration.version}`);
     assert(previous === '' || previous.localeCompare(migration.version) < 0, 'canonical versions must be strictly sorted');
@@ -38,6 +40,27 @@ export function validateCanonicalLedger(input) {
   }
   assert(previous === input.remoteHead, `remoteHead ${input.remoteHead} does not match final version ${previous}`);
   return input;
+}
+
+export function mergeCanonicalLedgerSupplement(input, supplement) {
+  const canonical = validateCanonicalLedger(input);
+  if (!supplement) return canonical;
+
+  assert(supplement?.schemaVersion === SUPPLEMENT_SCHEMA, `Unsupported ledger supplement schema: ${supplement?.schemaVersion ?? '(missing)'}`);
+  assert(supplement?.projectRef === canonical.projectRef, 'ledger supplement projectRef does not match canonical ledger');
+  assert(Array.isArray(supplement?.migrations) && supplement.migrations.length > 0, 'ledger supplement migrations must be a non-empty array');
+
+  for (const migration of supplement.migrations) {
+    assert(VERSION.test(migration?.version ?? ''), 'ledger supplement migration version is invalid');
+    assert(typeof migration?.name === 'string' && migration.name.length > 0, `${migration.version} supplement name is missing`);
+    assert(migration.version.localeCompare(canonical.remoteHead) <= 0, `supplement version ${migration.version} is newer than canonical remoteHead ${canonical.remoteHead}`);
+  }
+
+  return validateCanonicalLedger({
+    ...canonical,
+    migrations: [...canonical.migrations, ...supplement.migrations]
+      .sort((a, b) => a.version.localeCompare(b.version)),
+  });
 }
 
 async function moveFile(source, target) {
@@ -130,11 +153,23 @@ function parseArguments(argv) {
   return args;
 }
 
+async function readOptionalJson(path) {
+  try {
+    return JSON.parse(await readFile(path, 'utf8'));
+  } catch (error) {
+    if (error?.code === 'ENOENT') return null;
+    throw error;
+  }
+}
+
 export async function runCli(argv = process.argv.slice(2)) {
   const args = parseArguments(argv);
-  const ledger = JSON.parse(await readFile(args.get('ledger'), 'utf8'));
+  const ledgerPath = resolve(args.get('ledger'));
+  const ledger = JSON.parse(await readFile(ledgerPath, 'utf8'));
+  const supplement = await readOptionalJson(join(dirname(ledgerPath), 'canonical-legacy-migration-ledger.json'));
+  const mergedLedger = mergeCanonicalLedgerSupplement(ledger, supplement);
   const evidence = await prepareCanonicalMigrations({
-    ledger,
+    ledger: mergedLedger,
     migrationsDir: args.get('migrations-dir'),
     quarantineDir: args.get('quarantine-dir'),
   });
