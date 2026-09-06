@@ -6,6 +6,7 @@ on:
     paths:
       - 'supabase/migrations/**'
       - 'supabase/canonical-migration-ledger.json'
+      - 'supabase/canonical-legacy-migration-ledger.json'
       - 'scripts/prepare-supabase-canonical-migrations.mjs'
       - '.github/workflows/supabase-migrations.yml'
   workflow_dispatch:
