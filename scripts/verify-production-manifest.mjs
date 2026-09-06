@@ -168,7 +168,7 @@ const requiredPaths = [
   'supabase/migrations/20260323141000_rls_policy_hardening.sql',
   'supabase/migrations/20260330_monitor_stats.sql',
   'supabase/migrations/20260331_runtime_spine.sql',
-  'supabase/migrations/20260331_runtime_spine_rpc.sql',
+  'supabase/migrations/20260331000100_runtime_spine_rpc.sql',
   'supabase/migrations/20260401093000_batch3_enterprise_identity_rollout.sql',
   'supabase/migrations/20260401120000_enterprise_access_batch2.sql',
   'supabase/migrations/20260401_runtime_rbac.sql',
