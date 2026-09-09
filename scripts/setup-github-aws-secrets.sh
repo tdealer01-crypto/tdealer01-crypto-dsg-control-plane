@@ -30,9 +30,10 @@ echo -e "${BLUE}AWS Account ID: $AWS_ACCOUNT_ID${NC}"
 AWS_REGION="${2:-us-east-1}"
 echo -e "${BLUE}AWS Region: $AWS_REGION${NC}"
 
-# Bedrock Configuration
-BEDROCK_REGISTRY_ID="${3:-cGcvetJOMzWh3xmj}"
-echo -e "${BLUE}Bedrock Registry ID: $BEDROCK_REGISTRY_ID${NC}"
+# AWS Agent Registry configuration. Keep the legacy secret alias during cutover.
+AGENT_REGISTRY_ID="${3:-Bq1kJxIL0SrRPIpe}"
+BEDROCK_REGISTRY_ID="$AGENT_REGISTRY_ID"
+echo -e "${BLUE}Agent Registry ID: $AGENT_REGISTRY_ID${NC}"
 
 # Cognito Configuration
 COGNITO_USER_POOL_ID="${4:-us-east-1_ZtxWdHzFJ}"
@@ -51,9 +52,12 @@ echo -e "${GREEN}✅ AWS_ACCOUNT_ID set${NC}"
 gh secret set AWS_REGION --body "$AWS_REGION" --repo "$REPO"
 echo -e "${GREEN}✅ AWS_REGION set${NC}"
 
-# Set Bedrock secrets
+# Set Agent Registry secrets
+gh secret set AGENT_REGISTRY_ID --body "$AGENT_REGISTRY_ID" --repo "$REPO"
+echo -e "${GREEN}✅ AGENT_REGISTRY_ID set${NC}"
+
 gh secret set BEDROCK_REGISTRY_ID --body "$BEDROCK_REGISTRY_ID" --repo "$REPO"
-echo -e "${GREEN}✅ BEDROCK_REGISTRY_ID set${NC}"
+echo -e "${GREEN}✅ BEDROCK_REGISTRY_ID legacy alias set${NC}"
 
 gh secret set COGNITO_USER_POOL_ID --body "$COGNITO_USER_POOL_ID" --repo "$REPO"
 echo -e "${GREEN}✅ COGNITO_USER_POOL_ID set${NC}"
@@ -64,7 +68,7 @@ echo -e "${GREEN}✅ COGNITO_CLIENT_ID set${NC}"
 # Verify secrets
 echo ""
 echo -e "${BLUE}Verifying secrets:${NC}"
-gh secret list --repo "$REPO" | grep -E "AWS_|BEDROCK_|COGNITO_"
+gh secret list --repo "$REPO" | grep -E "AWS_|AGENT_REGISTRY_|BEDROCK_|COGNITO_"
 
 echo ""
 echo -e "${GREEN}✅ GitHub Secrets Configuration Complete!${NC}"
