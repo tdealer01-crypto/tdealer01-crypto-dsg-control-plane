@@ -23,8 +23,11 @@ new DSGOneStack(app, `DSGOneStack-${environment}`, {
   config,
 });
 
-// Create Bedrock Agent Core stack (for MCP registry + AI governance)
-const registryId = process.env.BEDROCK_REGISTRY_ID || 'cGcvetJOMzWh3xmj';
+// Create Bedrock Agent Core stack (AgentCore + AWS Agent Registry governance)
+const registryId =
+  process.env.AGENT_REGISTRY_ID ||
+  process.env.BEDROCK_REGISTRY_ID ||
+  'Bq1kJxIL0SrRPIpe';
 const cognitoUserPoolId = process.env.COGNITO_USER_POOL_ID || 'us-east-1_ZtxWdHzFJ';
 const cognitoClientId = process.env.COGNITO_CLIENT_ID || '7njqeoh6bq64s6u44oo9vghfcg';
 
