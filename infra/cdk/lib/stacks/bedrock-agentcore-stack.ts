@@ -20,14 +20,17 @@ export class BedrockAgentCoreStack extends cdk.Stack {
 
     const { environment, registryId, cognitoUserPoolId, cognitoClientId } = props;
 
-    // ✅ Step 1: IAM Role for Bedrock Agent Core
+    // Keep AgentCore compatibility while Agent Registry moves to its dedicated namespace.
     const bedrockRole = new iam.Role(this, 'BedrockAgentCoreRole', {
-      assumedBy: new iam.ServicePrincipal('bedrock-agentcore.amazonaws.com'),
-      description: 'Role for Bedrock Agent Core MCP Registry and AI operations',
+      assumedBy: new iam.CompositePrincipal(
+        new iam.ServicePrincipal('bedrock-agentcore.amazonaws.com'),
+        new iam.ServicePrincipal('agent-registry.amazonaws.com')
+      ),
+      description: 'Role for Bedrock Agent Core and AWS Agent Registry operations',
       roleName: `bedrock-agentcore-${environment}`,
     });
 
-    // ✅ Bedrock Permissions
+    // Existing AgentCore / preview Registry permissions retained during the migration window.
     bedrockRole.addToPrincipalPolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
@@ -45,7 +48,27 @@ export class BedrockAgentCoreStack extends cdk.Stack {
       })
     );
 
-    // ✅ Cognito Permissions
+    // AWS Agent Registry permissions in the new agent-registry namespace.
+    bedrockRole.addToPrincipalPolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          'agent-registry:CreateRegistryRecord',
+          'agent-registry:GetRegistryRecord',
+          'agent-registry:UpdateRegistryRecord',
+          'agent-registry:ListRegistryRecords',
+          'agent-registry:DeleteRegistryRecord',
+          'agent-registry:SubmitRegistryRecordForApproval',
+          'agent-registry:UpdateRegistryRecordStatus',
+          'agent-registry:SearchDiscoverableRegistryRecords',
+          'agent-registry:ListDiscoverableRegistryRecords',
+          'agent-registry:GetDiscoverableRegistryRecord',
+        ],
+        resources: [`arn:aws:agent-registry:${this.region}:${this.account}:*`],
+      })
+    );
+
+    // Cognito Permissions
     bedrockRole.addToPrincipalPolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
@@ -59,7 +82,7 @@ export class BedrockAgentCoreStack extends cdk.Stack {
       })
     );
 
-    // ✅ CloudWatch Logs for Agent Execution Traces
+    // CloudWatch Logs for AgentCore and Agent Registry traces.
     bedrockRole.addToPrincipalPolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
@@ -69,18 +92,21 @@ export class BedrockAgentCoreStack extends cdk.Stack {
           'logs:PutLogEvents',
           'logs:DescribeLogStreams',
         ],
-        resources: [`arn:aws:logs:${this.region}:${this.account}:log-group:/aws/bedrock/agentcore/*`],
+        resources: [
+          `arn:aws:logs:${this.region}:${this.account}:log-group:/aws/bedrock/agentcore/*`,
+          `arn:aws:logs:${this.region}:${this.account}:log-group:/aws/agent-registry/*`,
+        ],
       })
     );
 
-    // ✅ Step 2: Cognito User Pool Reference
+    // Cognito User Pool Reference
     const cognitoUserPool = cognito.UserPool.fromUserPoolId(
       this,
       'CognitoUserPool',
       cognitoUserPoolId
     );
 
-    // ✅ Step 3: Outputs for GitHub Actions + Deployment
+    // Outputs for GitHub Actions + Deployment
     new cdk.CfnOutput(this, 'BedrockRoleArn', {
       value: bedrockRole.roleArn,
       description: 'ARN of Bedrock Agent Core IAM Role',
@@ -89,7 +115,7 @@ export class BedrockAgentCoreStack extends cdk.Stack {
 
     new cdk.CfnOutput(this, 'RegistryId', {
       value: registryId,
-      description: 'Bedrock Agent Core Registry ID',
+      description: 'AWS Agent Registry ID (agent-registry namespace)',
       exportName: `RegistryId-${environment}`,
     });
 
@@ -105,7 +131,7 @@ export class BedrockAgentCoreStack extends cdk.Stack {
       exportName: `CognitoClientId-${environment}`,
     });
 
-    // ✅ Store for access in other stacks
+    // Store for access in other stacks
     this.bedrockRoleArn = bedrockRole.roleArn;
     this.cognitoUserPoolArn = cognitoUserPool.userPoolArn;
     this.registryId = registryId;
