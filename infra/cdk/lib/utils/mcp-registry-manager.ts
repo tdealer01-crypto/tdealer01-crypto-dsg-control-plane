@@ -5,49 +5,55 @@ export interface MCPServerConfig {
   inlineContent: Record<string, unknown>;
 }
 
+/**
+ * Legacy compatibility surface.
+ *
+ * The previous implementation returned synthetic record IDs and success states
+ * without calling AWS. That behavior is prohibited by the DSG no-mock/no-false-
+ * data boundary. Keep this class exported so existing imports fail at runtime
+ * with an explicit migration error instead of silently fabricating Registry
+ * state.
+ *
+ * Use the real AWS Agent Registry Control API (`agent-registry-control`) for
+ * Registry mutations and reads.
+ */
 export class MCPRegistryManager {
-  private registryId: string;
-  private region: string;
+  private readonly registryId: string;
+  private readonly region: string;
 
   constructor(registryId: string, region: string = 'us-east-1') {
     this.registryId = registryId;
     this.region = region;
   }
 
-  async createRecord(serverConfig: MCPServerConfig): Promise<string> {
-    console.log(`Creating MCP registry record: ${serverConfig.name}`);
-    const recordId = `mcp-${serverConfig.name}-${Date.now()}`;
-    console.log(`✅ Record created: ${recordId}`);
-    return recordId;
+  private unsupported(operation: string): never {
+    throw new Error(
+      `MCPRegistryManager.${operation} is disabled: the legacy implementation was synthetic. ` +
+        `Use the AWS Agent Registry Control API in ${this.region} for registry ${this.registryId}.`
+    );
   }
 
-  async submitForApproval(recordId: string): Promise<void> {
-    console.log(`Submitting record for approval: ${recordId}`);
-    console.log('✅ Submitted for approval');
+  async createRecord(_serverConfig: MCPServerConfig): Promise<string> {
+    return this.unsupported('createRecord');
   }
 
-  async approveRecord(recordId: string, reason: string = 'Approved by CDK'): Promise<void> {
-    console.log(`Approving record: ${recordId}`);
-    console.log('✅ Record approved');
+  async submitForApproval(_recordId: string): Promise<void> {
+    return this.unsupported('submitForApproval');
   }
 
-  async waitForRecord(recordId: string, maxAttempts: number = 60): Promise<boolean> {
-    console.log(`Waiting for record to be ready: ${recordId}`);
-    console.log(`✅ Record status: READY`);
-    return true;
+  async approveRecord(_recordId: string, _reason: string = 'Approved by operator'): Promise<void> {
+    return this.unsupported('approveRecord');
   }
 
-  async publishRecord(serverConfig: MCPServerConfig): Promise<string> {
-    const recordId = await this.createRecord(serverConfig);
-    await this.waitForRecord(recordId);
-    await this.submitForApproval(recordId);
-    await this.approveRecord(recordId);
-    await new Promise((resolve) => setTimeout(resolve, 30000)); // Wait for index
-    return recordId;
+  async waitForRecord(_recordId: string, _maxAttempts: number = 60): Promise<boolean> {
+    return this.unsupported('waitForRecord');
   }
 
-  async searchRecords(query: string, maxResults: number = 10): Promise<Record<string, unknown>[]> {
-    console.log(`Searching registry records: ${query}`);
-    return [];
+  async publishRecord(_serverConfig: MCPServerConfig): Promise<string> {
+    return this.unsupported('publishRecord');
+  }
+
+  async searchRecords(_query: string, _maxResults: number = 10): Promise<Record<string, unknown>[]> {
+    return this.unsupported('searchRecords');
   }
 }
