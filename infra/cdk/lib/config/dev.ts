@@ -77,7 +77,10 @@ export const devConfig: DSGConfig = {
 
   bedrock: {
     enableAgentCore: true,
-    registryId: process.env.BEDROCK_REGISTRY_ID || 'cGcvetJOMzWh3xmj',
+    registryId:
+      process.env.AGENT_REGISTRY_ID ||
+      process.env.BEDROCK_REGISTRY_ID ||
+      'Bq1kJxIL0SrRPIpe',
     cognitoUserPoolId: process.env.COGNITO_USER_POOL_ID || 'us-east-1_ZtxWdHzFJ',
     cognitoClientId: process.env.COGNITO_CLIENT_ID || '7njqeoh6bq64s6u44oo9vghfcg',
     mcpServers: [
