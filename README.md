@@ -93,6 +93,49 @@ HEALTHY
 
 ---
 
+## Usage examples (Claude Code plugin)
+
+Install the DSG Governance plugin from this repository:
+
+```bash
+claude plugin marketplace add tdealer01-crypto/tdealer01-crypto-dsg-control-plane
+claude plugin install dsg-governance@dsg-plugins
+```
+
+Then ask Claude Code in natural language. The examples below map to the three skills currently shipped in `plugins/dsg-governance/skills/`.
+
+### Gate an action before execution
+
+```text
+Use dsg-action-layer-ged. Gate this action before running it: deploy the current commit to production.
+Return the gate status, reason, required permission, and evidence.
+Do not execute if the result is BLOCK, UNSUPPORTED, or REVIEW without approval.
+```
+
+Expected result: an evidence-dependent governance verdict such as `PASS`, `BLOCK`, `REVIEW`, or `UNSUPPORTED`; missing evidence must not be reported as success.
+
+### Add a governance check to CI/CD
+
+```text
+Use dsg-github-marketplace-action-controller. Add a DSG governance check before the production deploy job.
+Fail closed on BLOCK, missing proof, or unsupported medium-or-higher risk.
+Show the files changed and the verification needed before merge.
+```
+
+Expected result: a proposed GitHub Actions integration with deterministic GO/NO-GO conditions and explicit secret-handling boundaries.
+
+### Run a production readiness decision
+
+```text
+Use dsg-multi-governance-orchestrator. Check M1 production cutover using current evidence only.
+Mark every requirement PASS, FAIL, or UNVERIFIED and return GO or NO-GO.
+Do not infer missing deployment, database, authentication, billing, or proof evidence.
+```
+
+Expected result: a checklist-backed readiness decision whose claims are limited to the evidence actually inspected.
+
+---
+
 ## What the first proof means
 
 After installation verification, DSG can create:
