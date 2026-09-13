@@ -1,5 +1,7 @@
 # DSG ONE
 
+[![Listed on ClaudePluginHub](https://www.claudepluginhub.com/badge/tdealer01-crypto-dsg-governance)](https://www.claudepluginhub.com/plugins/tdealer01-crypto-dsg-governance?ref=badge)
+
 **Govern AI actions. Prove the result.**
 
 DSG ONE is a governance and evidence layer for AI agents, MCP tools, APIs, browsers, CI/CD and automated workflows. It is designed to sit between an existing agent and execution so operators can answer four questions clearly:
