@@ -4,9 +4,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSafeNext } from './lib/auth/safe-next';
 
 function isProtectedPath(pathname: string) {
-  if (pathname === '/dashboard/trinity') {
-    return false;
-  }
   return (
     pathname === '/dashboard' ||
     pathname.startsWith('/dashboard/') ||
@@ -18,25 +15,68 @@ function isProtectedPath(pathname: string) {
   );
 }
 
+function isRetiredTrinityPath(pathname: string) {
+  return (
+    pathname === '/api/trinity' ||
+    pathname.startsWith('/api/trinity/') ||
+    pathname === '/api/dashboard/trinity' ||
+    pathname.startsWith('/api/dashboard/trinity/') ||
+    pathname === '/dashboard/trinity' ||
+    pathname.startsWith('/dashboard/trinity/')
+  );
+}
+
+const UNTRUSTED_TRINITY_HEADERS = [
+  'x-trinity-role',
+  'x-trinity-org-id',
+  'x-trinity-actor-id',
+  'x-trinity-wallet-address',
+] as const;
+
+function sanitizeForwardedHeaders(source: Headers) {
+  const headers = new Headers(source);
+  headers.delete('x-user-id');
+  headers.delete('x-user-email');
+  for (const name of UNTRUSTED_TRINITY_HEADERS) headers.delete(name);
+  return headers;
+}
+
 const API_BODY_SIZE_LIMIT = 1_048_576; // 1 MB
 
 export async function proxy(request: NextRequest) {
-  // ── Correlation ID ─────────────────────────────────────────────────────────
-  // Propagate or generate a unique request ID for every request.
-  // Downstream services receive it via X-Request-ID header.
-  // Clients can correlate logs, errors, and traces with a single ID.
   const requestId =
     request.headers.get('x-request-id') ??
     request.headers.get('x-correlation-id') ??
     crypto.randomUUID();
-
   const requestStart = Date.now();
 
-  // Clone the request with the correlation ID injected, stripping auth-related headers
-  // to prevent header spoofing. These headers are only set after JWT verification.
-  const safeHeaders = new Headers(request.headers);
-  safeHeaders.delete('x-user-id');
-  safeHeaders.delete('x-user-email');
+  function stamp(res: NextResponse): NextResponse {
+    res.headers.set('x-request-id', requestId);
+    res.headers.set('x-response-time', `${Date.now() - requestStart}ms`);
+    return res;
+  }
+
+  // Legacy Trinity is retired. Block it before authentication, routing, DB access,
+  // or any route-handler logic. 410 makes the retirement explicit and fail-closed.
+  if (isRetiredTrinityPath(request.nextUrl.pathname)) {
+    return stamp(
+      NextResponse.json(
+        {
+          ok: false,
+          code: 'TRINITY_LEGACY_DISABLED',
+          error: 'Legacy Trinity surface is retired and disabled',
+        },
+        {
+          status: 410,
+          headers: { 'cache-control': 'no-store' },
+        },
+      ),
+    );
+  }
+
+  // Clone the request with the correlation ID injected, stripping identity headers
+  // that must never be trusted when supplied by an external caller.
+  const safeHeaders = sanitizeForwardedHeaders(request.headers);
 
   const requestWithId = new NextRequest(request.url, {
     method: request.method,
@@ -46,19 +86,11 @@ export async function proxy(request: NextRequest) {
   } as RequestInit & { duplex: 'half' });
   requestWithId.headers.set('x-request-id', requestId);
 
-  // Allow public access to pricing page
   if (request.nextUrl.pathname === '/pricing') {
     return stamp(NextResponse.next({ request: requestWithId }));
   }
 
   let response = NextResponse.next({ request: requestWithId });
-
-  // Helper: stamp correlation + timing headers on any response
-  function stamp(res: NextResponse): NextResponse {
-    res.headers.set('x-request-id', requestId);
-    res.headers.set('x-response-time', `${Date.now() - requestStart}ms`);
-    return res;
-  }
 
   // ── API routes: body-size enforcement + JWT Bearer token support ──────────
   if (request.nextUrl.pathname.startsWith('/api/')) {
@@ -71,7 +103,6 @@ export async function proxy(request: NextRequest) {
       }
     }
 
-    // Extract and validate JWT Bearer token if present
     const authHeader = request.headers.get('authorization');
     if (authHeader?.startsWith('Bearer ')) {
       const token = authHeader.slice(7);
@@ -96,13 +127,9 @@ export async function proxy(request: NextRequest) {
             },
           });
 
-          // Verify token with Supabase
           const { data, error } = await supabase.auth.getUser(token);
           if (data?.user && !error) {
-            // Token is valid - add verified user to request headers
-            const authHeaders = new Headers(request.headers);
-            authHeaders.delete('x-user-id');
-            authHeaders.delete('x-user-email');
+            const authHeaders = sanitizeForwardedHeaders(request.headers);
 
             const requestWithAuth = new NextRequest(request.url, {
               method: request.method,
@@ -118,8 +145,8 @@ export async function proxy(request: NextRequest) {
             const authResponse = NextResponse.next({ request: requestWithAuth });
             return stamp(authResponse);
           }
-        } catch (err) {
-          // Invalid token - continue to route handler which will reject if needed
+        } catch {
+          // Invalid token - continue to route handler which will reject if needed.
         }
       }
     }
@@ -133,7 +160,6 @@ export async function proxy(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-  // Localhost/dev bypass: skip auth for local inspection UI
   const host = request.headers.get('host') || '';
   const isLocalhost = host.includes('localhost') || host.includes('127.0.0.1');
   if (isLocalhost) {
@@ -193,9 +219,7 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Page routes: Supabase session + protected-path auth
     '/((?!api/|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
-    // API routes: body-size enforcement + correlation ID
     '/api/:path*',
   ],
 };// Vercel production rebuild trigger - 1784958177
