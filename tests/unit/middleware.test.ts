@@ -11,11 +11,14 @@ vi.mock('@supabase/ssr', () => ({
 import { proxy } from '../../proxy';
 import { NextRequest } from 'next/server';
 
-function makeRequest(pathname: string, options: { method?: string; nextParam?: string } = {}) {
-  const { method = 'GET', nextParam } = options;
+function makeRequest(
+  pathname: string,
+  options: { method?: string; nextParam?: string; headers?: Record<string, string> } = {},
+) {
+  const { method = 'GET', nextParam, headers } = options;
   const search = nextParam ? `?next=${encodeURIComponent(nextParam)}` : '';
   const url = `http://localhost${pathname}${search}`;
-  return new NextRequest(url, { method });
+  return new NextRequest(url, { method, headers });
 }
 
 const SUPABASE_URL = 'https://example.supabase.co';
@@ -31,6 +34,55 @@ afterEach(() => {
   delete process.env.NEXT_PUBLIC_SUPABASE_URL;
   delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   vi.clearAllMocks();
+});
+
+describe('proxy — retired Trinity surface', () => {
+  it.each([
+    ['/api/trinity/history', 'GET'],
+    ['/api/trinity/claim', 'POST'],
+    ['/api/dashboard/trinity', 'GET'],
+    ['/dashboard/trinity', 'GET'],
+  ])('returns 410 before route execution for %s', async (pathname, method) => {
+    const res = await proxy(
+      makeRequest(pathname, {
+        method,
+        headers: {
+          authorization: 'Bearer forged-token',
+          'x-trinity-role': 'OWNER',
+          'x-trinity-org-id': 'victim-org',
+          'x-trinity-actor-id': 'attacker',
+          'x-trinity-wallet-address': 'attacker-wallet',
+        },
+      }),
+    );
+
+    expect(res.status).toBe(410);
+    expect(res.headers.get('cache-control')).toBe('no-store');
+    await expect(res.json()).resolves.toMatchObject({
+      ok: false,
+      code: 'TRINITY_LEGACY_DISABLED',
+    });
+  });
+
+  it('blocks a forged OWNER request before Supabase authentication is invoked', async () => {
+    const { createServerClient } = await import('@supabase/ssr');
+    const mockCreate = vi.mocked(createServerClient);
+    mockCreate.mockClear();
+
+    const res = await proxy(
+      makeRequest('/api/trinity/settle', {
+        method: 'POST',
+        headers: {
+          authorization: 'Bearer forged-token',
+          'x-trinity-role': 'OWNER',
+          'x-trinity-org-id': 'victim-org',
+        },
+      }),
+    );
+
+    expect(res.status).toBe(410);
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
 });
 
 describe('proxy — protected path detection', () => {
