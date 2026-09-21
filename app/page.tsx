@@ -249,6 +249,22 @@ export default function HomePage() {
               <p className="mt-3 text-sm leading-7 text-slate-400">The DSG Cinema production path has separately passed Azure deployment, direct Z3 verification, Cinema→Z3 E2E/replay and live Market-Ready UI byte attestation. This remains runtime evidence, not a certification claim.</p>
               <a href={PRODUCT_URL} className="mt-5 inline-flex text-sm font-bold text-sky-200 hover:text-sky-100">Open the attested product surface →</a>
             </div>
+
+            <div className="mt-4 rounded-3xl border border-violet-300/15 bg-violet-300/[0.04] p-6">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-violet-200">Third-party ecosystem evidence · legacy Control Plane</p>
+                <span className="rounded-full border border-violet-300/20 bg-violet-300/10 px-3 py-1 text-[10px] font-bold text-violet-100">DATED SNAPSHOT</span>
+              </div>
+              <p className="mt-3 text-sm leading-7 text-slate-400">
+                A ClaudePluginHub verified-owner dashboard snapshot checked 19 Sep 2026 showed Strong 71/100, Community Health 85%, and 100/100 in Maintenance, Documentation, Trust and Capability for the legacy DSG Governance Control Plane. It also reported 17 copy clicks as Top 5% among 78,225 active plugins.
+              </p>
+              <p className="mt-3 text-xs leading-6 text-slate-600">
+                Historical external signal only. Copy clicks are not verified installs, rankings change over time, and this score is not transferred to current DSG ONE.
+              </p>
+              <Link href="/evidence/third-party" className="mt-5 inline-flex text-sm font-bold text-violet-200 hover:text-violet-100">
+                Inspect third-party evidence and boundaries →
+              </Link>
+            </div>
           </div>
 
           <div className="rounded-3xl border border-white/[0.07] bg-white/[0.025] p-6">

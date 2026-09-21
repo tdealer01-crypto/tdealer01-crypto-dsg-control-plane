@@ -33,6 +33,7 @@ const STATIC_PATHS: Array<{ path: string; priority: number }> = [
   { path: '/privacy', priority: 0.7 },
   { path: '/terms', priority: 0.7 },
   { path: '/compliance-evidence-pack', priority: 0.7 },
+  { path: '/evidence/third-party', priority: 0.7 },
   { path: '/eu-ai-act', priority: 0.7 },
   { path: '/iso-42001', priority: 0.7 },
   { path: '/nist-ai-rmf', priority: 0.7 },
