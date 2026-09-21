@@ -41,6 +41,7 @@ const FLAT_LINKS = [
   { href: '/blog',       label: 'Blog',       match: (p: string) => p === '/blog' || p.startsWith('/blog/') },
   { href: '/pricing',    label: 'Pricing',    match: (p: string) => p === '/pricing' },
   { href: '/docs',       label: 'Docs',       match: (p: string) => p === '/docs' || p.startsWith('/docs/') },
+  { href: '/evidence/third-party', label: 'Evidence', match: (p: string) => p === '/evidence/third-party' },
   { href: '/quickstart', label: 'Quickstart', match: (p: string) => p === '/quickstart' },
   { href: '/design-system-tool.html', label: '🎨 Design System', match: (p: string) => false, target: '_blank' },
 ];
