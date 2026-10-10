@@ -2,8 +2,8 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import RefTracker from '../components/RefTracker';
 
-const PRODUCT_URL = 'https://dsg-cinema-production.nicetree-a005fe99.westus3.azurecontainerapps.io/dashboard';
-const SPACETIME_HEALTH_URL = 'https://dsg-spacetime-prod.greenglacier-493f3f71.westus3.azurecontainerapps.io/health';
+const MCP_URL = 'https://aws.dsg.pics/mcp';
+const OAUTH_METADATA_URL = 'https://aws.dsg.pics/.well-known/oauth-protected-resource';
 const DOCS_URL = 'https://dsg-3.gitbook.io/dsg-docs/';
 
 const installPaths = [
@@ -62,7 +62,7 @@ export default function HomePage() {
             <div className="flex flex-wrap gap-2">
               <span className="rounded-full border border-sky-300/20 bg-sky-300/10 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-sky-100">DSG ONE</span>
               <span className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-100">Production-backed evidence</span>
-              <span className="rounded-full border border-violet-300/20 bg-violet-300/10 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-violet-100">Spacetime verified on Azure</span>
+              <span className="rounded-full border border-violet-300/20 bg-violet-300/10 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-violet-100">Spacetime verified on AWS</span>
             </div>
 
             <h1 className="mt-7 max-w-4xl text-5xl font-bold leading-[0.96] tracking-[-0.05em] text-white sm:text-6xl lg:text-7xl">
@@ -233,21 +233,21 @@ export default function HomePage() {
 
             <div className="mt-8 rounded-3xl border border-emerald-300/15 bg-emerald-300/[0.04] p-6">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-200">Spacetime production proof · 5 Sep 2026</p>
-                <span className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-3 py-1 text-[10px] font-bold text-emerald-100">AZURE_PROVIDER_STACK=PASS</span>
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-200">AWS governed public MCP proof · 29 Sep 2026</p>
+                <span className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-3 py-1 text-[10px] font-bold text-emerald-100">AWS_GOVERNED_MCP=PASS</span>
               </div>
-              <p className="mt-3 text-sm leading-7 text-slate-400">The deployed Azure Container Apps runtime passed a governed GPT-6 Astra proposal turn, Claude Sonnet 5 Remote MCP execution, GPT-6 Astra final turn, fail-closed MCP authentication checks and Spacetime evidence persistence across a new revision.</p>
-              <p className="mt-3 text-xs leading-6 text-slate-600">Core Spin production persistence was verified separately in Supabase and keeps only correlation references to the Spacetime evidence chain. The two stores are not merged.</p>
+              <p className="mt-3 text-sm leading-7 text-slate-400">The AWS production path passed exact-main CI (36529078523), governed stack activation (36529273403), and external public MCP verification (36529526202). The verified contract uses MCP protocol 2025-06-18 with 8 required tools, allows read-only route.cinema-remote.status with valid evidence, and fails closed on route.cinema-remote.connect without approval as BLOCK / APPROVAL_REQUIRED.</p>
+              <p className="mt-3 text-xs leading-6 text-slate-600">This proof is scoped to the governed public MCP backend. ChatGPT connector-native execution remains a separate client boundary and is not claimed PASS until discover → compose → read-only execute → verify_evidence → negative approval BLOCK succeeds from ChatGPT itself.</p>
               <div className="mt-5 flex flex-wrap gap-4">
-                <a href={SPACETIME_HEALTH_URL} className="text-sm font-bold text-emerald-200 hover:text-emerald-100">Open Spacetime health →</a>
+                <a href={OAUTH_METADATA_URL} className="text-sm font-bold text-emerald-200 hover:text-emerald-100">Open OAuth metadata →</a>
                 <a href={DOCS_URL} className="text-sm font-bold text-sky-200 hover:text-sky-100">Read verification record →</a>
               </div>
             </div>
 
             <div className="mt-4 rounded-3xl border border-sky-300/15 bg-sky-300/[0.04] p-6">
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-sky-200">Cinema production evidence</p>
-              <p className="mt-3 text-sm leading-7 text-slate-400">The DSG Cinema production path has separately passed Azure deployment, direct Z3 verification, Cinema→Z3 E2E/replay and live Market-Ready UI byte attestation. This remains runtime evidence, not a certification claim.</p>
-              <a href={PRODUCT_URL} className="mt-5 inline-flex text-sm font-bold text-sky-200 hover:text-sky-100">Open the attested product surface →</a>
+              <p className="mt-3 text-sm leading-7 text-slate-400">Within the verified AWS governed MCP path, the read-only Cinema status Route returned ALLOW with result_ok=true and valid evidence. A high-risk Cinema connect attempt without approval returned BLOCK / APPROVAL_REQUIRED and did not create an execution evidence record.</p>
+              <a href={MCP_URL} className="mt-5 inline-flex text-sm font-bold text-sky-200 hover:text-sky-100">Open production MCP endpoint →</a>
             </div>
 
             <div className="mt-4 rounded-3xl border border-violet-300/15 bg-violet-300/[0.04] p-6">
@@ -287,10 +287,10 @@ export default function HomePage() {
             <div>
               <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-sky-200">Start with one verified path</p>
               <h2 className="mt-3 text-3xl font-bold text-white">Install. Govern one action. Inspect the proof.</h2>
-              <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-500">Use the Market-Ready product surface for installation, or connect an existing MCP/OpenAPI workflow to the Control Plane.</p>
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-500">Use the verified AWS governed MCP path for agent integration, or connect an existing MCP/OpenAPI workflow through DSG ONE.</p>
             </div>
             <div className="mt-7 flex flex-wrap gap-3 lg:mt-0">
-              <a href={PRODUCT_URL} className="rounded-2xl bg-sky-300 px-6 py-3.5 text-sm font-bold text-slate-950">Open DSG ONE</a>
+              <a href={OAUTH_METADATA_URL} className="rounded-2xl bg-sky-300 px-6 py-3.5 text-sm font-bold text-slate-950">Inspect AWS OAuth metadata</a>
               <a href={DOCS_URL} className="rounded-2xl border border-white/10 bg-white/[0.04] px-6 py-3.5 text-sm font-bold text-white">Read docs</a>
             </div>
           </div>

@@ -8,7 +8,7 @@ import type { MetadataRoute } from 'next';
 const BASE_URL =
   process.env.NEXT_PUBLIC_APP_URL ??
   process.env.APP_URL ??
-  'https://dsg-control-plane.azurewebsites.net';
+  'https://www.dsg.pics';
 
 export default function robots(): MetadataRoute.Robots {
   return {
