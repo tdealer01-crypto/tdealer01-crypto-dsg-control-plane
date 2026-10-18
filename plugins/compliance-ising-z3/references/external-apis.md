@@ -1,103 +1,43 @@
-# External deployed APIs
+# Historical API reference — not a deployment claim
 
-Two externally deployed services relate to this plugin's QUBO/Ising + Z3
-domain. They are separate hosted services, **not** code in this repo. This
-plugin only documents them and provides curl templates; it stores no api_key
-and performs no real solver POST.
+This file is an **archive** of API details observed or documented on **31 July 2026**, before Vercel was retired for DSG. As of **18 October 2026**, the user confirms that Vercel is no longer used. Nothing in this plugin establishes a replacement deployed endpoint.
 
-All auth values must come from runtime environment variables. Never commit or
-print a real `api_key`, token, or password.
+**Current availability:** NOT VERIFIED. **Production connection:** NOT CLAIMED. **Execution from this plugin:** NOT RUN.
 
----
+The plugin bundles no API service, private credentials, Android binaries or external Z3 process.
 
-## API #1 — DSG QUBO Policy Optimizer API (ready to use)
+## Archived DSG QUBO Policy Optimizer API
 
-- Base URL: `https://dsg-qubo-api.vercel.app`
-- Name / version: "DSG QUBO Policy Optimizer API" v2.0.0
-- Auth: `api_key` **query parameter** (register/login to obtain a key)
-- Env vars: `DSG_QUBO_API_BASE` (default `https://dsg-qubo-api.vercel.app`),
-  `DSG_QUBO_API_KEY`
-- Claim boundary: external deployed service, production-connected, reachable
-  via `/health` (verified 2026-07-31). No real optimization run has been
-  executed from this repo; do not claim solver invocation or certification.
+Historical base URL: `https://dsg-qubo-api.vercel.app` (**retired; do not use as an active default**).
 
-### Verified endpoints (probed 2026-07-31)
+Historical note (not a current probe): `GET /health` was reported to return `{"status":"healthy","version":"2.0.0"}` on 2026-07-31. Historical routes from the archived service documentation included:
 
-| Method | Path | Notes |
-|--------|------|-------|
-| GET | `/` | Info JSON: name, version, status, docs, stripe_configured |
-| GET | `/health` | Returned `{"status":"healthy","version":"2.0.0",...}` (verified reachable) |
-| GET | `/docs` | Swagger UI |
-| GET | `/openapi.json` | OpenAPI 3.1.0 |
-| POST | `/api/v1/auth/register` | Body `{email, company_name, password, pricing_tier}` |
-| POST | `/api/v1/auth/login` | Body `{email, password}` |
-| POST | `/api/v1/optimization/run?api_key=<KEY>` | Body `OptimizationRequest` (see below) |
-| GET | `/api/v1/optimization/list?api_key=<KEY>&limit=10` | Recent runs |
-| GET | `/api/v1/optimization/{id}?api_key=<KEY>` | Single run |
-| GET | `/api/v1/account/profile?api_key=<KEY>` | Account profile |
-| GET | `/api/v1/account/usage?api_key=<KEY>` | Quota / usage |
+| Method | Path | Historical purpose |
+|---|---|---|
+| GET | `/health` | Health |
+| GET | `/openapi.json` | OpenAPI schema |
+| POST | `/api/v1/auth/register` | Account registration |
+| POST | `/api/v1/auth/login` | Authentication |
+| POST | `/api/v1/optimization/run` | Submit optimization |
+| GET | `/api/v1/optimization/list` | Query past runs |
+| GET | `/api/v1/account/usage` | Account usage |
 
-`OptimizationRequest` body:
+Historical optimization fields were: `domain`, `budget_cap`, optional `anneal_iterations`, and optional `deterministic_seed`. **Current request/response schemas have not been verified for any replacement provider.**
 
-- `domain` (enum, required): `EU_GDPR_AI` | `THAI_PDPA` | `THAI_CRIMINAL_LAW` |
-  `FINTECH`
-- `budget_cap` (number, **required**)
-- `anneal_iterations` (number, optional; example `5000`)
-- `deterministic_seed` (number, optional; example `42`)
+Authentication in historical documents used an `api_key` query parameter. That can expose credentials to logs and caches; do not silently copy the pattern into a new provider.
 
-### Curl templates
+## Archived z3-solver API
 
-```bash
-export DSG_QUBO_API_BASE="${DSG_QUBO_API_BASE:-https://dsg-qubo-api.vercel.app}"
-# export DSG_QUBO_API_KEY=...   # runtime only; never hardcode in the repo
+Historical base URL: `https://z3-solver-api-deploy-dsg.vercel.app` (**retired**).
 
-# Health (safe, no auth)
-curl -s "$DSG_QUBO_API_BASE/health"
+The previous notes reported `GET /api/solve` returning HTTP 405 on 2026-07-31, interpreted as a POST-only route. There is **no confirmed POST request schema or valid output** in this plugin. Do not claim that the external Z3 solver was invoked or that a formal proof was produced from this endpoint.
 
-# Run an optimization — WARNING: real run, may trigger solver work and may
-# incur cost under the service's pricing tier (Stripe scaffold).
-curl -s -X POST \
-  "$DSG_QUBO_API_BASE/api/v1/optimization/run?api_key=${DSG_QUBO_API_KEY}" \
-  -H "content-type: application/json" \
-  -d '{"domain":"EU_GDPR_AI","budget_cap":1000,"anneal_iterations":5000,"deterministic_seed":42}'
-```
+## Requirements before re-enabling an external skill
 
-See `skills/qubo-optimization-run/SKILL.md` for the full workflow.
+1. A deployed provider URL has to be supplied explicitly and confirmed current (no fallback to retired Vercel URLs).
+2. Fetch service identity/health and a documented, versioned request schema.
+3. Confirm authentication and avoid transmitting keys in URLs where safer supported methods exist.
+4. Obtain user authorization for any real/billable solver request and capture concrete request, response, seed, hashes, and date.
+5. If provider verification fails, output `BLOCKED / PROVIDER_UNVERIFIED`, not `PASS`.
 
----
-
-## API #2 — z3-solver-api (partially verified)
-
-- Base URL: `https://z3-solver-api-deploy-dsg.vercel.app`
-- Verified endpoint (probed 2026-07-31):
-  - `POST /api/solve` — route exists; `Content-Type: application/json`, CORS
-    `*`. `GET` returns `405`, confirming the route is POST-only.
-- **Request/response schema = NOT VERIFIED (route only).** There is no
-  discovered `/docs` or `/openapi.json`, and no POST was executed. Do not
-  assume field names or invent a payload. Treat the schema as unknown until a
-  real, authorized probe confirms it.
-- Claim boundary: only "route `/api/solve` reachable, POST-only (verified
-  2026-07-31)". Do not claim "external Z3 solver invocation complete" or any
-  readiness/certification status.
-
-### Curl template (schema unverified — placeholder body)
-
-```bash
-export Z3_SOLVER_API_BASE="${Z3_SOLVER_API_BASE:-https://z3-solver-api-deploy-dsg.vercel.app}"
-
-# Route exists but the request schema is UNVERIFIED. The body below is a
-# placeholder only; confirm the real schema before relying on it.
-curl -s -X POST "$Z3_SOLVER_API_BASE/api/solve" \
-  -H "content-type: application/json" \
-  -d '{ "schema": "UNVERIFIED — confirm before use" }'
-```
-
----
-
-## Secret handling
-
-- No `api_key`, token, or password is stored in this repo.
-- Provide `DSG_QUBO_API_KEY` (and any other credential) from the runtime
-  environment or a secrets manager at call time.
-- Responses from `/auth/register` and `/auth/login` are secret; do not log or
-  commit them.
+For a local Kotlin optimization, consult the upstream Android engine repository and run the Gradle tests from that source repository instead.
