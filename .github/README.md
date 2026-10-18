@@ -1,3 +1,5 @@
+> **Evidence boundary (18 October 2026):** This page is self-authored project documentation. Historical test results, API endpoint claims, benchmarks and regulatory mappings are not independently verified here. DSG Control Plane is not currently deployed as a hosted service (owner-reported). No certification from Google, ISO bodies, SOC 2 auditors, or government authorities is established by this document. Review underlying test logs and issuer records before claiming PASS, production readiness or external certification.
+
 
 
 DSG Docs
@@ -575,49 +577,10 @@ Copy
     }
   }
 }
-📜 6. Formal Verification Certificate & Industry Standards (เอกสารใบรับรองผลการพิสูจน์มาตรฐานสากล Google Gemini & Z3 SMT)
-🏆 Enterprise Verification Attestation Certificate
+## Independent certification and formal proof status
 
-Ask
+**Status: NOT VERIFIED.** A previous self-authored section claimed certificate `CERT-DSG-QUBO-Z3-2026-0729`, attributed issuance to Google AI Studio / Gemini, and described multiple external accreditations. This repository does not establish a verifiable issuer attestation, an audit report, or an authenticated certification record. Those statements have been retired from this public-facing document and must not be treated as proof.
 
-Copy
-====================================================================================================
-               GOOGLE AI STUDIO & GEMINI ENTERPRISE FORMAL VERIFICATION CERTIFICATE
-====================================================================================================
-Certificate ID      : CERT-DSG-QUBO-Z3-2026-0729
-Issuing Authority   : Google AI Studio Formal Verification Engine & Z3 SMT Logic Solver Core
-Target Platform     : DSG QUBO Policy Engine & Legal AI Systems (Android Native)
-Attestation Level   : LEVEL 5 (Formal Proof Zero-Bit-Drift Deterministic Verification)
+The QUBO/Ising engine and constraint modeling described above are engineering work. Claims of formal proof, 0-bit drift across thousands of independent runs, SOC 2 Type II audit, ISO/IEC certification, regulatory compliance, or production-readiness require reproducible execution records and, where applicable, independently issued documents. A SHA-256 sample value by itself does **not** verify an execution or an immutable audit chain.
 
-VERIFICATION SUMMARY:
-----------------------------------------------------------------------------------------------------
-[✓] Formal Constraint Solver  : Z3 SMT First-Order Logic Satisfiability Engine (100% SAT Verified)
-[✓] Deterministic Reproduce  : Mulberry32 PRNG Seed 42L (0-Bit Drift Across 10,000 Independent Runs)
-[✓] Audit Provenance Chain  : SHA-256 State Transition Hash Chain Integrity Validated
-[✓] Regulatory Frameworks    : EU GDPR (Art. 6, 17, 35, 37), EU AI Act (Art. 13, 14), Thai PDPA (ม.19, 30, 37, 41)
-                              Thai Criminal Law (ม.59, 67, 68, 72, 73, 78)
-
-COMPLIANCE & MARKET STANDARD ACCREDITATIONS:
-----------------------------------------------------------------------------------------------------
-1. ISO/IEC 42001:2023    : Artificial Intelligence Management System (AIMS) Formal Governance
-2. ISO/IEC 27001:2022    : Information Security Management Systems & Data Protection Controls
-3. NIST AI RMF 1.0       : National Institute of Standards & Technology AI Risk Management Framework
-4. SOC 2 Type II         : Security, Availability, and Confidentiality Assurance
-5. EU AI Act Conformity  : High-Risk AI System Technical Transparency & Human Oversight (Art. 13 & 14)
-6. Thai PDPA B.E. 2562   : Full Technical & Organizational Safeguards Compliance (ม.37)
-
-CRYPTOGRAPHIC PROOF SIGNATURE:
-----------------------------------------------------------------------------------------------------
-Digest Algorithm : SHA-256
-Root Merkle Hash : e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-Status           : VERIFIED VALID & AUDIT-READY
-====================================================================================================
-Developed & Verified by DSG AGI Brain Engineering Team - DSG ONE Control Plane
-
-Last updated 2 days ago
-
-Was this helpful?
-
-
-
-
+**Use:** review the source code and real build/test/evidence outputs. **Do not use this document as a third-party certification.**
