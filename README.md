@@ -1,5 +1,7 @@
 # DSG ONE
 
+> **Current deployment status (owner confirmation, 18 October 2026):** The DSG Control Plane is **NOT DEPLOYED** on any provider. This repository publishes source code, documentation, and Claude Code plugins; it does not prove an active hosted control-plane service. Past deployment logs and URLs must not be presented as current production evidence.
+
 [![Listed on ClaudePluginHub](https://www.claudepluginhub.com/badge/tdealer01-crypto-dsg-governance)](https://www.claudepluginhub.com/plugins/tdealer01-crypto-dsg-governance?ref=badge)
 
 **Govern AI actions. Prove the result.**
@@ -11,9 +13,9 @@ DSG ONE is a governance and evidence layer for AI agents, MCP tools, APIs, brows
 3. What actually executed?
 4. Where is the evidence?
 
-**Website:** https://www.dsg.pics  
-**Control Plane:** https://dsg-control-plane.azurewebsites.net  
-**Market-Ready product surface:** https://dsg-cinema-production.nicetree-a005fe99.westus3.azurecontainerapps.io/dashboard
+**Project website (current reachability not verified):** https://www.dsg.pics  
+**Claude Code plugin distribution:** [GitHub marketplace](.claude-plugin/marketplace.json)  
+**DSG Control Plane hosted URL:** NONE VERIFIED / NOT DEPLOYED
 
 ---
 
@@ -43,7 +45,7 @@ HEALTHY
 
 ### Install with Web, AI or CLI
 
-The Market-Ready customer surface supports three entry paths that converge on the same provisioner and verification model:
+The documented Market-Ready design describes three entry paths intended to converge on a provisioner and verification model. This is a design description, not evidence of a currently deployed customer surface:
 
 - **Web Install** — guided integration, account, scope, permission and verification flow.
 - **AI Install Wizard** — detects the project stack, proposes setup and keeps approval/permission boundaries explicit.
@@ -248,35 +250,21 @@ auditability
 
 ---
 
-## Production evidence
+## Deployment and historical evidence boundary
 
-### Control Plane repository
+**Current: DSG Control Plane NOT DEPLOYED (owner confirmation, 18 October 2026).**
 
-This repository is bound to **Azure App Service** as its authoritative production platform.
+A previous revision of this README referred to Azure App Service as the production host and included historical Azure deployment references. Those bindings and URLs **are not current Control Plane deployments**. Archived configuration files, logs, and deployment workflows may still exist in the repository, but they cannot prove an active endpoint today.
 
-- Production URL: `https://dsg-control-plane.azurewebsites.net`
-- Deployment binding: [`config/production-deployment-target.json`](config/production-deployment-target.json)
-- Runtime environment guidance: [`docs/ops/azure-runtime-env-sync.md`](docs/ops/azure-runtime-env-sync.md)
-- Azure deployment evidence: [`qa-logs/azure-production/`](qa-logs/azure-production/)
+Historical reference material can be inspected at:
 
-The deployment binding is fail-closed: configuration alone is not treated as proof that the latest deployment passed.
+- [Legacy deployment target configuration](config/production-deployment-target.json)
+- [Legacy Azure runtime notes](docs/ops/azure-runtime-env-sync.md)
+- [Archived Azure QA logs](qa-logs/azure-production/)
 
-### Market-Ready / Cinema production surface
+The related Cinema/Market-Ready project previously recorded merge, UI-attestation, and Z3-verification activity, including historical commit references `e16e4f2d964f44b4934a99a9297ab3fecfac7208` and `b076a0db98009d1a5c479ebbee48655d5b1e711b`. These are **historical evidence pointers**, not verification of current availability or Control Plane production activation.
 
-The related DSG Cinema production path has current executable evidence for the Market-Ready customer surface:
-
-- Market-Ready product merge commit: `e16e4f2d964f44b4934a99a9297ab3fecfac7208`
-- production Azure deploy: passed;
-- direct Z3 production proof: passed;
-- Cinema → Z3 production E2E and replay: passed;
-- marketplace/CORS checks: passed;
-- revenue truth checks: passed;
-- exact live UI attestation: passed;
-- UI-attestation workflow commit: `b076a0db98009d1a5c479ebbee48655d5b1e711b`.
-
-The live UI attestation fetches production `/dashboard`, `/styles.css`, `/app.js` and `/config.js` and requires exact SHA-256 equality with the sandbox-tested Market-Ready source.
-
-This is production runtime evidence. It is **not** a certification, legal-compliance or universal-correctness claim.
+A new production claim requires a named active provider, deployment revision, reachable authenticated service, independent execution result, and current audit evidence. Plugin installation requires none of those production services.
 
 ---
 
@@ -377,7 +365,7 @@ Missing evidence remains `UNVERIFIED`, `REVIEW` or `BLOCKED` according to the ap
 
 Never commit live credentials to this repository.
 
-Production credentials should use the approved Azure secret/environment-management path. Example environment files document configuration names; they are not evidence that the corresponding production secret currently exists.
+Any future deployment must use the active provider's approved secret manager and an authorized, audited binding. The current repository does not prove that production credentials or a hosted Control Plane are configured.
 
 ---
 
