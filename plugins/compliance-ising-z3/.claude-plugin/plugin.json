@@ -7,17 +7,24 @@
     "email": "support@dsg.pics"
   },
   "license": "MIT",
-  "homepage": "https://github.com/tdealer01-crypto/Compliance-ising-z3-Deterministic-",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/tdealer01-crypto/Compliance-ising-z3-Deterministic-"
-  },
-  "documentation": "README.md",
-  "keywords": ["qubo", "ising", "z3", "smt", "compliance", "deterministic", "simulation", "audit", "rest-api", "policy-optimizer", "formal-verification", "regulatory-compliance", "gdpr", "pdpa", "thai-law"],
-  "tags": ["compliance", "policy-optimization", "formal-verification", "deterministic", "regulatory"],
-  "categories": ["compliance", "governance", "formal-verification", "optimization"],
-  "maintenance": {
-    "status": "active",
-    "updated": "2026-08-01"
-  }
+  "homepage": "https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/tree/main/plugins/compliance-ising-z3",
+  "repository": "https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane",
+  "keywords": [
+    "qubo",
+    "ising",
+    "z3",
+    "smt",
+    "compliance",
+    "deterministic",
+    "simulation",
+    "audit",
+    "rest-api",
+    "policy-optimizer",
+    "formal-verification",
+    "regulatory-compliance",
+    "gdpr",
+    "pdpa",
+    "thai-law"
+  ],
+  "documentationUrl": "https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/blob/main/plugins/compliance-ising-z3/README.md"
 }

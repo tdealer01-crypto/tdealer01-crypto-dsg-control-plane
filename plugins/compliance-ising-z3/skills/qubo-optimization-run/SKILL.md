@@ -1,115 +1,53 @@
 ---
 name: qubo-optimization-run
 description: >-
-  Call the externally deployed DSG QUBO Policy Optimizer API to run a
-  deterministic QUBO/Ising policy optimization. Use when a user wants to run a
-  real optimization against the hosted service rather than the local Kotlin
-  engine: registering/logging in for an api_key, checking account usage, and
-  submitting an optimization run for a regulatory domain under a budget cap.
-  Auth is an `api_key` query parameter that must come from runtime env, never
-  from the repo. Running a real optimization may trigger solver work and may
-  incur cost under the service's pricing tier.
+  Describe how to invoke a separately deployed and verified DSG QUBO optimizer.
+  The old Vercel provider is retired. Use only after the user supplies a
+  current endpoint and authorizes a real, potentially billable operation.
+  Otherwise report PROVIDER_UNVERIFIED / NOT RUN and provide offline steps.
 ---
 
-# QUBO Optimization Run (DSG QUBO Policy Optimizer API)
+# QUBO optimization: externally verified provider only
 
-This skill drives the **externally deployed** DSG QUBO Policy Optimizer API.
-It is a separate hosted service, not code in this repo. Use it to run a real
-deterministic QUBO/Ising policy optimization when the user asks for a live run.
+This skill is a **provider integration guide**, not a bundled running solver.
+The historical Vercel API is retired. **Never default to a Vercel URL**, invent
+an active deployment, claim that a real optimization executed, or bypass a
+missing API contract.
 
-## Service identity (verified 2026-07-31)
+## Preflight (must pass before any run)
 
-- Base URL: `https://dsg-qubo-api.vercel.app`
-- Name/version: "DSG QUBO Policy Optimizer API" v2.0.0
-- Reachability: `GET /health` returned
-  `{"status":"healthy","version":"2.0.0",...}` (verified reachable 2026-07-31).
-- Interactive docs: `GET /docs` (Swagger UI), `GET /openapi.json`
-  (OpenAPI 3.1.0).
+1. Confirm a user-approved and currently deployed QUBO provider; obtain its
+   HTTPS base URL from a trusted runtime configuration (e.g. `DSG_QUBO_API_BASE`).
+   **If not supplied, stop: `BLOCKED: PROVIDER_UNVERIFIED`.**
+2. Confirm the service identity, health and actual version by a read-only call.
+3. Read its current OpenAPI or other real request/response schema. Historical
+   schemas from 2026-07-31 are **not sufficient**.
+4. Establish the provider's supported authentication without logging secrets.
+   Never assume an `api_key` query parameter is appropriate for a new provider.
+5. Check quotas and billing. Obtain user approval for any billable request.
+6. Record the input domain/constraints, budget, deterministic seed, request ID,
+   real response, run ID and provenance hash where available.
 
-Claim boundary (CLAUDE.md sections 1, 12): this is an **external deployed
-service, production-connected, reachable via `/health` (verified 2026-07-31)**.
-Do NOT claim "external Z3 solver invocation complete", "certified", or any
-readiness status — a real optimization run has not been executed here, and no
-api_key is stored in this repo.
+## Example of safe read-only preflight
 
-## Authentication
-
-Auth is an **`api_key` query parameter**. Obtain a key at runtime by
-registering or logging in; never commit or print a real key.
-
-- Set it in the environment before calling: `DSG_QUBO_API_KEY`.
-- Base URL is overridable via `DSG_QUBO_API_BASE`.
+With a **verified and explicitly provided** `DSG_QUBO_API_BASE`:
 
 ```bash
-export DSG_QUBO_API_BASE="${DSG_QUBO_API_BASE:-https://dsg-qubo-api.vercel.app}"
-# export DSG_QUBO_API_KEY=...   # provide at runtime; do NOT hardcode in the repo
+: "${DSG_QUBO_API_BASE:?Set a verified HTTPS provider first}"
+curl --fail --silent --show-error --max-time 10 "${DSG_QUBO_API_BASE}/health"
 ```
 
-Register / login (returns a key or token — treat the response as secret):
+A health response alone does not establish schema compatibility or authorize
+a POST. Run only the request form documented by that provider and record the
+actual output. If no authorized provider exists, offer the local Kotlin/Android
+engine instructions instead of making an API call.
 
-```bash
-curl -s -X POST "$DSG_QUBO_API_BASE/api/v1/auth/register" \
-  -H "content-type: application/json" \
-  -d '{"email":"you@example.com","company_name":"Example Co","password":"<runtime>","pricing_tier":"free"}'
+## Reporting
 
-curl -s -X POST "$DSG_QUBO_API_BASE/api/v1/auth/login" \
-  -H "content-type: application/json" \
-  -d '{"email":"you@example.com","password":"<runtime>"}'
-```
+- `PASS`: real run output and authorization with input/seed/provenance recorded
+- `FAILED`: executed and returned a concrete error
+- `BLOCKED / PROVIDER_UNVERIFIED`: provider missing, retired or unverified
+- `NOT RUN`: no execution occurred
 
-## Run an optimization
-
-`POST /api/v1/optimization/run?api_key=<KEY>` with an `OptimizationRequest`
-body.
-
-Request fields:
-
-- `domain` (enum, required): `EU_GDPR_AI` | `THAI_PDPA` | `THAI_CRIMINAL_LAW` |
-  `FINTECH`
-- `budget_cap` (number, **required**)
-- `anneal_iterations` (number, optional; example `5000`)
-- `deterministic_seed` (number, optional; example `42` — fix it for
-  reproducible runs)
-
-```bash
-# WARNING: this performs a real run. It may trigger solver work and may incur
-# cost under the service's pricing tier (Stripe scaffold). Only run with the
-# user's intent and a valid runtime api_key.
-curl -s -X POST \
-  "$DSG_QUBO_API_BASE/api/v1/optimization/run?api_key=${DSG_QUBO_API_KEY}" \
-  -H "content-type: application/json" \
-  -d '{
-    "domain": "EU_GDPR_AI",
-    "budget_cap": 1000,
-    "anneal_iterations": 5000,
-    "deterministic_seed": 42
-  }'
-```
-
-## Read results / account
-
-```bash
-# List recent runs
-curl -s "$DSG_QUBO_API_BASE/api/v1/optimization/list?api_key=${DSG_QUBO_API_KEY}&limit=10"
-
-# Fetch a single run by id
-curl -s "$DSG_QUBO_API_BASE/api/v1/optimization/{id}?api_key=${DSG_QUBO_API_KEY}"
-
-# Account profile and usage (check quota/cost before running)
-curl -s "$DSG_QUBO_API_BASE/api/v1/account/profile?api_key=${DSG_QUBO_API_KEY}"
-curl -s "$DSG_QUBO_API_BASE/api/v1/account/usage?api_key=${DSG_QUBO_API_KEY}"
-```
-
-## Safe workflow
-
-1. Confirm the service is up: `GET /health`.
-2. Ensure `DSG_QUBO_API_KEY` is set from runtime env (never from the repo).
-3. Check `account/usage` so you understand quota/cost before a run.
-4. Only then `POST .../optimization/run` with an explicit `budget_cap` and a
-   fixed `deterministic_seed`.
-5. Report the run id, selected controls, and the seed used so the result is
-   replayable. If you did not actually run it, say `Not run` — never fabricate
-   a result.
-
-See `references/external-apis.md` for the full endpoint inventory and for the
-second (partially-verified) z3-solver service.
+See `references/external-apis.md` for **historical documentation only**;
+those old endpoint paths are not an authorization to issue requests.
