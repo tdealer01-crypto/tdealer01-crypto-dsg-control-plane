@@ -71,18 +71,3 @@ The browser verifier is a local verification surface; it does not become an exec
 ## Related source record
 
 [PR #558: integrated DSG system and browser verifier](https://github.com/tdealer01-crypto/DSG-Private-Production-Runtime/pull/558) is merged. Its exact head, f2c0ee6a443dca11d48e4ea41d095d28b480dd81, passed the [DSG Spacetime Private Runtime CI run 1834](https://github.com/tdealer01-crypto/DSG-Private-Production-Runtime/actions/runs/38127316900). The PR body explicitly says this is source/CI proof and that production release status is not claimed; it also excludes any claim of live Provider Adapter v2 activation. The CI result verifies the source workflow only, not production deployment or live provider execution.
-
-## Read-only evidence snapshot (18 October 2026)
-
-This snapshot was checked against the current GitHub PR records and the DSG Spacetime MCP catalog. It updates the older point-in-time values in [issue #751](https://github.com/tdealer01-crypto/DSG-Private-Production-Runtime/issues/751#issuecomment-6237056292).
-
-| Evidence | Fresh observation | What it establishes |
-|---|---|---|
-| PR #558 | Merged; exact-head DSG Spacetime Private Runtime CI run 1834 succeeded | Source workflow passed. The PR explicitly does not claim production release or live Provider Adapter v2 activation. |
-| PR #737 | Merged; exact-head CI run [39055258202](https://github.com/tdealer01-crypto/DSG-Private-Production-Runtime/actions/runs/39055258202) succeeded; GitHub reports all 8 review threads resolved | Source checks passed. The PR body says merging did not run the GPU job or mutate production. |
-| PR #744 | Merged; exact-head CI run [39053314295](https://github.com/tdealer01-crypto/DSG-Private-Production-Runtime/actions/runs/39053314295) succeeded | Source checks passed. Its PR body still identifies real-host activation and governed native E2E as unverified. |
-| PR #736 | Merged; exact-head CI, REA dependency smoke, and source-free container smoke succeeded in runs [39055757886](https://github.com/tdealer01-crypto/DSG-Private-Production-Runtime/actions/runs/39055757886), [39055757835](https://github.com/tdealer01-crypto/DSG-Private-Production-Runtime/actions/runs/39055757835), and [39055757827](https://github.com/tdealer01-crypto/DSG-Private-Production-Runtime/actions/runs/39055757827) | Source/package checks passed. They do not establish an activated REA route or live provider E2E. |
-| Spacetime catalog | Read returned PASS with 36 configured routes; it includes five route.desktop-native contracts and no route.rea contract | Route configuration is visible. Catalog presence does not verify provider health or a successful operation. |
-| Spacetime evidence chain | valid=true, records=196 | The local chain integrity check passed; this is not evidence of a GPU, rollback, native desktop, or REA provider execution. |
-
-The issue #751 checkpoint from 17 October recorded 31 routes and 182 evidence records. The 18 October read returned 36 configured routes and 196 records, so those counts are timestamped observations rather than fixed architecture properties. Neither count proves production activation.
