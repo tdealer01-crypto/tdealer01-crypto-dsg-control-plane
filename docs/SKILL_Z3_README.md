@@ -13,7 +13,7 @@ The z3-formal-solver-verification skill has been fully integrated into the DSG c
 
 ### Skill Files
 ```
-skills/z3-formal-solver-verification/
+repository-skills/z3-formal-solver-verification/
 ├── SKILL.md                    # Complete skill documentation (500+ lines)
 ├── evals/
 │   └── evals.json              # 3 test scenarios with assertions
@@ -124,7 +124,7 @@ Policy Constraint
 
 ```bash
 # Check skill is in repository
-ls -la skills/z3-formal-solver-verification/
+ls -la repository-skills/z3-formal-solver-verification/
 
 # Check configuration
 cat skills/z3-formal-solver-verification.json
@@ -220,7 +220,7 @@ INSERT INTO ccvs_evidence (
 | `SKILL_Z3_PRODUCTION_DEPLOYMENT.md` | Deployment & architecture | 15 min |
 | `SKILL_Z3_INTEGRATION_GUIDE.md` | Step-by-step integration | 20 min |
 | `SKILL_Z3_BENCHMARK_RESULTS.md` | Test results & analysis | 10 min |
-| `skills/z3-formal-solver-verification/SKILL.md` | Complete skill docs | 30 min |
+| `repository-skills/z3-formal-solver-verification/SKILL.md` | Complete skill docs | 30 min |
 
 ---
 
@@ -341,7 +341,7 @@ For issues or questions:
 
 1. **Check benchmark results**: `docs/SKILL_Z3_BENCHMARK_RESULTS.md`
 2. **Review integration guide**: `docs/SKILL_Z3_INTEGRATION_GUIDE.md`
-3. **Read skill documentation**: `skills/z3-formal-solver-verification/SKILL.md`
+3. **Read skill documentation**: `repository-skills/z3-formal-solver-verification/SKILL.md`
 4. **Check logs**: Review Z3 solver output for constraint errors
 
 ---
@@ -349,7 +349,7 @@ For issues or questions:
 ## 🎓 References
 
 **Core Documents**:
-- Skill location: `skills/z3-formal-solver-verification/`
+- Skill location: `repository-skills/z3-formal-solver-verification/`
 - Skill config: `skills/z3-formal-solver-verification.json`
 - Benchmark: `docs/SKILL_Z3_BENCHMARK_RESULTS.md`
 - Integration: `docs/SKILL_Z3_INTEGRATION_GUIDE.md`

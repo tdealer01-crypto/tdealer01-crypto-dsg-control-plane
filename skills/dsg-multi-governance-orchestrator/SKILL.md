@@ -1,145 +1,42 @@
 ---
 name: dsg-multi-governance-orchestrator
-version: 1.0.0
+version: 1.0.1
 author: DSG Team
 license: MIT
-description: >-
-  Use this skill for DSG multi-source governance work that combines UI trust
-  upgrades, action-layer permission gates, deterministic execution,
-  marketplace/enterprise cutover, portable SaaS architecture
+description: >
+  Plan cross-system governance work and review evidence using explicit
+  requirements. This guidance skill does not call APIs, deploy services, or
+  assert production readiness.
 ---
 
-# DSG Multi-Governance Orchestrator
+# Multi-governance orchestrator: planning and evidence review
 
-This skill coordinates **multi-source governance work** across the DSG Control Plane — combining UI trust upgrades, deterministic gate execution, marketplace cutover, architecture documentation, and production GO/NO-GO validation into a single explainable plan.
+Use this skill to organize governance requirements across systems and milestones. It produces a plan, checklist, and evidence-based status report. It does not query a control plane, database, billing service, provider, or deployment platform unless a separately configured connector is available and authorized in the current session.
 
-***
+## Method
 
-## When to use this skill
+1. Define the goal, target systems, scope, risk, and acceptance criteria.
+2. Map each requirement to an owner, source of evidence, and verifier.
+3. Discover data only through explicitly configured connectors.
+4. Record the actual output and provenance for every check.
+5. Mark each requirement PASS, FAIL, or UNVERIFIED; include the evidence reference.
+6. Produce GO only when every required criterion has current, adequate evidence and all approvals are recorded.
+7. Keep proposals, source code, test results, deployments, and live provider execution as separate evidence classes.
 
-| Trigger phrase                               | Task                                                 |
-| -------------------------------------------- | ---------------------------------------------------- |
-| "DSG multi" / "ผสานมัลติ"                    | Multi-source governance orchestration                |
-| "M1 cutover" / "M2 hardening"                | Milestone cutover planning and validation            |
-| "marketplace cutover"                        | Enterprise marketplace launch readiness              |
-| "architecture page" / "DSG ONE architecture" | Architecture page generation                         |
-| "action layer gate"                          | Permission gate integration across multiple services |
-| "deterministic execution"                    | Deterministic pipeline coordination                  |
-| "production GO/NO-GO"                        | Full production readiness gate                       |
-| "Termux/Codex/Multica bootstrap"             | Mobile/local agent setup                             |
-| "5 files" / "ทำเป็นสกิว"                     | Multi-file governance deliverable                    |
-| "launch readiness"                           | M1/M2 launch checklist and validation                |
+## DSG OS / Spacetime boundary
 
-***
+- DSG OS is the user-facing browser/workspace, Adapter Builder, and local verification surface.
+- DSG Spacetime is the execution and governance control plane.
+- Spacetime owns plan/route, entitlement, policy, approval, payload binding, and the deterministic execution gate.
+- The browser verifier reports integrity checks; it does not grant permission or establish provider-side execution.
 
-## M1 / M2 Launch Milestones
+See docs/architecture/dsg-os-spacetime-boundary.md for the architecture contract.
 
-### M1: Production Cutover
+## Truth rules
 
-Required green gates before M1 GO:
+- Do not invent endpoints, credentials, pricing, quotas, database records, approval results, or execution evidence.
+- Do not label a source tree, checklist, or passing unit test as a deployed service.
+- If current evidence is unavailable, say what is missing and use UNVERIFIED.
+- Separate owner-reported status from independently observed runtime evidence.
 
-* [ ] `GET /api/health` → `{ ok: true }`
-* [ ] `GET /api/readiness` → `{ ok: true, db: true }`
-* [ ] `GET /api/agent/status` → correct commit + environment
-* [ ] `POST /api/dsg/v1/gates/evaluate` → PASS with proof hash
-* [ ] Supabase migrations applied (verified by query, not file existence)
-* [ ] Protected routes reject unauthenticated access (401/redirect)
-* [ ] `npm run go:no-go <production-url>` → PASS
-* [ ] Revenue events route functional (authenticated)
-* [ ] DSG gate quota enforced (Free: 50 evals, Pro: 5k, Enterprise: unlimited)
-
-**Default posture: NO-GO until all gates above are green with current evidence.**
-
-### M2: Hardening + Launch
-
-Additional gates for M2:
-
-* [ ] Compliance evidence pack generated (`npm run ccvs:pipeline`)
-* [ ] Secret scanning clean (`npm run test:secrets` or gitleaks CI)
-* [ ] CodeQL clean (no high/critical alerts)
-* [ ] Delivery Proof scan returns shareable report
-* [ ] Stripe billing active (not test mode) for paid tiers
-* [ ] Hermes executor integration test passing (Enterprise tier)
-* [ ] End-to-end replay test: evaluate → store → replay → match
-
-***
-
-## Multi-source orchestration plan format
-
-When the user says "plan the governance for X", produce a plan in this structure:
-
-```
-Goal: <what the user wants to achieve>
-
-Architecture:
-  <describe the governance layers involved>
-
-Ordered Work Stages:
-  Stage 1: Gate evaluation (Before execution)
-  Stage 2: Execution + conformance (During)
-  Stage 3: Evidence commit + replay storage (After)
-  Stage 4: Compliance pack generation (Periodic)
-  Stage 5: Audit export (On demand)
-
-Risks:
-  - <risk 1> → <mitigation>
-  - <risk 2> → <mitigation>
-
-Permission Checkpoints:
-  - HIGH/CRITICAL actions require explicit operator approval
-  - Policy version must be pinned before evaluation
-  - UNSUPPORTED → REVIEW/BLOCK (never PASS)
-
-GO/NO-GO gate:
-  <list the specific evidence items needed before proceeding>
-```
-
-***
-
-## Architecture page generation
-
-When asked to generate a DSG ONE architecture page, include:
-
-1. **Control Plane layers** — Gate / Spine / Evidence / Audit
-2. **Trust boundaries** — what the agent can and cannot do
-3. **Evidence flow** — from gate call to Supabase to replay
-4. **Pricing surface** — Free / Pro / Enterprise entitlements
-5. **Marketplace entry points** — how external teams integrate
-
-Architecture pages are portable SaaS documentation artifacts. Do not claim "production-ready architecture" unless all M1 gates are green.
-
-***
-
-## Termux/Codex/Multica bootstrap
-
-Practical path: `Termux host → proot-distro → Debian guest → Codex CLI + Multica CLI/daemon`
-
-Setup source of truth:
-
-* `scripts/termux-proot-codex-multica-setup.sh`
-* `docs/TERMUX_CODEX_MULTICA_STATUS_AND_PLAN.md`
-
-Do not mark Termux/Codex/Multica setup as merged or validated until real-device validation passes: bootstrap + auth + daemon status + end-to-end smoke task.
-
-***
-
-## Deterministic execution protocol
-
-For multi-agent / parallel work:
-
-1. **T0** — Input lock (snapshot all inputs)
-2. **T1** — Dependency graph build
-3. **T2** — Isolated parallel execution for independent work
-4. **T3** — Deterministic merge by stable ordering
-5. **T4** — Verification gate with replay/hash/check evidence
-
-Same input snapshot must produce same final artifacts, test outcomes, and release decision. Fail fast on: nondeterministic output, hidden shared state, wall-clock leakage, flaky evidence, write collisions.
-
-***
-
-## References
-
-* \<references/m1-m2-checklist.md> — Full M1/M2 gate checklist
-* \<references/architecture-template.md> — Architecture page template
-* Gate API: see `dsg-action-layer-ged` skill → `references/gate-evaluate.md`
-* Hermes: see `dsg-action-layer-ged` skill → `references/hermes-executor.md`
+Use references/architecture-template.md to record system boundaries and references/m1-m2-checklist.md to assess milestones.

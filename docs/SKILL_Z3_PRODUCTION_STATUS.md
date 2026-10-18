@@ -37,7 +37,7 @@ The z3-formal-solver-verification skill has been:
 - [x] CCVS evidence quality validated
 
 ### Phase 3: Production Packaging ✅
-- [x] Skill copied to `skills/z3-formal-solver-verification/`
+- [x] Skill copied to `repository-skills/z3-formal-solver-verification/`
 - [x] Skill configuration created: `skills/z3-formal-solver-verification.json`
 - [x] Skills registry updated: `skills/SKILLS_REGISTRY.json`
 - [x] Production deployment guide written
@@ -59,7 +59,7 @@ The z3-formal-solver-verification skill has been:
 
 ### Skill Files
 ```
-skills/z3-formal-solver-verification/
+repository-skills/z3-formal-solver-verification/
 ├── SKILL.md                               # 500+ lines
 ├── evals/
 │   └── evals.json                         # Test cases & assertions
@@ -288,7 +288,7 @@ Day 3-4: Implement Option B (Full) once comfortable with Option A
 
 ### For Governance Team
 1. **Review** benchmark results in `SKILL_Z3_BENCHMARK_RESULTS.md`
-2. **Understand** how proofs work: `skills/z3-formal-solver-verification/SKILL.md`
+2. **Understand** how proofs work: `repository-skills/z3-formal-solver-verification/SKILL.md`
 3. **Plan** policy verification strategy
 4. **Coordinate** with deployment team
 
@@ -308,7 +308,7 @@ Day 3-4: Implement Option B (Full) once comfortable with Option A
 | Deploy | SKILL_Z3_PRODUCTION_DEPLOYMENT.md | 15 min |
 | Integrate | SKILL_Z3_INTEGRATION_GUIDE.md | 20 min |
 | Benchmark | SKILL_Z3_BENCHMARK_RESULTS.md | 10 min |
-| Full Skill Docs | skills/z3-formal-solver-verification/SKILL.md | 30 min |
+| Full Skill Docs | repository-skills/z3-formal-solver-verification/SKILL.md | 30 min |
 | Status | SKILL_Z3_PRODUCTION_STATUS.md (this) | 5 min |
 
 ---

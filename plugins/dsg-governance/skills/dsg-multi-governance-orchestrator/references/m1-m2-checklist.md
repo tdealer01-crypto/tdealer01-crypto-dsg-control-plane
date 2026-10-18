@@ -1,81 +1,26 @@
-# M1/M2 Gate Checklist — DSG Reference
+# M1 / M2 governance readiness checklist
 
-## M1: Production Cutover checklist
+This is a blank assessment template. It does not assert that any service is deployed or any check has passed.
 
-```
-Public health probes
-[ ] GET /api/health                → { ok: true }
-[ ] GET /api/readiness             → { ok: true, db: true }
-[ ] GET /api/agent/status          → correct commit + environment + db check
+For every item, record status as PASS, FAIL, or UNVERIFIED, the source, observation time, exact commit or resource, and reviewer.
 
-DSG Gate functionality
-[ ] GET  /api/dsg/v1/policies/manifest → policyVersion + constraintSetHash present
-[ ] POST /api/dsg/v1/gates/evaluate    → gateStatus: PASS with proofHash
-[ ] POST /api/dsg/v1/proofs/prove      → proof reproducible from stored hash
-[ ] GET  /api/dsg/v1/pricing           → tier definitions correct
+## M1: source and contract
 
-Auth and protected routes
-[ ] Unauthenticated GET /dashboard → 401 or redirect to login
-[ ] Unauthenticated GET /approvals → 401 or redirect to login
-[ ] Invalid ****** → 401 on all /api/dsg/v1/* routes
+- [ ] Product and control-plane ownership boundaries are documented.
+- [ ] Adapter contract specifies provider, capability, schemas, risk, scope, approval, payload binding, verifier, and evidence mapping.
+- [ ] Policy and approval requirements are stated.
+- [ ] Deterministic verification algorithm and test inputs are versioned.
+- [ ] Relevant source and CI checks ran on the exact commit.
+- [ ] Unsupported claims and missing evidence are explicitly identified.
 
-Database
-[ ] Supabase migrations applied (verified by query result, not file existence)
-[ ] dsg_gate_usage table exists with correct schema
-[ ] runtime_evidence table exists with correct schema
+## M2: live integration and operations
 
-Deployment
-[ ] Vercel deployment status: Ready
-[ ] Required env vars present by name (not value): DSG_ACCESS_TOKEN, SUPABASE_URL, SUPABASE_ANON_KEY
-[ ] npm run go:no-go <production-url> → PASS
-```
+- [ ] A user-authorized connector discovers the intended route.
+- [ ] Authentication scope and principal are verified without exposing credentials.
+- [ ] Approval and entitlement are confirmed by the responsible control plane.
+- [ ] An approved, bounded test action returns a provider result.
+- [ ] Result evidence and attestation validate against the documented schema.
+- [ ] Monitoring, rollback, and incident ownership are documented and tested.
+- [ ] Deployment and live readback evidence identify the exact environment and image.
 
-**Default: NO-GO until all boxes checked with current evidence.**
-
----
-
-## M2: Hardening + Launch checklist
-
-```
-Compliance evidence
-[ ] npm run ccvs:pipeline → L1-L5 matrix generated without FAIL
-[ ] ccvs-compliance-matrix.json present with passing evidence chain
-[ ] SHA256SUMS generated over evidence bundle
-
-Security
-[ ] Secret scanning clean (gitleaks + GitHub secret scanning: 0 open alerts)
-[ ] CodeQL: 0 high/critical open alerts
-[ ] npm audit --audit-level=high → 0 vulnerabilities
-
-Billing
-[ ] Stripe keys are production (not test) for paid tiers
-[ ] DSG Gate Pro ($99/mo) creates Stripe checkout session
-[ ] DSG Gate Enterprise ($499/mo) creates Stripe checkout session
-[ ] Quota enforcement: Free tier blocked at 51st evaluation
-
-Evidence replay
-[ ] End-to-end replay test: evaluate → store proofHash → prove → decision matches
-[ ] Policy version consistency: changing policyVersion invalidates cached replay
-
-Hermes (Enterprise tier only)
-[ ] Plan proposal generates deterministic planHash
-[ ] Conformance gate blocks mismatched planHash
-[ ] Credential broker returns lease fingerprint (not raw secret)
-[ ] Evidence capture stores step results in Supabase
-```
-
----
-
-## Evidence record format (per M1/M2 gate)
-
-When reporting M1 or M2 status, always include:
-
-```
-Gate: <name>
-Status: GO | NO-GO | PENDING | BLOCKED
-Evidence: <command run + result OR "Not run — <reason>">
-Timestamp: <ISO 8601>
-Known limits: <what is still pending>
-```
-
-Never claim GO without current evidence. Use PENDING if evidence is missing.
+A source pull request or passing source-level CI is not a deployment or live execution result. If any required live evidence is absent, M2 remains UNVERIFIED.

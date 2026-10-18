@@ -149,7 +149,7 @@ Client → Vercel Edge → Node.js Lambda
 ### DSG MCP Capability (Internal)
 - `/api/mcp-server` — Exposes governance tools (dsg.evaluate, hermes.*, android.*)
 - `/api/mcp` — Combined endpoint for MCP clients
-- `skills/dsg-mcp/SKILL.md` — Client configuration guide
+- `repository-skills/dsg-mcp/SKILL.md` — Client configuration guide
 
 ---
 
@@ -240,7 +240,7 @@ lib/dsg/deterministic/
 1. Run `npm run go:no-go https://dsg.pics` to validate current production state
 2. Review `/api/agent/status` for deployment commit + DB health
 3. Check CCVS evidence with `npm run ccvs:pipeline`
-4. Test MCP tools via `skills/dsg-mcp/SKILL.md` configuration
+4. Test MCP tools via `repository-skills/dsg-mcp/SKILL.md` configuration
 
 ---
 

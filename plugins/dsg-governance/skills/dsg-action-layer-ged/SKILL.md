@@ -1,112 +1,69 @@
 ---
 name: dsg-action-layer-ged
-version: 1.0.0
+version: 1.0.1
 author: DSG Team
 license: MIT
-description: >-
-  Run a studio-style agent control layer that turns a user goal into an
-  explainable plan, deterministic decision flow, permission verdicts, and
-  browser-first execution after approval. Use when the user
+description: >
+  Plan and review governed actions using evidence supplied by the user or an
+  explicitly configured connector. This guidance skill does not provide a live
+  gate, hosted API, approval service, credential broker, or executor.
 ---
 
-# DSG Action Layer — Governed Execution Skill
+# DSG Action Layer: planning and evidence review
 
-DSG ONE / ProofGate Control Plane is **not** an AI Agent framework. It is an **AI Governance Control Plane** — the layer that decides what Agents are _allowed_ to do, captures cryptographic proof of every decision, and makes those decisions replayable months later.
+Use this skill to turn a user goal into a scoped plan, identify required authority and evidence, and report what is verified. This package is guidance and templates. It does not itself call a DSG service, issue approvals, execute provider actions, or create cryptographic proof.
 
-> "Cloudflare = Control Plane of the Internet. Datadog = Control Plane of Observability. **DSG = Control Plane of AI Governance.**"
+## When to use
 
-***
+- Break a requested action into a plan and identify its scope and risk.
+- Review a result and its evidence after an independently authorized execution.
+- Explain what evidence is missing before a claim can be marked verified.
+- Draft a governance workflow without claiming that it is deployed.
 
-## When to invoke this skill
+## Operating steps
 
-| User intent                                                 | Use this skill                     |
-| ----------------------------------------------------------- | ---------------------------------- |
-| "Gate this action before running it"                        | ✅ Yes — call `gate-evaluate` first |
-| "Why did the AI decide X six months ago?"                   | ✅ Yes — use replay governance      |
-| "Get a compliance evidence pack for our audit"              | ✅ Yes — use compliance evidence    |
-| "Execute this plan with a credential and conformance check" | ✅ Yes — Hermes executor            |
-| "What governance posture should this AI agent run with?"    | ✅ Yes — runtime governance         |
-| "Build a generic AI feature with no governance requirement" | ❌ Out of scope                     |
+1. Restate the requested outcome and the exact target.
+2. Identify the provider, capability, input/output schema, risk, scope, approval requirement, payload binding, result verifier, and evidence mapping.
+3. Discover only the routes exposed by an explicitly configured connector. Do not guess a route, endpoint, payload, credential, or provider identity.
+4. Before execution, check the actual plan, entitlement, policy, approval, and payload binding supplied by the execution control plane.
+5. Execute only when the user requested the action and the connected tool grants the required authority. Otherwise return the plan for review.
+6. Verify the returned result against its schema and evidence. Mark unavailable checks UNVERIFIED.
+7. Report the actual action, target, scope, result, evidence, and limitations.
 
-***
+When a configured connector requires a discover → compose → execute → verify protocol, follow that connector's instructions. Never compose or execute a payload unless the discovered route and binding rules permit it.
 
-## 5 Core Capabilities
+## Status vocabulary
 
-Read the relevant reference file before answering or implementing any governance question.
+| Status | Meaning |
+|---|---|
+| PASS | The stated check ran and its required evidence passed. |
+| BLOCK | A verified policy or permission rule forbids the action. |
+| REVIEW | A named human or additional check is still required. |
+| UNSUPPORTED | The requested action or condition is outside available verified capability. |
+| UNVERIFIED | The evidence or live check needed to decide is absent. |
 
-| Capability                 | When to use                                                           | Reference                            |
-| -------------------------- | --------------------------------------------------------------------- | ------------------------------------ |
-| Deterministic Safety Gate  | Before any agent action — get PASS/BLOCK/REVIEW + proof hash          | \<references/gate-evaluate.md>       |
-| Replayable Governance      | Audit question: "Why did AI decide X at time T?"                      | \<references/replay-governance.md>   |
-| Compliance Evidence Pack   | Preparing for SOC2 / ISO27001 / EU AI Act / NIST audit                | \<references/compliance-evidence.md> |
-| Runtime Governance         | Lifecycle: Before / During / After agent execution                    | \<references/runtime-governance.md>  |
-| Hermes Controlled Executor | Full Plan → Conformance Check → Credential Grant → Execute → Evidence | \<references/hermes-executor.md>     |
+UNSUPPORTED and UNVERIFIED are never PASS. A browser hash, signature, or local recomputation can establish integrity of the supplied artifact; it does not by itself establish approval, authorization, provider-side execution, or correctness of the result.
 
-***
+## Authority boundary
 
-## Quick Decision Flow
+The DSG OS / Browser is the user-facing workspace, Adapter Builder, and local verification surface. DSG Spacetime is the execution and governance control plane. A local browser verifier must not grant execution permission or substitute for Spacetime policy and approval.
 
-When a user asks about an AI agent action:
+See the repository architecture contract at docs/architecture/dsg-os-spacetime-boundary.md.
 
-```
-1. PLAN    → What is the goal? What is the risk level?
-2. GATE    → Call POST /api/dsg/v1/gates/evaluate
-             → Get gateStatus: PASS | BLOCK | REVIEW
-             → Get proofHash (cryptographic evidence)
-3. DECIDE  → PASS  → proceed to execution
-             REVIEW → show user the plan, require approval
-             BLOCK  → halt, return reason + proof
-4. EXECUTE → If PASS or approved REVIEW:
-             → Hermes controlled executor (if credential needed)
-             → Or direct execution with audit logging
-5. COMMIT  → POST /api/spine/execute to commit evidence
-             → Runtime evidence stored in Supabase
-6. REPLAY  → Any future audit can replay from stored proof + policy version
-```
+## Safety and truth rules
 
-***
+- Do not claim this skill is a live deterministic gate or an execution service.
+- Do not call a retired or unverified URL.
+- Do not ask the user to paste API keys, secrets, or private credentials into chat.
+- Do not invent a proof hash, evidence record, database write, approval, or provider result.
+- Do not claim a runtime, Hermes executor, Supabase persistence, quota, subscription, or hosted service unless fresh evidence directly establishes it.
+- If an authorized connector is unavailable, provide a plan and state UNVERIFIED.
+- Keep approval distinct from integrity verification and from successful execution.
 
-## Gate Decision Mapping
+## Reference notes
 
-| gateStatus    | riskLevel       | Action                                        |
-| ------------- | --------------- | --------------------------------------------- |
-| `PASS`        | any             | Proceed. Log proofHash.                       |
-| `REVIEW`      | low–medium      | Show plan to user. Require explicit approval. |
-| `BLOCK`       | any             | Halt. Return reason. Never proceed.           |
-| `UNSUPPORTED` | low             | Map to REVIEW — request human check           |
-| `UNSUPPORTED` | medium–critical | Map to BLOCK — refuse execution               |
-
-**UNSUPPORTED is never PASS.**
-
-***
-
-## Critical rules
-
-* **Never skip the gate** for actions with `riskLevel: medium` or higher.
-* **Never claim `UNSUPPORTED` is safe** — it maps to REVIEW or BLOCK, never PASS.
-* **Always store the proofHash** in execution context for replay.
-* **Policy version must be pinned** in every gate call to ensure replayability.
-* **Credentials must go through Hermes CredentialBroker** — never raw secrets.
-* **Mock state must be false** for any production gate evaluation.
-
-***
-
-## Base URL
-
-```
-https://tdealer01-crypto-dsg-control-plane.vercel.app
-```
-
-Set `DSG_CONTROL_PLANE_URL` to override for local or staging.
-
-***
-
-## Authentication
-
-All gate/proof/compliance endpoints require:
-
-```http
-Authorization: Bearer <DSG_API_KEY>
-```
-
-Obtain API key from the DSG dashboard → API Keys. Free tier: 50 evaluations/month. Upgrade at `/pricing#dsg-gate`.
+- references/gate-evaluate.md — evidence-based decision mapping
+- references/compliance-evidence.md — evidence inventory and claim limits
+- references/runtime-governance.md — conceptual control-plane lifecycle
+- references/replay-governance.md — replay requirements and gaps
+- references/hermes-executor.md — historical/design reference only

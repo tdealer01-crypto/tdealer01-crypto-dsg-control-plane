@@ -1,5 +1,7 @@
 # DSG ONE
 
+> **Current status (owner confirmation, 18 October 2026):** The legacy hosted DSG Control Plane product is **no longer used**. This repository publishes source code, historical documentation, and Claude Code guidance; it does not establish a current Spacetime or provider deployment. Past deployment logs and URLs are not current production evidence.
+
 [![Listed on ClaudePluginHub](https://www.claudepluginhub.com/badge/tdealer01-crypto-dsg-governance)](https://www.claudepluginhub.com/plugins/tdealer01-crypto-dsg-governance?ref=badge)
 
 **Govern AI actions. Prove the result.**
@@ -11,11 +13,15 @@ DSG ONE is a governance and evidence layer for AI agents, MCP tools, APIs, brows
 3. What actually executed?
 4. Where is the evidence?
 
-**Website:** https://www.dsg.pics  
-**Control Plane:** https://dsg-control-plane.azurewebsites.net  
-**Market-Ready product surface:** https://dsg-cinema-production.nicetree-a005fe99.westus3.azurecontainerapps.io/dashboard
+**Project website (current reachability not verified):** https://www.dsg.pics  
+**Claude Code plugin distribution:** [GitHub marketplace](.claude-plugin/marketplace.json)  
+**Legacy hosted DSG Control Plane:** NOT IN USE; no current hosted URL verified
 
 ---
+
+## DSG OS and Spacetime boundary
+
+The architecture contract is documented in [docs/architecture/dsg-os-spacetime-boundary.md](docs/architecture/dsg-os-spacetime-boundary.md). DSG OS owns the user-facing browser/workspace, Adapter Builder, and local verification surface. Spacetime owns execution and governance decisions.
 
 ## Current product experience
 
@@ -43,7 +49,7 @@ HEALTHY
 
 ### Install with Web, AI or CLI
 
-The Market-Ready customer surface supports three entry paths that converge on the same provisioner and verification model:
+The documented Market-Ready design describes three entry paths intended to converge on a provisioner and verification model. This is a design description, not evidence of a currently deployed customer surface:
 
 - **Web Install** — guided integration, account, scope, permission and verification flow.
 - **AI Install Wizard** — detects the project stack, proposes setup and keeps approval/permission boundaries explicit.
@@ -112,7 +118,7 @@ Return the gate status, reason, required permission, and evidence.
 Do not execute if the result is BLOCK, UNSUPPORTED, or REVIEW without approval.
 ```
 
-Expected result: an evidence-dependent governance verdict such as `PASS`, `BLOCK`, `REVIEW`, or `UNSUPPORTED`; missing evidence must not be reported as success.
+Expected result: a plan and evidence review from the information actually available. Without a live authorized gate result, report `UNVERIFIED`; this skill does not execute or block provider actions.
 
 ### Add a governance check to CI/CD
 
@@ -122,7 +128,7 @@ Fail closed on BLOCK, missing proof, or unsupported medium-or-higher risk.
 Show the files changed and the verification needed before merge.
 ```
 
-Expected result: a proposed GitHub Actions integration with deterministic GO/NO-GO conditions and explicit secret-handling boundaries.
+Expected result: a packaging proposal and review checklist. A live governance integration is `UNVERIFIED` unless its configured service and result are independently evidenced.
 
 ### Run a production readiness decision
 
@@ -132,7 +138,7 @@ Mark every requirement PASS, FAIL, or UNVERIFIED and return GO or NO-GO.
 Do not infer missing deployment, database, authentication, billing, or proof evidence.
 ```
 
-Expected result: a checklist-backed readiness decision whose claims are limited to the evidence actually inspected.
+Expected result: a checklist-backed assessment. Missing live deployment, database, authentication, billing, or proof evidence stays `UNVERIFIED`; the skill does not query those systems.
 
 ---
 
@@ -248,35 +254,21 @@ auditability
 
 ---
 
-## Production evidence
+## Deployment and historical evidence boundary
 
-### Control Plane repository
+**Owner confirmation, 18 October 2026: the legacy hosted DSG Control Plane product is no longer used.**
 
-This repository is bound to **Azure App Service** as its authoritative production platform.
+A previous revision of this README referred to Azure App Service as the production host and included historical Azure deployment references. Those bindings and URLs are historical and are not current service bindings; the legacy hosted product is no longer used. Archived configuration files, logs, and deployment workflows may still exist in the repository, but they cannot prove an active endpoint today.
 
-- Production URL: `https://dsg-control-plane.azurewebsites.net`
-- Deployment binding: [`config/production-deployment-target.json`](config/production-deployment-target.json)
-- Runtime environment guidance: [`docs/ops/azure-runtime-env-sync.md`](docs/ops/azure-runtime-env-sync.md)
-- Azure deployment evidence: [`qa-logs/azure-production/`](qa-logs/azure-production/)
+Historical reference material can be inspected at:
 
-The deployment binding is fail-closed: configuration alone is not treated as proof that the latest deployment passed.
+- [Legacy deployment target configuration](config/production-deployment-target.json)
+- [Legacy Azure runtime notes](docs/ops/azure-runtime-env-sync.md)
+- [Archived Azure QA logs](qa-logs/azure-production/)
 
-### Market-Ready / Cinema production surface
+The related Cinema/Market-Ready project previously recorded merge, UI-attestation, and Z3-verification activity, including historical commit references `e16e4f2d964f44b4934a99a9297ab3fecfac7208` and `b076a0db98009d1a5c479ebbee48655d5b1e711b`. These are **historical evidence pointers**, not evidence of current Spacetime route health or provider activation.
 
-The related DSG Cinema production path has current executable evidence for the Market-Ready customer surface:
-
-- Market-Ready product merge commit: `e16e4f2d964f44b4934a99a9297ab3fecfac7208`
-- production Azure deploy: passed;
-- direct Z3 production proof: passed;
-- Cinema → Z3 production E2E and replay: passed;
-- marketplace/CORS checks: passed;
-- revenue truth checks: passed;
-- exact live UI attestation: passed;
-- UI-attestation workflow commit: `b076a0db98009d1a5c479ebbee48655d5b1e711b`.
-
-The live UI attestation fetches production `/dashboard`, `/styles.css`, `/app.js` and `/config.js` and requires exact SHA-256 equality with the sandbox-tested Market-Ready source.
-
-This is production runtime evidence. It is **not** a certification, legal-compliance or universal-correctness claim.
+A new production claim requires a named active provider, deployment revision, reachable authenticated service, independent execution result, and current audit evidence. Plugin installation requires none of those production services.
 
 ---
 
@@ -377,7 +369,7 @@ Missing evidence remains `UNVERIFIED`, `REVIEW` or `BLOCKED` according to the ap
 
 Never commit live credentials to this repository.
 
-Production credentials should use the approved Azure secret/environment-management path. Example environment files document configuration names; they are not evidence that the corresponding production secret currently exists.
+Any future governed provider operation must use the active provider's approved secret manager and an authorized, audited binding. This repository does not establish a legacy hosted service, production credentials, or a live Spacetime route.
 
 ---
 

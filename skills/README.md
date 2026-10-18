@@ -78,7 +78,7 @@ Formal verification using Z3 Spacer for policy constraint verification, Horn cla
 
 **Quick example**:
 ```typescript
-import { runFormalVerification } from '@/skills/formal-verification/skill';
+import { runFormalVerification } from '@/repository-skills/formal-verification/skill';
 
 const result = await runFormalVerification({
   policyName: 'compliance_gate_v1',
@@ -213,7 +213,7 @@ Fixes premature README claims, verifies production OAuth authorization-server en
 
 **Quick example**:
 ```typescript
-import { runMarketplaceFix } from '@/skills/dsg-marketplace-fix/skill';
+import { runMarketplaceFix } from '@/repository-skills/dsg-marketplace-fix/skill';
 
 const result = await runMarketplaceFix({
   issueName: 'premature-production-claim',

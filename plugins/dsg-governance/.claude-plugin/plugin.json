@@ -1,16 +1,17 @@
 {
   "name": "dsg-governance",
-  "description": "AI Governance Control Plane skills for Claude Code: a studio-style action layer (plan, deterministic gate, permission verdict, browser-first execution after approval), a GitHub Marketplace Action packager with GO/NO-GO validation, and a multi-source governance orchestrator for M1/M2 cutover. Covers the deterministic gate scaffold, replayable governance, compliance evidence mapping, runtime lifecycle, and the Hermes controlled executor.",
-  "version": "1.0.0",
-  "author": { "name": "DSG ONE / ProofGate" },
-  "homepage": "https://tdealer01-crypto-dsg-control-plane.vercel.app",
+  "description": "Claude Code guidance for planning governed actions, reviewing evidence, and packaging workflows. Documentation/templates only; it does not provide a hosted service, live approval, credential broker, or executor.",
+  "version": "1.0.2",
+  "author": {
+    "name": "DSG ONE / ProofGate"
+  },
+  "homepage": "https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/tree/main/plugins/dsg-governance",
   "keywords": [
     "ai-governance",
     "deterministic-gate",
     "compliance",
     "audit",
     "replay",
-    "hermes",
     "policy-as-code",
     "dsg",
     "proofgate"

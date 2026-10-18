@@ -67,7 +67,7 @@ Outside localhost, the client rejects non-HTTPS URLs.
 ## Evaluate an action
 
 ```bash
-node skills/dsg-production-gate/scripts/dsg-production-gate.mjs evaluate \
+node repository-skills/dsg-production-gate/scripts/dsg-production-gate.mjs evaluate \
   --risk high \
   --action deploy_production \
   --context '{"target":"production","change":"release-2026-08"}'
@@ -76,7 +76,7 @@ node skills/dsg-production-gate/scripts/dsg-production-gate.mjs evaluate \
 For larger context, pass a JSON file:
 
 ```bash
-node skills/dsg-production-gate/scripts/dsg-production-gate.mjs evaluate \
+node repository-skills/dsg-production-gate/scripts/dsg-production-gate.mjs evaluate \
   --risk medium \
   --context-file ./context.json
 ```
@@ -97,7 +97,7 @@ The client generates a fresh replay-protection `nonce` and `idempotencyKey` for 
 ## Generate a proof
 
 ```bash
-node skills/dsg-production-gate/scripts/dsg-production-gate.mjs prove \
+node repository-skills/dsg-production-gate/scripts/dsg-production-gate.mjs prove \
   --risk medium \
   --plan-id plan_123 \
   --context-file ./context.json

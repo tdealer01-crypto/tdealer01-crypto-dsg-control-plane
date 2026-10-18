@@ -171,7 +171,7 @@
         "audit_ready": true
       },
       "invocation": "/formal-verification {constraints}",
-      "documentation_url": "/skills/formal-verification/SKILL.md",
+      "documentation_url": "/repository-skills/formal-verification/SKILL.md",
       "support_email": "support@dsg.pics"
     },
 
@@ -333,7 +333,7 @@
         "audit_ready": true
       },
       "invocation": "/dsg-marketplace-fix {scope}",
-      "documentation_url": "/skills/dsg-marketplace-fix/SKILL.md",
+      "documentation_url": "/repository-skills/dsg-marketplace-fix/SKILL.md",
       "support_email": "support@dsg.pics"
     },
 
@@ -497,7 +497,7 @@
         "deterministic": true
       },
       "invocation": "dsg ising-optimize {problem} --constraints {file}",
-      "documentation_url": "/skills/dsg-ising-optimization/SKILL.md",
+      "documentation_url": "/repository-skills/dsg-ising-optimization/SKILL.md",
       "support_email": "support@dsg.pics"
     }
   ],
@@ -625,11 +625,11 @@
     "documentation": [
       "skills/SKILLS_REGISTRY.json - Master skill registry",
       "skills/dsg-action-layer-ged/SKILL.md - Governance execution documentation",
-      "skills/formal-verification/SKILL.md - Formal verification documentation",
+      "repository-skills/formal-verification/SKILL.md - Formal verification documentation",
       "skills/dsg-multi-governance-orchestrator/SKILL.md - Orchestrator documentation",
-      "skills/dsg-marketplace-fix/SKILL.md - Marketplace fix documentation",
+      "repository-skills/dsg-marketplace-fix/SKILL.md - Marketplace fix documentation",
       "skills/dsg-github-marketplace-action-controller/SKILL.md - GitHub action controller documentation",
-      "skills/dsg-ising-optimization/SKILL.md - Ising optimization documentation"
+      "repository-skills/dsg-ising-optimization/SKILL.md - Ising optimization documentation"
     ],
     "support_email": "t.dealer01@dsg.pics",
     "support_channels": [

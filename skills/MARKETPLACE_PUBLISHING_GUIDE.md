@@ -143,7 +143,7 @@ Follow this sequence for each of the 6 skills:
 4. Set **Performance Metrics**:
    - Latency: ~50ms
    - Proof Consistency: 100%
-   - Documentation: skills/formal-verification/SKILL.md
+   - Documentation: repository-skills/formal-verification/SKILL.md
 
 5. **Submit for Review**
 
@@ -174,7 +174,7 @@ Follow this sequence for each of the 6 skills:
    - **Startup**: $24/month, 500 scans, $0.08 per overage
    - **Scale**: $59/month, 5,000 scans, $0.04 per overage
    - **Enterprise**: Custom
-6. **Documentation**: skills/dsg-marketplace-fix/SKILL.md
+6. **Documentation**: repository-skills/dsg-marketplace-fix/SKILL.md
 7. **Submit for Review**
 
 ---
@@ -204,7 +204,7 @@ Follow this sequence for each of the 6 skills:
    - **Optimizer**: $44/month, 1,000 problems, $0.07 per overage
    - **Professional**: $99/month, 10,000 problems, $0.035 per overage
    - **Enterprise**: Custom
-6. **Documentation**: skills/dsg-ising-optimization/SKILL.md
+6. **Documentation**: repository-skills/dsg-ising-optimization/SKILL.md
 7. **Submit for Review**
 
 ---
