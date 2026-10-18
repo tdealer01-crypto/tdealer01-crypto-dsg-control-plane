@@ -1,6 +1,6 @@
 # DSG ONE
 
-> **Current deployment status (owner confirmation, 18 October 2026):** The DSG Control Plane is **NOT DEPLOYED** on any provider. This repository publishes source code, documentation, and Claude Code plugins; it does not prove an active hosted control-plane service. Past deployment logs and URLs must not be presented as current production evidence.
+> **Current status (owner confirmation, 18 October 2026):** The legacy hosted DSG Control Plane product is **no longer used**. This repository publishes source code, historical documentation, and Claude Code guidance; it does not establish a current Spacetime or provider deployment. Past deployment logs and URLs are not current production evidence.
 
 [![Listed on ClaudePluginHub](https://www.claudepluginhub.com/badge/tdealer01-crypto-dsg-governance)](https://www.claudepluginhub.com/plugins/tdealer01-crypto-dsg-governance?ref=badge)
 
@@ -15,7 +15,7 @@ DSG ONE is a governance and evidence layer for AI agents, MCP tools, APIs, brows
 
 **Project website (current reachability not verified):** https://www.dsg.pics  
 **Claude Code plugin distribution:** [GitHub marketplace](.claude-plugin/marketplace.json)  
-**DSG Control Plane hosted URL:** NONE VERIFIED / NOT DEPLOYED
+**Legacy hosted DSG Control Plane:** NOT IN USE; no current hosted URL verified
 
 ---
 
@@ -256,9 +256,9 @@ auditability
 
 ## Deployment and historical evidence boundary
 
-**Current: DSG Control Plane NOT DEPLOYED (owner confirmation, 18 October 2026).**
+**Owner confirmation, 18 October 2026: the legacy hosted DSG Control Plane product is no longer used.**
 
-A previous revision of this README referred to Azure App Service as the production host and included historical Azure deployment references. Those bindings and URLs **are not current Control Plane deployments**. Archived configuration files, logs, and deployment workflows may still exist in the repository, but they cannot prove an active endpoint today.
+A previous revision of this README referred to Azure App Service as the production host and included historical Azure deployment references. Those bindings and URLs are historical and are not current service bindings; the legacy hosted product is no longer used. Archived configuration files, logs, and deployment workflows may still exist in the repository, but they cannot prove an active endpoint today.
 
 Historical reference material can be inspected at:
 
@@ -266,7 +266,7 @@ Historical reference material can be inspected at:
 - [Legacy Azure runtime notes](docs/ops/azure-runtime-env-sync.md)
 - [Archived Azure QA logs](qa-logs/azure-production/)
 
-The related Cinema/Market-Ready project previously recorded merge, UI-attestation, and Z3-verification activity, including historical commit references `e16e4f2d964f44b4934a99a9297ab3fecfac7208` and `b076a0db98009d1a5c479ebbee48655d5b1e711b`. These are **historical evidence pointers**, not verification of current availability or Control Plane production activation.
+The related Cinema/Market-Ready project previously recorded merge, UI-attestation, and Z3-verification activity, including historical commit references `e16e4f2d964f44b4934a99a9297ab3fecfac7208` and `b076a0db98009d1a5c479ebbee48655d5b1e711b`. These are **historical evidence pointers**, not evidence of current Spacetime route health or provider activation.
 
 A new production claim requires a named active provider, deployment revision, reachable authenticated service, independent execution result, and current audit evidence. Plugin installation requires none of those production services.
 
@@ -369,7 +369,7 @@ Missing evidence remains `UNVERIFIED`, `REVIEW` or `BLOCKED` according to the ap
 
 Never commit live credentials to this repository.
 
-Any future deployment must use the active provider's approved secret manager and an authorized, audited binding. The current repository does not prove that production credentials or a hosted Control Plane are configured.
+Any future governed provider operation must use the active provider's approved secret manager and an authorized, audited binding. This repository does not establish a legacy hosted service, production credentials, or a live Spacetime route.
 
 ---
 

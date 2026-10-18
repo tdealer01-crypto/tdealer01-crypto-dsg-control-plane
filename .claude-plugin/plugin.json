@@ -1,7 +1,7 @@
 {
   "name": "dsg-governance",
-  "displayName": "DSG Governance Control Plane",
-  "description": "Claude Code guidance and review skills for DSG governance and evidence. This plugin contains documentation/templates only; it does not provide a hosted control plane, approval service, credentials, or provider execution.",
+  "displayName": "DSG Governance Guidance",
+  "description": "Claude Code guidance and review skills for DSG governance and evidence. This documentation/templates plugin is not the legacy hosted DSG Control Plane product and does not provide live approvals, credentials, or provider execution.",
   "version": "1.0.2",
   "author": {
     "name": "DSG Team"

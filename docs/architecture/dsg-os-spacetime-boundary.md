@@ -9,7 +9,7 @@ This document locks the product ownership terms and adapter execution flow. It d
 | DSG OS | User-facing browser/workspace, Adapter Builder, and local verification surface | Adapter contract authoring, route-registration request, result display, and local evidence verification |
 | DSG Spacetime | Execution and governance control plane | Plan, route, entitlement, policy, approval, payload binding, deterministic gate, and governed provider execution |
 
-The browser surface can prepare and inspect actions. Spacetime remains the authority for whether an action may execute and for governing that execution.
+The legacy hosted product formerly called DSG Control Plane is no longer used. In this architecture, “control plane” describes Spacetime's execution/governance responsibility only; it does not refer to the retired service. The browser surface can prepare and inspect actions. Spacetime remains the authority for whether an action may execute and for governing that execution.
 
 ## DSG OS / Browser
 

@@ -1,6 +1,6 @@
 # DSG Governance for Claude Code
 
-This marketplace entry installs guidance skills and packaging checklists. It does not activate a hosted DSG service, issue credentials, approve actions, or execute provider operations.
+This marketplace entry installs guidance skills and packaging checklists. The legacy hosted DSG Control Plane product is no longer used. This plugin does not issue credentials, approve actions, or execute provider operations.
 
 ## Install
 
@@ -33,6 +33,6 @@ See [docs/architecture/dsg-os-spacetime-boundary.md](../docs/architecture/dsg-os
 
 ## Authentication and evidence
 
-No MCP server or endpoint is configured in this Claude Code plugin manifest. The owner-service bridge used for private repository read evidence is not proof of an end-user OAuth flow. Do not claim user-authenticated AWS MCP access, live execution, or a deployed control plane based on plugin installation or repository evidence.
+No MCP server or endpoint is configured in this Claude Code plugin manifest. The owner-service bridge used for private repository read evidence is not proof of an end-user OAuth flow. Do not claim user-authenticated AWS MCP access or live execution based on plugin installation or repository evidence. The legacy hosted DSG Control Plane product is not part of this plugin.
 
-The current deployment boundary is owner-reported as NOT DEPLOYED (18 October 2026). Source code and CI checks are distinct from deployment, authenticated runtime health, and provider execution.
+Owner confirmation on 18 October 2026: the legacy hosted DSG Control Plane product is no longer used. Source code and CI checks are distinct from Spacetime route health and provider execution.

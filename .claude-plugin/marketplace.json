@@ -5,7 +5,7 @@
     "url": "https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane"
   },
   "metadata": {
-    "description": "Governance-first, evidence-first Claude Code plugins for working inside the DSG ONE / ProofGate Control Plane repository. Each plugin encodes the repo's own operating rules: truth-boundary claim policy, verification ladder, API route and security conventions, and the mandatory PR body format.",
+    "description": "Governance-first, evidence-first Claude Code plugins for working inside the DSG ONE / ProofGate repository. Each plugin encodes the repo's own operating rules: truth-boundary claim policy, verification ladder, API route and security conventions, and the mandatory PR body format.",
     "version": "1.0.1",
     "pluginRoot": "./plugins"
   },
@@ -13,7 +13,7 @@
     {
       "name": "proofgate-review",
       "source": "./plugins/proofgate-review",
-      "description": "Governance-aware code review for the DSG Control Plane. Reviews changes against the repo's API route conventions, security conventions, truth boundary, runtime spine flow, deterministic gate boundary (UNSUPPORTED is never PASS), and Supabase/RLS rules. Includes a security-reviewer subagent.",
+      "description": "Governance-aware code review for the DSG governance repository. Reviews changes against the repo's API route conventions, security conventions, truth boundary, runtime spine flow, deterministic gate boundary (UNSUPPORTED is never PASS), and Supabase/RLS rules. Includes a security-reviewer subagent.",
       "version": "1.0.0",
       "author": {
         "name": "DSG ONE / ProofGate"
