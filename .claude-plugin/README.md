@@ -1,66 +1,38 @@
-# DSG Governance — Claude Code plugin
+# DSG Governance for Claude Code
 
-DSG Governance provides **Claude Code guidance, skills, and engineering workflows** for plan-aligned execution, deterministic policy gates, evidence review, and replayable decisions.
+This marketplace entry installs guidance skills and packaging checklists. It does not activate a hosted DSG service, issue credentials, approve actions, or execute provider operations.
 
-**Current deployment boundary (18 October 2026):** This GitHub repository distributes plugin content. The DSG Control Plane is **not deployed as a hosted service**. Installing the plugin does **not** start a runtime, activate agents, issue credentials, or provide a production API. The former Vercel destination is no longer used.
+## Install
 
-## Install from the GitHub marketplace
+In Claude Code:
 
-In a Claude Code terminal session:
-
-```text
 /plugin marketplace add tdealer01-crypto/tdealer01-crypto-dsg-control-plane
 /plugin install dsg-governance@dsg-plugins
-```
 
-Or from your shell (where the Claude Code CLI is installed):
+After the install command, review the plugin details in the interactive panel and confirm the install there if prompted. In a shell, the Claude Code CLI commands are:
 
-```bash
 claude plugin marketplace add tdealer01-crypto/tdealer01-crypto-dsg-control-plane
 claude plugin install dsg-governance@dsg-plugins
 claude plugin list
-```
 
-To validate a local clone without installing or deploying a service:
+Validate the marketplace package with:
 
-```bash
 claude plugin validate ./plugins/dsg-governance
-# Alternatively, validate the repository-root plugin:
-claude plugin validate .
-```
 
-The marketplace source is `.claude-plugin/marketplace.json`; its `dsg-governance` entry is located at `plugins/dsg-governance`.
+## Included skills
 
-## What you can use
+- dsg-action-layer-ged: plan and evidence review guidance
+- dsg-github-marketplace-action-controller: static Action packaging and review guidance
+- dsg-multi-governance-orchestrator: cross-system planning and evidence checklist
 
-- **dsg-action-layer-ged** — guidance for user-goal planning, policy checks, approvals, execution evidence, and truthful status reporting
-- **dsg-github-marketplace-action-controller** — templates and review steps for packaging governed GitHub Actions
-- **dsg-multi-governance-orchestrator** — governance planning across systems and release milestones
+The repository-root plugin discovers its three advertised skills under skills/. The marketplace plugin packages them under plugins/dsg-governance/skills/. Other repository skill material is stored under repository-skills/ and is not part of the root plugin skill scan.
 
-The individual `SKILL.md` files are located under `skills/` in the GitHub repository and are packaged in `plugins/dsg-governance/skills/` for marketplace distribution.
+## Architecture boundary
 
-## What the plugin does not prove
+See [docs/architecture/dsg-os-spacetime-boundary.md](../docs/architecture/dsg-os-spacetime-boundary.md). DSG OS is the user-facing browser/workspace, Adapter Builder, and local verification surface. Spacetime is the execution/governance control plane.
 
-- **No hosted DSG Control Plane deployment is asserted.**
-- **No production authentication, API, database, approval service, or Hermes executor is activated by installing these skills.**
-- The repository's policy/API designs, example payloads, and test scaffolds are **not** evidence of a running external service.
-- Any compliance, formal-verification, or runtime readiness claim requires its own specific, independently verifiable execution evidence.
-- **No subscription pricing or quota entitlement is offered by this plugin manifest.**
+## Authentication and evidence
 
-## Verification and support
+No MCP server or endpoint is configured in this Claude Code plugin manifest. The owner-service bridge used for private repository read evidence is not proof of an end-user OAuth flow. Do not claim user-authenticated AWS MCP access, live execution, or a deployed control plane based on plugin installation or repository evidence.
 
-Validation of a `plugin.json` file is distinct from installing a plugin and from executing a governed agent action. Record results separately:
-
-| Check | Evidence required |
-|---|---|
-| Manifest | `claude plugin validate` succeeds on the exact commit |
-| Install | Claude Code loads the marketplace plugin without errors |
-| Capabilities | The installed skills appear and can be invoked |
-| Runtime | A separately deployed, authorized runtime returns genuine execution/audit evidence |
-
-- Source: https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane
-- Issues: https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/issues
-- Marketplace: `.claude-plugin/marketplace.json`
-- License: MIT (see repository LICENSE)
-
-**Plugin metadata version:** 1.0.1. **Production service status:** NOT DEPLOYED (owner-reported); not an install prerequisite.
+The current deployment boundary is owner-reported as NOT DEPLOYED (18 October 2026). Source code and CI checks are distinct from deployment, authenticated runtime health, and provider execution.

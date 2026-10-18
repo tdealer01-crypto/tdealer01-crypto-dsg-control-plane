@@ -22,7 +22,7 @@ Three enterprise-grade Claude Code Skills have been created:
 
 #### 1. **DSG Infrastructure Deployer** 
 - **Status**: ✅ Complete
-- **Location**: `skills/dsg-infrastructure-deployer/`
+- **Location**: `repository-skills/dsg-infrastructure-deployer/`
 - **Capability**: Orchestrates CDK deployment workflow
   - Synthesize CloudFormation templates
   - Deploy stacks with validation
@@ -33,7 +33,7 @@ Three enterprise-grade Claude Code Skills have been created:
 
 #### 2. **DSG Production Readiness Validator**
 - **Status**: ✅ Complete
-- **Location**: `skills/dsg-production-readiness-validator/`
+- **Location**: `repository-skills/dsg-production-readiness-validator/`
 - **Capability**: Multi-layer compliance validation
   - L0: Infrastructure Health (VPC, ECS, RDS, ALB)
   - L1: Security Posture (IAM, KMS, VPC security groups)
@@ -46,7 +46,7 @@ Three enterprise-grade Claude Code Skills have been created:
 
 #### 3. **DSG Secrets Manager Integrator**
 - **Status**: ✅ Complete
-- **Location**: `skills/dsg-secrets-manager-integrator/`
+- **Location**: `repository-skills/dsg-secrets-manager-integrator/`
 - **Capability**: AWS Secrets Manager integration framework
   - IAM policy generation for ECS task roles
   - ECS task definition configuration with secret references

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Install DSG Hybrid Agent Skill
-# Run from project root: bash skills/dsg-hybrid-agent/install.sh
+# Run from project root: bash repository-skills/dsg-hybrid-agent/install.sh
 
 set -euo pipefail
 
@@ -154,10 +154,10 @@ echo "  - src/rom-dom/ (10 ROM DOM snapshots + registry)"
 echo "  - src/lib/simulation/ (engine, task-registry)"
 echo "  - app/api/agent/hybrid/route.ts (Hybrid API)"
 echo "  - tasks/ (5 task definitions)"
-echo "  - skills/dsg-hybrid-agent/ (Hermes skill)"
+echo "  - repository-skills/dsg-hybrid-agent/ (Hermes skill)"
 echo ""
 echo "Documentation:"
-echo "  - skills/dsg-hybrid-agent/SKILL.md"
-echo "  - skills/dsg-hybrid-agent/references/recording-guide.md"
-echo "  - skills/dsg-hybrid-agent/templates/task-template.md"
-echo "  - skills/dsg-hybrid-agent/templates/multi-agent-template.md"
+echo "  - repository-skills/dsg-hybrid-agent/SKILL.md"
+echo "  - repository-skills/dsg-hybrid-agent/references/recording-guide.md"
+echo "  - repository-skills/dsg-hybrid-agent/templates/task-template.md"
+echo "  - repository-skills/dsg-hybrid-agent/templates/multi-agent-template.md"

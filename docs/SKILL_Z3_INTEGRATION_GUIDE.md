@@ -499,7 +499,7 @@ test.describe('Gate Evaluation Endpoint', () => {
 
 ## Verification Checklist
 
-- [ ] Skill copied to `skills/z3-formal-solver-verification/`
+- [ ] Skill copied to `repository-skills/z3-formal-solver-verification/`
 - [ ] Skill JSON config created at `skills/z3-formal-solver-verification.json`
 - [ ] Gate evaluator updated to call skill
 - [ ] Gate endpoint connected at `/api/dsg/v1/gates/evaluate`

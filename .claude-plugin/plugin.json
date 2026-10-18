@@ -1,8 +1,8 @@
 {
   "name": "dsg-governance",
   "displayName": "DSG Governance Control Plane",
-  "description": "Claude Code governance skills for deterministic policy gates, evidence review, plan-authorized execution and replay workflows. This plugin does not deploy or activate a hosted DSG Control Plane service.",
-  "version": "1.0.1",
+  "description": "Claude Code guidance and review skills for DSG governance and evidence. This plugin contains documentation/templates only; it does not provide a hosted control plane, approval service, credentials, or provider execution.",
+  "version": "1.0.2",
   "author": {
     "name": "DSG Team"
   },
@@ -15,15 +15,9 @@
     "compliance",
     "audit",
     "replay",
-    "hermes",
     "z3",
     "policy-as-code",
     "cryptographic-proof",
     "enterprise"
-  ],
-  "skills": [
-    "./skills/dsg-action-layer-ged",
-    "./skills/dsg-github-marketplace-action-controller",
-    "./skills/dsg-multi-governance-orchestrator"
   ]
 }

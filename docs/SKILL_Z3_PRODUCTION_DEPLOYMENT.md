@@ -11,7 +11,7 @@
 
 The z3-formal-solver-verification skill is a production-ready formal verification system that enables autonomous proof generation for DSG governance policies. It uses a hybrid Ising + Agent + Z3 pipeline to produce deterministic, audit-ready proofs.
 
-**Location**: `skills/z3-formal-solver-verification/`  
+**Location**: `repository-skills/z3-formal-solver-verification/`  
 **Config**: `skills/z3-formal-solver-verification.json`
 
 ---
@@ -59,7 +59,7 @@ Connect skill to `/api/dsg/v1/gates/evaluate`:
 
 ```typescript
 // lib/dsg/deterministic/gate-evaluator.ts
-import { runZ3FormalVerification } from '/skills/z3-formal-solver-verification/SKILL.md';
+import { runZ3FormalVerification } from '/repository-skills/z3-formal-solver-verification/SKILL.md';
 
 export async function evaluateGate(policy, requirement) {
   const proof = await runZ3FormalVerification({
@@ -438,9 +438,9 @@ If production issues occur:
 
 ## References
 
-- **Skill Location**: `skills/z3-formal-solver-verification/SKILL.md`
+- **Skill Location**: `repository-skills/z3-formal-solver-verification/SKILL.md`
 - **Benchmark Results**: `skills/z3-formal-solver-verification-workspace/iteration-1/benchmark.md`
-- **Test Cases**: `skills/z3-formal-solver-verification/evals/evals.json`
+- **Test Cases**: `repository-skills/z3-formal-solver-verification/evals/evals.json`
 - **Production Integration**: `/api/dsg/v1/gates/evaluate` route
 - **Audit Trail**: `ccvs_evidence` table in Supabase
 - **CCVS Pipeline**: `lib/ccvs/evidence-pipeline.ts`

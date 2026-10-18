@@ -236,7 +236,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          node skills/dsg-production-gate/scripts/dsg-production-gate.mjs evaluate \
+          node repository-skills/dsg-production-gate/scripts/dsg-production-gate.mjs evaluate \
             --risk high \
             --action deploy_production \
             --plan-id "software-release-${{ github.sha }}" \

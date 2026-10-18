@@ -399,7 +399,7 @@ ok = !mockState AND gateStatus == 'PASS' AND optimizationStatus == 'OPTIMAL'
 Skill("dsg-ising-optimization", "jobId: alloc-001, name: Resource Allocation, ...")
 
 # Programmatic
-import { runIsingOptimization } from '@/skills/dsg-ising-optimization/skill';
+import { runIsingOptimization } from '@/repository-skills/dsg-ising-optimization/skill';
 const result = await runIsingOptimization(input);
 ```
 

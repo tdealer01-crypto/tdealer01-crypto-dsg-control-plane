@@ -7,7 +7,7 @@ on:
       - '.github/workflows/cdk-deploy.yml'
       - '.github/workflows/aws-agent-toolkit-verify.yml'
       - 'scripts/verify-aws-agent-toolkit.mjs'
-      - 'skills/dsg-aws-agent-toolkit/**'
+      - 'repository-skills/dsg-aws-agent-toolkit/**'
   workflow_dispatch:
 
 permissions:

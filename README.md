@@ -19,6 +19,10 @@ DSG ONE is a governance and evidence layer for AI agents, MCP tools, APIs, brows
 
 ---
 
+## DSG OS and Spacetime boundary
+
+The architecture contract is documented in [docs/architecture/dsg-os-spacetime-boundary.md](docs/architecture/dsg-os-spacetime-boundary.md). DSG OS owns the user-facing browser/workspace, Adapter Builder, and local verification surface. Spacetime owns execution and governance decisions.
+
 ## Current product experience
 
 The current DSG ONE customer flow is organized around getting to a **first verified result**, not merely showing a connected badge.
@@ -114,7 +118,7 @@ Return the gate status, reason, required permission, and evidence.
 Do not execute if the result is BLOCK, UNSUPPORTED, or REVIEW without approval.
 ```
 
-Expected result: an evidence-dependent governance verdict such as `PASS`, `BLOCK`, `REVIEW`, or `UNSUPPORTED`; missing evidence must not be reported as success.
+Expected result: a plan and evidence review from the information actually available. Without a live authorized gate result, report `UNVERIFIED`; this skill does not execute or block provider actions.
 
 ### Add a governance check to CI/CD
 
@@ -124,7 +128,7 @@ Fail closed on BLOCK, missing proof, or unsupported medium-or-higher risk.
 Show the files changed and the verification needed before merge.
 ```
 
-Expected result: a proposed GitHub Actions integration with deterministic GO/NO-GO conditions and explicit secret-handling boundaries.
+Expected result: a packaging proposal and review checklist. A live governance integration is `UNVERIFIED` unless its configured service and result are independently evidenced.
 
 ### Run a production readiness decision
 
@@ -134,7 +138,7 @@ Mark every requirement PASS, FAIL, or UNVERIFIED and return GO or NO-GO.
 Do not infer missing deployment, database, authentication, billing, or proof evidence.
 ```
 
-Expected result: a checklist-backed readiness decision whose claims are limited to the evidence actually inspected.
+Expected result: a checklist-backed assessment. Missing live deployment, database, authentication, billing, or proof evidence stays `UNVERIFIED`; the skill does not query those systems.
 
 ---
 
