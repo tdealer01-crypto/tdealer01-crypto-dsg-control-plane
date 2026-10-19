@@ -2,7 +2,7 @@
   "name": "dsg-governance",
   "displayName": "DSG Governance Control Plane",
   "description": "Three governance workflow skills for Claude Code backed by the existing DSG Spacetime production MCP server. Runtime authorization, tool availability and evidence are independently verified.",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "author": {
     "name": "DSG ONE / ProofGate"
   },
