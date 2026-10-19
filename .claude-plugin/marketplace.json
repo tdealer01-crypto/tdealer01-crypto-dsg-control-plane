@@ -83,7 +83,7 @@
     },
     {
       "name": "dsg-governance",
-      "source": "./dsg-governance",
+      "source": "./plugins/dsg-governance",
       "description": "DSG Spacetime production MCP client: governed plan, discover, owner approval, execute, verify evidence. Uses the existing https://aws.dsg.pics/mcp backend; does not deploy another control plane.",
       "version": "1.0.1",
       "author": {
