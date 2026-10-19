@@ -16,7 +16,7 @@ claude plugin install dsg-governance@dsg-plugins
 claude plugin list
 ```
 
-The marketplace entry points at `plugins/dsg-governance`. It is intentionally **not** the entire root project's `.mcp.json` and does not require Vercel, Azure, Supabase or a separate API key configured by this plugin.
+The marketplace entry points at `plugins/dsg-governance`. The installation-tested inventory is **3 Skills + 1 MCP Server**. ClaudePluginHub may temporarily show the monorepo's legacy root inventory (25 Skills / 10 MCP Servers), which is not the scoped plugin's runtime inventory. Treat the Claude Code CLI `plugin details` and the exact GitHub Actions install check as the package evidence. It is intentionally **not** the entire root project's `.mcp.json` and does not require Vercel, Azure, Supabase or a separate API key configured by this plugin.
 
 ## Connect and use
 
