@@ -2,7 +2,7 @@
   "name": "dsg-governance",
   "displayName": "DSG Governance Control Plane",
   "description": "Claude Code governance skills and DSG Spacetime production MCP connector. Discovers live tools and preserves runtime plan, owner approval, execution, and evidence boundaries.",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "author": {
     "name": "DSG ONE"
   },
