@@ -17,7 +17,10 @@ claude plugin marketplace add tdealer01-crypto/tdealer01-crypto-dsg-control-plan
 claude plugin install dsg-governance@dsg-plugins
 ```
 
-Inside Claude Code, run `/mcp` and authenticate `dsg-spacetime` if prompted. An MCP connection proves only connectivity; real execution requires the actual tools, plan authorization, owner approval if required, and verified evidence.
+Inside Claude Code, run `/mcp` and authenticate `dsg-spacetime` if prompted.
+
+**Before composing an authorized plan:** use `spacetime_control_surface` to get the `VERIFIED_OAUTH_SUBJECT` `principal_binding.agent_principal`. Reuse this exact principal for Compose and Execute. Never invent an identity from a username, repository name or client ID; if the binding is unavailable, report the authentication blocker.
+ An MCP connection proves only connectivity; real execution requires the actual tools, plan authorization, owner approval if required, and verified evidence.
 
 ## Validation
 
