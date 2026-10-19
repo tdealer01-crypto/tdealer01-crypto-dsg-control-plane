@@ -1,0 +1,49 @@
+name: DSG governance plugin validation
+on:
+  pull_request:
+    paths:
+      - '.claude-plugin/plugin.json'
+      - '.claude-plugin/marketplace.json'
+      - '.claude-plugin/README.md'
+      - 'plugins/dsg-governance/**'
+      - 'skills/dsg-action-layer-ged/SKILL.md'
+      - 'scripts/verify-dsg-governance-plugin.mjs'
+      - '.github/workflows/dsg-governance-plugin-verify.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - '.claude-plugin/plugin.json'
+      - '.claude-plugin/marketplace.json'
+      - '.claude-plugin/README.md'
+      - 'plugins/dsg-governance/**'
+      - 'skills/dsg-action-layer-ged/SKILL.md'
+      - 'scripts/verify-dsg-governance-plugin.mjs'
+      - '.github/workflows/dsg-governance-plugin-verify.yml'
+permissions:
+  contents: read
+jobs:
+  validate-governance-plugin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+      - name: Check offline manifest and scoped server contract
+        run: node scripts/verify-dsg-governance-plugin.mjs
+      - name: Install pinned Claude Code validator
+        run: npm install -g @anthropic-ai/claude-code@2.1.300
+      - name: Confirm CLI version
+        run: claude --version
+      - name: Validate scoped DSG Governance plugin
+        run: claude plugin validate ./plugins/dsg-governance --strict
+      - name: Validate marketplace packaging (unrelated root warnings are non-blocking)
+        run: claude plugin validate .
+      - name: Add local checkout marketplace
+        run: claude plugin marketplace add ./
+      - name: Install scoped DSG Governance plugin
+        run: claude plugin install dsg-governance@dsg-plugins
+      - name: Inspect installed plugin components
+        run: |
+          claude plugin list
+          claude plugin details dsg-governance

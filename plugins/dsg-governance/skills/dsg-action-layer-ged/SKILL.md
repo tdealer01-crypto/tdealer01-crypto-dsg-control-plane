@@ -1,112 +1,31 @@
 ---
 name: dsg-action-layer-ged
-version: 1.0.0
-author: DSG Team
-license: MIT
-description: >-
-  Run a studio-style agent control layer that turns a user goal into an
-  explainable plan, deterministic decision flow, permission verdicts, and
-  browser-first execution after approval. Use when the user
+description: Execute user goals through the existing DSG Spacetime production MCP connection. Use for plan alignment, governance gates, owner approvals, provider execution, and signed evidence verification.
 ---
 
-# DSG Action Layer — Governed Execution Skill
+# DSG Action Layer — DSG Spacetime Production
 
-DSG ONE / ProofGate Control Plane is **not** an AI Agent framework. It is an **AI Governance Control Plane** — the layer that decides what Agents are _allowed_ to do, captures cryptographic proof of every decision, and makes those decisions replayable months later.
+## Connection and ownership
 
-> "Cloudflare = Control Plane of the Internet. Datadog = Control Plane of Observability. **DSG = Control Plane of AI Governance.**"
+The only backend for this distributed plugin is the existing DSG Spacetime production MCP endpoint `https://aws.dsg.pics/mcp`, configured in this plugin's `.mcp.json`. **Do not deploy a new backend, call legacy Vercel/Azure URLs, or switch to a former Control Plane REST API.**
 
-***
+Claude Code connects through the `dsg-spacetime` MCP server. Check connection status with `/mcp` and use the supported OAuth sign-in flow when required. Never embed access tokens, API keys or owner credentials in skill files or logs. A successful MCP connection does not by itself prove the caller has authority to execute.
 
-## When to invoke this skill
+## User goal to real execution
 
-| User intent                                                 | Use this skill                     |
-| ----------------------------------------------------------- | ---------------------------------- |
-| "Gate this action before running it"                        | ✅ Yes — call `gate-evaluate` first |
-| "Why did the AI decide X six months ago?"                   | ✅ Yes — use replay governance      |
-| "Get a compliance evidence pack for our audit"              | ✅ Yes — use compliance evidence    |
-| "Execute this plan with a credential and conformance check" | ✅ Yes — Hermes executor            |
-| "What governance posture should this AI agent run with?"    | ✅ Yes — runtime governance         |
-| "Build a generic AI feature with no governance requirement" | ❌ Out of scope                     |
+1. **Discover:** Inspect MCP tools available in this authenticated session and discover the route/capability matching the requested task. Tool lists and API signatures are determined at runtime, not invented from this documentation.
+2. **Plan:** Reuse an already approved, locked, matching plan when it exists. Otherwise create or compose only the plan needed for the user's goal and identify its runtime binding.
+3. **Govern:** Ask DSG Spacetime for its actual gate and plan-alignment decision. A plan-authorized action must not be artificially blocked by this skill. An `UNSUPPORTED` result is not `PASS`; missing tool or invalid scope is a specific diagnosable failure, not evidence of denial by policy.
+4. **Authorize:** Respect only approval requirements returned by the active runtime for this action; preserve the existing owner/OAuth step-up boundary. Do not request redundant approval for an already valid authorization or claim that a chat reply bypasses the production approval protocol.
+5. **Execute:** If the action is allowed and its required approvals are satisfied, invoke the actual Spacetime execution tool for that route. Do not stop at read-only discovery when execute is permitted. Never invent a successful execution.
+6. **Verify evidence:** Use the available evidence-verification tool and return the runtime's real plan ID, execution or action ID, outcome, and evidence reference. Report `PASSED` only when the relevant verification actually passes.
 
-***
+## Diagnose in the user interface
 
-## 5 Core Capabilities
+Report one actionable status: `CONNECTED`, `AUTH_REQUIRED`, `OWNER_SCOPE_REQUIRED`, `ROUTE_MISSING`, `APPROVAL_REQUIRED`, `EXECUTION_FAILED`, `EVIDENCE_UNVERIFIED`, or `E2E_VERIFIED`, as supported by real tool output. These labels are for reporting, not claims that each maps to an implemented API enumeration.
 
-Read the relevant reference file before answering or implementing any governance question.
+When blocked, state the exact observed error and next user action. Never fabricate an approval URL or create an alternate approval authority. Keep the same plan ID when continuing after user authentication.
 
-| Capability                 | When to use                                                           | Reference                            |
-| -------------------------- | --------------------------------------------------------------------- | ------------------------------------ |
-| Deterministic Safety Gate  | Before any agent action — get PASS/BLOCK/REVIEW + proof hash          | \<references/gate-evaluate.md>       |
-| Replayable Governance      | Audit question: "Why did AI decide X at time T?"                      | \<references/replay-governance.md>   |
-| Compliance Evidence Pack   | Preparing for SOC2 / ISO27001 / EU AI Act / NIST audit                | \<references/compliance-evidence.md> |
-| Runtime Governance         | Lifecycle: Before / During / After agent execution                    | \<references/runtime-governance.md>  |
-| Hermes Controlled Executor | Full Plan → Conformance Check → Credential Grant → Execute → Evidence | \<references/hermes-executor.md>     |
+## Separation of responsibilities
 
-***
-
-## Quick Decision Flow
-
-When a user asks about an AI agent action:
-
-```
-1. PLAN    → What is the goal? What is the risk level?
-2. GATE    → Call POST /api/dsg/v1/gates/evaluate
-             → Get gateStatus: PASS | BLOCK | REVIEW
-             → Get proofHash (cryptographic evidence)
-3. DECIDE  → PASS  → proceed to execution
-             REVIEW → show user the plan, require approval
-             BLOCK  → halt, return reason + proof
-4. EXECUTE → If PASS or approved REVIEW:
-             → Hermes controlled executor (if credential needed)
-             → Or direct execution with audit logging
-5. COMMIT  → POST /api/spine/execute to commit evidence
-             → Runtime evidence stored in Supabase
-6. REPLAY  → Any future audit can replay from stored proof + policy version
-```
-
-***
-
-## Gate Decision Mapping
-
-| gateStatus    | riskLevel       | Action                                        |
-| ------------- | --------------- | --------------------------------------------- |
-| `PASS`        | any             | Proceed. Log proofHash.                       |
-| `REVIEW`      | low–medium      | Show plan to user. Require explicit approval. |
-| `BLOCK`       | any             | Halt. Return reason. Never proceed.           |
-| `UNSUPPORTED` | low             | Map to REVIEW — request human check           |
-| `UNSUPPORTED` | medium–critical | Map to BLOCK — refuse execution               |
-
-**UNSUPPORTED is never PASS.**
-
-***
-
-## Critical rules
-
-* **Never skip the gate** for actions with `riskLevel: medium` or higher.
-* **Never claim `UNSUPPORTED` is safe** — it maps to REVIEW or BLOCK, never PASS.
-* **Always store the proofHash** in execution context for replay.
-* **Policy version must be pinned** in every gate call to ensure replayability.
-* **Credentials must go through Hermes CredentialBroker** — never raw secrets.
-* **Mock state must be false** for any production gate evaluation.
-
-***
-
-## Base URL
-
-```
-https://tdealer01-crypto-dsg-control-plane.vercel.app
-```
-
-Set `DSG_CONTROL_PLANE_URL` to override for local or staging.
-
-***
-
-## Authentication
-
-All gate/proof/compliance endpoints require:
-
-```http
-Authorization: Bearer <DSG_API_KEY>
-```
-
-Obtain API key from the DSG dashboard → API Keys. Free tier: 50 evaluations/month. Upgrade at `/pricing#dsg-gate`.
+The plugin is a thin workflow and discovery client. DSG Spacetime production owns policy enforcement, execution authorization, provider orchestration and evidence. Installing the plugin alone does **not** deploy or activate these capabilities.
