@@ -1,5 +1,8 @@
 # DSG ONE
 
+> **Production connector notice (2026-10-19):** This repository includes historical DSG Control Plane application code and archived deployment material. The installable Claude Code plugin `dsg-governance@dsg-plugins` is a **client** whose only scoped runtime MCP server is the live AWS DSG Spacetime endpoint `https://aws.dsg.pics/mcp` (`plugins/dsg-governance/.mcp.json`). The prior Vercel/Azure Control Plane addresses elsewhere in this repository are not this plugin's production backend. Plugin package validation is separate from OAuth-authorized production execution; see [the plugin-specific installation and verification notes](plugins/dsg-governance/README.md). Do not use older README links as production activation proof.
+
+
 [![Listed on ClaudePluginHub](https://www.claudepluginhub.com/badge/tdealer01-crypto-dsg-governance)](https://www.claudepluginhub.com/plugins/tdealer01-crypto-dsg-governance?ref=badge)
 
 **Govern AI actions. Prove the result.**

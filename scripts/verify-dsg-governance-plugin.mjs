@@ -40,6 +40,10 @@ for (const name of skills) {
   const content = read(`plugins/dsg-governance/skills/${name}/SKILL.md`);
   assert.match(content, new RegExp(`^---\\nname: ${name}\\n`));
   assert.match(content, /https:\/\/aws\.dsg\.pics\/mcp/);
+  assert.match(content, /spacetime_control_surface/);
+  assert.match(content, /VERIFIED_OAUTH_SUBJECT/);
+  assert.match(content, /agent_principal/);
+  assert.match(content, /OAUTH_AGENT_PRINCIPAL_MISMATCH/);
   assert.doesNotMatch(content, /https:\/\/[^\\s)]*vercel\.app/);
   assert.doesNotMatch(content, /https:\/\/[^\\s)]*azurewebsites\.net/);
   assert.doesNotMatch(content, /https:\/\/[^\\s)]*azurecontainerapps\.io/);
