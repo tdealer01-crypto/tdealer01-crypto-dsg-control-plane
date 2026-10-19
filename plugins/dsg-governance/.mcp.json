@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "dsg-spacetime": {
+      "type": "http",
+      "url": "https://aws.dsg.pics/mcp"
+    }
+  }
+}
