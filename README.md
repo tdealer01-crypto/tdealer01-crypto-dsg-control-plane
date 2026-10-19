@@ -15,12 +15,14 @@ DSG ONE is a governance and evidence layer for AI agents, MCP tools, APIs, brows
 4. Where is the evidence?
 
 **Website:** https://www.dsg.pics  
-**Control Plane:** https://dsg-control-plane.azurewebsites.net  
-**Market-Ready product surface:** https://dsg-cinema-production.nicetree-a005fe99.westus3.azurecontainerapps.io/dashboard
+**Current production execution backend (AWS):** https://aws.dsg.pics/mcp  
+**Claude Code plugin:** `dsg-governance@dsg-plugins` — [3 skills + 1 remote MCP server](plugins/dsg-governance/README.md)
+
+> Historical product guides below describe earlier Control Plane phases. References to prior Azure/Vercel services are archival, not the runtime endpoint for this plugin. The package's effective components come from `plugins/dsg-governance`, not the monorepo's root `skills/` or `.mcp.json`.
 
 ---
 
-## Current product experience
+## Historical Control Plane product experience (archived)
 
 The current DSG ONE customer flow is organized around getting to a **first verified result**, not merely showing a connected badge.
 
