@@ -13,8 +13,16 @@ Claude Code connects through the `dsg-spacetime` MCP server. Check connection st
 
 ## User goal to real execution
 
+### Authenticated principal binding (required before Compose or Execute)
+
+Call the **actual** `spacetime_control_surface` tool when it is available, and inspect `principal_binding`. It must report `status: VERIFIED_OAUTH_SUBJECT` and a nonempty `agent_principal`. Use that `agent_principal` **unchanged** in both `spacetime_compose.participants[].principal` and `spacetime_execute.agent.principal` for the same plan. `agent_id` must also stay consistent.
+
+Never manufacture or infer a principal from a display name, repository owner, OAuth client ID, email address, or assistant session label. Do not place raw OAuth credentials in plans, repository files, or logs. If `spacetime_control_surface` is unavailable or lacks a verified principal, use another actually advertised authoritative identity tool only if one exists; otherwise report `AUTH_PRINCIPAL_UNVERIFIED` and stop **Compose/Execute**, not all unrelated read-only tools.
+
+A `OAUTH_AGENT_PRINCIPAL_MISMATCH` response is an identity-binding error, not a reason to create a new owner approval or disable the production gate. Re-read the authenticated principal binding and retry only when the same verified identity can be supplied.
+
 1. **Discover:** Inspect MCP tools available in this authenticated session and discover the route/capability matching the requested task. Tool lists and API signatures are determined at runtime, not invented from this documentation.
-2. **Plan:** Reuse an already approved, locked, matching plan when it exists. Otherwise create or compose only the plan needed for the user's goal and identify its runtime binding.
+2. **Plan:** Use the verified OAuth principal binding above. Reuse an already approved, locked, matching plan when it exists. Otherwise create or compose only the plan needed for the user's goal and identify its runtime binding.
 3. **Govern:** Ask DSG Spacetime for its actual gate and plan-alignment decision. A plan-authorized action must not be artificially blocked by this skill. An `UNSUPPORTED` result is not `PASS`; missing tool or invalid scope is a specific diagnosable failure, not evidence of denial by policy.
 4. **Authorize:** Respect only approval requirements returned by the active runtime for this action; preserve the existing owner/OAuth step-up boundary. Do not request redundant approval for an already valid authorization or claim that a chat reply bypasses the production approval protocol.
 5. **Execute:** If the action is allowed and its required approvals are satisfied, invoke the actual Spacetime execution tool for that route. Do not stop at read-only discovery when execute is permitted. Never invent a successful execution.
