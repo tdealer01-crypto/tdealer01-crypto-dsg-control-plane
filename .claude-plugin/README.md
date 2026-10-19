@@ -1,229 +1,44 @@
-# DSG Governance Control Plane — Claude Code Plugin
+# DSG Governance Control Plane — Claude Code plugin
 
-Production AI governance control plane for Claude Code. Makes every Agent decision provable, auditable, and replayable.
+This is a Claude Code **client plugin**, not a separate deployed control plane. It connects to the existing DSG Spacetime production MCP endpoint:
 
-## 🚀 Installation
+`https://aws.dsg.pics/mcp`
 
-### One-line install (ClaudePluginHub)
-```bash
-claude plugin marketplace add tdealer01-crypto/tdealer01-crypto-dsg-control-plane && claude plugin install dsg-governance@dsg-plugins
-```
+The plugin contains three skills and **one** plugin-scoped remote MCP server. DSG Spacetime retains responsibility for plan alignment, policy decisions, owner authorization, execution, and verifiable evidence. Plugin installation does not prove runtime access.
 
-### Claude Code CLI — step by step
-```bash
+## Install only the DSG Governance plugin
+
+In Claude Code:
+
+```sh
 claude plugin marketplace add tdealer01-crypto/tdealer01-crypto-dsg-control-plane
 claude plugin install dsg-governance@dsg-plugins
+claude plugin list
 ```
 
-The repository is the `dsg-plugins` marketplace. The `dsg-governance` plugin is distributed from `plugins/dsg-governance` through `.claude-plugin/marketplace.json`.
+The marketplace entry points at `plugins/dsg-governance`. It is intentionally **not** the entire root project's `.mcp.json` and does not require Vercel, Azure, Supabase or a separate API key configured by this plugin.
 
-### Claude.ai
-Visit the Claude Code plugin marketplace and search for "DSG Governance Control Plane"
+## Connect and use
 
-## 📋 Features
+1. Inside Claude Code, open `/mcp` and find `dsg-spacetime`.
+2. If it requests authentication, complete the provider's real OAuth browser flow. Authentication does not automatically grant owner permissions.
+3. Confirm that the server exposes real tools before attempting execution.
+4. Ask the plugin to run the chosen task with the existing plan if already approved.
+5. Review the runtime's exact decision, execution result and evidence proof.
 
-### 1. Deterministic Safety Gate (`dsg-action-layer-ged`)
-- Policy evaluation with deterministic outcomes (PASS/BLOCK/REVIEW/UNSUPPORTED)
-- Z3/SMT-style formal verification
-- Quota enforcement and pricing per evaluation
-- Cryptographic proof generation
+## Failure diagnostics
 
-### 2. Replayable Governance
-- Deterministic replay of decisions
-- Hash-based evidence tracking (proofHash, policyVersion, inputHash, constraintSetHash)
-- Compliance regulation mapping
-- SOC2/ISO27001/NIST/EU AI Act claim support
+| Observation | Meaning / next step |
+|---|---|
+| Plugin validation error | Check `claude plugin validate ./plugins/dsg-governance --strict` against the matching source checkout |
+| MCP missing | Confirm the plugin installed/enabled and `/mcp` shows `dsg-spacetime` |
+| 401 or OAuth required | Sign in using `/mcp`; no token should be pasted into repository files |
+| Owner scope or approval required | Complete the actual owner approval flow for the specific plan/action, then resume the same plan |
+| Tools discoverable but execute unavailable | Record the actual tool/route/scope error. Do not invent a replacement tool or successful execution |
+| Execute succeeded, evidence incomplete | Report `EVIDENCE_UNVERIFIED` until the production verifier confirms the action |
 
-### 3. Compliance Evidence Pack
-- L1–L5 evidence levels (unit to provenance)
-- CCVS pipeline integration
-- Audit trail capture
-- Governance decision evidence
+## Truth boundary
 
-### 4. Runtime Lifecycle Management
-- Before/During/After action governance
-- Risk level → governance posture mapping
-- Quota enforcement
-- Execution approval workflow
+The Marketplace version and syntax are software packaging concerns. Production must separately prove OAuth, tool discovery, plan match, required approvals, governed execute, and audit evidence. Do not claim `ACTIVATED ALL` from an install or a simulated response.
 
-### 5. Hermes Controlled Executor
-- Zero Trust execution flow
-- planHash lock verification
-- Conformance gate validation
-- Credential lease with fingerprint (no raw secrets)
-- Evidence capture for every execution
-
-## 💡 Quick Start
-
-### Step 1: Authenticate
-Install the plugin and authenticate with your DSG Control Plane deployment:
-```
-GET /api/agent/status
-```
-
-### Step 2: Evaluate a Policy
-Use the primary skill to evaluate a governance decision:
-```
-POST /api/dsg/v1/gates/evaluate
-```
-
-Request body:
-```json
-{
-  "agent_id": "your-agent-id",
-  "action": "execute_payment_transfer",
-  "context": {
-    "amount": 1000,
-    "recipient": "verified_address",
-    "riskLevel": "medium"
-  }
-}
-```
-
-Response:
-```json
-{
-  "decision": "PASS",
-  "proofHash": "sha256:...",
-  "policyVersion": "1.0.0",
-  "inputHash": "sha256:...",
-  "constraintSetHash": "sha256:...",
-  "evidence": { ... }
-}
-```
-
-### Step 3: Replay a Decision
-Verify an earlier decision was deterministic:
-```
-POST /api/dsg/v1/proofs/prove
-```
-
-Request:
-```json
-{
-  "proofHash": "sha256:...",
-  "policyVersion": "1.0.0",
-  "inputHash": "sha256:...",
-  "constraintSetHash": "sha256:..."
-}
-```
-
-### Step 4: Get Compliance Evidence
-Export audit-ready evidence:
-```
-GET /api/dsg/v1/policies/manifest
-```
-
-## 📊 Pricing
-
-| Tier | Price | Features |
-|------|-------|----------|
-| **Free** | $0/month | 50 gate evaluations/month |
-| **Pro** | $99/month | 5,000 gate evaluations/month + compliance bundle |
-| **Enterprise** | $499/month | Unlimited evals + SLA + Hermes executor |
-
-## 🔗 API Reference
-
-### Core Endpoints
-
-**GET /api/dsg/v1/policies/manifest**
-- Returns current policy manifest and constraint set
-- Public endpoint, no auth required
-
-**POST /api/dsg/v1/gates/evaluate**
-- Evaluate an action against current policy
-- Requires Bearer token (agent API key)
-- Returns decision with proof
-
-**POST /api/dsg/v1/proofs/prove**
-- Verify replay of a previous decision
-- Requires Bearer token
-- Returns proof validation result
-
-**POST /api/dsg/v1/governance/escalate**
-- Escalate a decision for manual review
-- Requires Bearer token
-- Returns escalation ticket ID
-
-**GET /api/health**
-- Service health check
-- Public endpoint
-
-**GET /api/agent/status**
-- Agent deployment status
-- Includes DB connectivity check
-- Public endpoint
-
-## 📚 Documentation
-
-- **[Skills Directory](./skills/)** — Detailed skill documentation
-- **[Plugin Manifest](./plugin.json)** — Schema v1 configuration
-- **[Marketplace Catalog](./marketplace.json)** — Auto-routing configuration
-- **[Production Deployment](../docs/RUNBOOK_DEPLOY.md)** — Deployment checklist
-
-## 🛠 Skills Included
-
-### `dsg-action-layer-ged`
-Primary governance action layer. Covers the full flow: plan → gate → approve → execute → commit → replay
-
-**Files:**
-- `gate-evaluate.md` — Gate evaluation specification
-- `replay-governance.md` — Replay field requirements
-- `compliance-evidence.md` — Evidence levels and claims
-- `runtime-governance.md` — Lifecycle and quota
-- `hermes-executor.md` — Zero Trust executor flow
-
-### `dsg-github-marketplace-action-controller`
-Package DSG gates as GitHub Marketplace Actions with deterministic GO/NO-GO validation
-
-**Files:**
-- `action-yml-spec.md` — action.yml DSG conventions
-- `go-no-go-logic.md` — Deterministic decision tree
-
-### `dsg-multi-governance-orchestrator`
-Multi-source governance for M1/M2 milestones and enterprise cutover
-
-**Files:**
-- `m1-m2-checklist.md` — Production cutover gate
-- `architecture-template.md` — DSG ONE 5-layer diagram
-
-## ⚙️ Configuration
-
-Set these environment variables on your DSG Control Plane deployment:
-
-```bash
-# Required
-NEXT_PUBLIC_DSG_CONTROL_PLANE_URL=https://your-deployment.vercel.app
-NEXT_PUBLIC_API_KEY_BASE_URL=https://your-deployment.vercel.app/api
-
-# Optional
-STRIPE_API_KEY=sk_live_...
-SUPABASE_SERVICE_ROLE_KEY=... # Server-side only
-
-# Quota defaults
-FREE_TIER_MONTHLY_EVALUATIONS=50
-PRO_TIER_MONTHLY_EVALUATIONS=5000
-```
-
-## 🔐 Security
-
-- All API calls require Bearer token (agent API key)
-- Sensitive values never logged or traced
-- Policy evaluation is deterministic and replay-verifiable
-- Compliance evidence is tamper-evident (hash-based)
-
-## 📧 Support
-
-- **GitHub Issues:** https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/issues
-- **Email:** t.dealer01@dsg.pics
-- **Docs:** https://tdealer01-crypto-dsg-control-plane.vercel.app/docs
-
-## 📄 License
-
-MIT — See LICENSE file in repository
-
----
-
-**Version:** 1.0.0  
-**Last Updated:** 2026-08-14  
-**Status:** Production-Connected
+**References:** [Official Claude Code plugin manifest](https://code.claude.com/docs/en/plugins-reference), [MCP authentication](https://code.claude.com/docs/en/mcp), [repository](https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane).
