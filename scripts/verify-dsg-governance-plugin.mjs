@@ -23,7 +23,7 @@ assert.equal('skills' in rootManifest, false, 'Root legacy skills array must not
 assert.equal('pricing' in rootManifest, false, 'No unverified billing tiers in installation manifest');
 assert.equal('endpoints' in rootManifest, false, 'Do not package old REST endpoint claims');
 assert.equal('schemaVersion' in rootManifest, false, 'Unsupported manifest field');
-assert.equal(catalogEntry?.source, './dsg-governance');
+assert.equal(catalogEntry?.source, './plugins/dsg-governance');
 assert.equal(catalogEntry?.version, scopedManifest.version);
 assert.equal(scopedManifest.version, rootManifest.version);
 assert.deepEqual(Object.keys(scopedMcp.mcpServers), ['dsg-spacetime']);
