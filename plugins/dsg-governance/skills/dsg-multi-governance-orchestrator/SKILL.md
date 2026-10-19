@@ -9,6 +9,8 @@ The shared backend is `https://aws.dsg.pics/mcp`. This plugin is a client and sk
 
 ## Orchestrate a real request
 
+Before composing or executing any plan, resolve `principal_binding.agent_principal` from the live `spacetime_control_surface` with status `VERIFIED_OAUTH_SUBJECT`. Use it unchanged for the plan participant and execution agent. Missing or mismatched binding is `AUTH_PRINCIPAL_UNVERIFIED` / `OAUTH_AGENT_PRINCIPAL_MISMATCH`, not a policy failure or an invitation to bypass OAuth.
+
 1. Translate the user goal to a minimal ordered set of capabilities and a plan. Read the current MCP tool inventory; no tools are assumed present from old documentation.
 2. Reuse valid approved plan bindings; request a new approval only for actions that the runtime identifies as not covered. Do not broaden owner approval to unrequested actions.
 3. Perform independent steps in parallel only when the runtime allows it; carry plan/action references across dependencies.
