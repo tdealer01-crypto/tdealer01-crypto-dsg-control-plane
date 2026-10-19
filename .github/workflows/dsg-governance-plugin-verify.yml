@@ -40,7 +40,7 @@ jobs:
       - name: Validate marketplace packaging (unrelated root warnings are non-blocking)
         run: claude plugin validate .
       - name: Add local checkout marketplace
-        run: claude plugin marketplace add .
+        run: claude plugin marketplace add ./
       - name: Install scoped DSG Governance plugin
         run: claude plugin install dsg-governance@dsg-plugins
       - name: Inspect installed plugin components
