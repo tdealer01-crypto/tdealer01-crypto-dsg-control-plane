@@ -43,7 +43,15 @@ jobs:
         run: claude plugin marketplace add ./
       - name: Install scoped DSG Governance plugin
         run: claude plugin install dsg-governance@dsg-plugins
-      - name: Inspect installed plugin components
+      - name: Inspect and assert exact installed component inventory
         run: |
+          set -euo pipefail
           claude plugin list
-          claude plugin details dsg-governance
+          details="$(claude plugin details dsg-governance)"
+          printf '%s\n' "$details"
+          printf '%s\n' "$details" | grep -Eq 'Skills \(3\)'
+          printf '%s\n' "$details" | grep -Eq 'MCP servers \(1\)[[:space:]]+dsg-spacetime'
+          if printf '%s\n' "$details" | grep -Eq 'Skills \(25\)|MCP servers \(10\)'; then
+            echo 'FAIL: installed package accidentally includes legacy monorepo components' >&2
+            exit 1
+          fi
