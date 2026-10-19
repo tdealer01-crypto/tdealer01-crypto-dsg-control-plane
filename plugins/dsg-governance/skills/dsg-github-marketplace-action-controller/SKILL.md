@@ -9,7 +9,7 @@ This skill covers packaging client-side GitHub Actions around **the existing DSG
 
 ## Workflow
 
-For governed Compose/Execute, obtain the authenticated principal from the live `spacetime_control_surface.principal_binding` (`VERIFIED_OAUTH_SUBJECT`) and carry that value unchanged. Never invent a caller principal or bypass `OAUTH_AGENT_PRINCIPAL_MISMATCH`.
+For governed Compose/Execute, obtain the authenticated principal from the live `spacetime_control_surface.principal_binding.agent_principal` (`VERIFIED_OAUTH_SUBJECT`) and carry that value unchanged. Never invent a caller principal or bypass `OAUTH_AGENT_PRINCIPAL_MISMATCH`.
 
 1. Inspect the target repository and existing `action.yml`, entrypoint and CI. Do not infer that examples in archived documentation are deployed.
 2. Discover the current remote MCP tools and identify the exact route and payload contract needed by the Action.
