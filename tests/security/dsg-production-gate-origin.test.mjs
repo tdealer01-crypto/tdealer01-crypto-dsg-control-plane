@@ -65,11 +65,11 @@ describe('DSG production gate origin and credential safety', () => {
     const preflight = flow.indexOf('Validate active revenue endpoint before requesting GitHub OIDC token');
     const token = flow.indexOf('- name: Request GitHub OIDC token');
     assert.ok(preflight > 0 && token > preflight);
-    assert.match(flow, /AUTOPILOT_URL: \\${\\{ vars\\.DSG_REVENUE_AUTOPILOT_URL \\}\\}/);
-    assert.match(flow, /AUTOPILOT_TRUSTED_ORIGIN: \\${\\{ vars\\.DSG_TRUSTED_REVENUE_ORIGIN \\}\\}/);
-    assert.match(flow, /url\\.pathname !== '\/api\/cron\/revenue-autopilot'/);
-    assert.doesNotMatch(flow, /AUTOPILOT_URL:\\s*https:\/\/tdealer01-crypto-dsg-control-plane/);
-    assert.doesNotMatch(flow, /--retry-all-errors/);
+    assert.ok(flow.includes('AUTOPILOT_URL: ${{ vars.DSG_REVENUE_AUTOPILOT_URL }}'));
+    assert.ok(flow.includes('AUTOPILOT_TRUSTED_ORIGIN: ${{ vars.DSG_TRUSTED_REVENUE_ORIGIN }}'));
+    assert.ok(flow.includes("url.pathname !== '/api/cron/revenue-autopilot'"));
+    assert.ok(!flow.includes('AUTOPILOT_URL: https://tdealer01-crypto-dsg-control-plane'));
+    assert.ok(!flow.includes('--retry-all-errors'));
   });
 
   it('workflow validates exact pinned origin before injecting DSG_API_KEY', () => {
