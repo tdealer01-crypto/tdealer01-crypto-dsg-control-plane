@@ -203,6 +203,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Validate pinned active DSG gate origin before loading credentials
+        env:
+          DSG_CONTROL_PLANE_URL: ${{ secrets.DSG_CONTROL_PLANE_URL }}
+          DSG_TRUSTED_GATE_ORIGIN: ${{ vars.DSG_TRUSTED_GATE_ORIGIN }}
+        run: |
+          node --input-type=module <<'NODE'
+          const value = process.env.DSG_CONTROL_PLANE_URL;
+          const trusted = process.env.DSG_TRUSTED_GATE_ORIGIN;
+          if (!value || !trusted) throw Error('BLOCK: DSG gate URL and pinned trusted origin are required');
+          const url = new URL(value), pin = new URL(trusted);
+          const retired = new Set(['tdealer01-crypto-dsg-control-plane.onrender.com', 'tdealer01-crypto-dsg-control-plane.vercel.app']);
+          for (const item of [url, pin]) {
+            if (item.protocol !== 'https:' || item.username || item.password ||
+                item.pathname !== '/' || item.search || item.hash ||
+                retired.has(item.hostname.toLowerCase())) throw Error('BLOCK: invalid or retired DSG gate origin');
+          }
+          if (url.origin !== pin.origin) throw Error('BLOCK: active DSG gate origin differs from pinned trusted origin');
+          console.log('DSG_GATE_ORIGIN_PREFLIGHT=PASS');
+          NODE
+
       - name: Require real DSG credential
         env:
           DSG_API_KEY: ${{ secrets.DSG_API_KEY }}
@@ -233,6 +253,7 @@ jobs:
         env:
           DSG_API_KEY: ${{ secrets.DSG_API_KEY }}
           DSG_CONTROL_PLANE_URL: ${{ secrets.DSG_CONTROL_PLANE_URL }}
+          DSG_TRUSTED_GATE_ORIGIN: ${{ vars.DSG_TRUSTED_GATE_ORIGIN }}
         shell: bash
         run: |
           set -o pipefail
