@@ -6,12 +6,15 @@ license: MIT
 description: >-
   Deploy and manage DSG ONE / ProofGate control plane infrastructure on AWS
   using CDK. Automate the complete deployment pipeline: CloudFormation stack
-  creation, resource validation, Secrets Manager inte
+  creation, resource validation, and Secrets Manager configuration.
+  Historical runbook for source inspection; AWS mutation requires an approved plan.
 ---
 
 # DSG Infrastructure Deployer
 
-Automated deployment and lifecycle management of **DSG ONE / ProofGate Control Plane** infrastructure on AWS.
+Legacy AWS CDK deployment reference for **DSG ONE / ProofGate** infrastructure. This document is **not proof of a deployed or healthy control plane**, and it does not by itself authorize an AWS change.
+
+> **Critical evidence and cost boundary (2026-10-26):** This skill is in `repository-skills/` on the PR #1247 branch, not among the three advertised marketplace skills. All stack names, topology, costs, resource counts, endpoints, credentials and success criteria below are historical examples/verification *targets*, not confirmed live AWS state. **Do not execute mutation or deletion commands from this guide without verifying the real AWS identity, region, stack, current CDK code, diff, cost impact, owner-approved bounded plan and audit capture.** Reuse an existing approved plan's scope without redundant approval; reject actions outside that scope. Read-only discovery can proceed without mutation authority. Prefer the current DSG AWS Spacetime runbook/provider over retired standalone control-plane deployment references.
 
 ***
 
@@ -37,7 +40,7 @@ Automated deployment and lifecycle management of **DSG ONE / ProofGate Control P
 ```
 1. CHECK ENVIRONMENT
    ✓ AWS credentials available (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
-   ✓ AWS region configured (AWS_REGION, default: us-east-1)
+   ✓ AWS region explicitly chosen and verified against the approved plan (do not assume us-east-1)
    ✓ AWS account ID known (AWS_ACCOUNT_ID)
    ✓ CDK CLI available (npm exec cdk)
    ✓ Node.js and npm installed
@@ -66,17 +69,15 @@ Automated deployment and lifecycle management of **DSG ONE / ProofGate Control P
 cd infra/cdk
 npx cdk synth --require-approval=never
 # Review generated CloudFormation template
-# Expected output: DSGOneStack-{env}.template.json (~80KB)
+# Inspect actual generated templates; file name and size are not guaranteed.
 ```
 
 ### Phase 3: Deploy infrastructure
 
 ```bash
 cd infra/cdk
-npx cdk deploy --require-approval=never
-# Expected duration: 15-45 minutes for first deployment
-# CloudFormation creates ~75 resources
-# Outputs: ALB DNS, ECS cluster ARN, RDS endpoint (if applicable)
+npx cdk deploy --require-approval=any-change  # ONLY after an approved bounded DSG plan and reviewed diff
+# Duration, resource count and outputs depend on the actual stack; do not assume them.
 ```
 
 ### Phase 4: Post-deployment verification
@@ -84,7 +85,7 @@ npx cdk deploy --require-approval=never
 ```
 1. VERIFY CLOUDFORMATION
    ✓ Stack status: CREATE_COMPLETE or UPDATE_COMPLETE
-   ✓ Resource count: 75 resources created
+   ✓ Resource count matches the actual reviewed CloudFormation template (no fixed target)
    ✓ No DELETE_FAILED or CREATE_FAILED resources
    ✓ Stack outputs available (ALB DNS, RDS endpoint, etc.)
 
@@ -215,14 +216,15 @@ Examples:
 
 ```bash
 # 1. Verify environment
-echo $AWS_REGION              # Should be us-east-1
-echo $AWS_ACCOUNT_ID          # Should be 121205961822
+echo "${AWS_REGION:?Set the approved AWS region}"
+aws sts get-caller-identity --query '{Account:Account,Arn:Arn}' --output json
+# Compare returned identity with the approved plan. Never assume an account ID.
 
 # 2. Synth
 cd infra/cdk && npx cdk synth --require-approval=never
 
 # 3. Deploy
-npx cdk deploy --require-approval=never
+npx cdk deploy --require-approval=any-change  # ONLY after an approved bounded DSG plan and reviewed diff
 
 # 4. Verify
 curl https://<ALB_DNS>/api/health
@@ -241,7 +243,7 @@ cd infra/cdk && npx cdk synth --require-approval=never
 # Review the diff (CDK shows what will be added/modified/removed)
 
 # Deploy targeted stack
-npx cdk deploy DSGOneStack-dev --require-approval=never
+npx cdk deploy DSGOneStack-dev --require-approval=any-change  # Approved plan + exact stack only
 
 # Verify changes
 curl https://<ALB_DNS>/api/agent/status
@@ -365,7 +367,7 @@ aws cloudformation describe-stack-events \
 # Option 3: If truly stuck, increment version
 # Edit infra/cdk/bin/dsg-one.ts
 # Change stackName from dsg-one-dev-v2 to dsg-one-dev-v3
-# Run: npx cdk deploy --require-approval=never
+# Only after approved plan + reviewed diff: npx cdk deploy --require-approval=any-change
 ```
 
 ### ALB target group reports "Unhealthy"
@@ -398,8 +400,11 @@ aws logs tail /ecs/dsg-control-plane --follow
 
 ```bash
 # Option 1: Empty buckets before deletion
-aws s3 rm s3://dsg-cloudtrail-bucket-<account> --recursive
-aws s3 rm s3://dsg-evidence-bucket-<account> --recursive
+# Destructive bucket emptying is NOT a default recovery operation.
+# Inventory objects and retention/Object Lock/CloudTrail obligations first:
+aws s3 ls s3://dsg-cloudtrail-bucket-<approved-account>/ --recursive
+aws s3 ls s3://dsg-evidence-bucket-<approved-account>/ --recursive
+# Deletion requires a separately approved, exact-scope retention-aware plan.
 
 # Option 2: Disable auto-deletion in CDK
 # Edit infra/cdk/lib/constructs/s3.ts
@@ -407,7 +412,8 @@ aws s3 rm s3://dsg-evidence-bucket-<account> --recursive
 // → removalPolicy: cdk.RemovalPolicy.RETAIN,
 
 # Then retry stack deletion
-aws cloudformation delete-stack --stack-name dsg-one-dev-v2
+aws cloudformation describe-stacks --stack-name dsg-one-dev-v2
+# Deletion is not automated here; review dependencies and obtain exact-scope approval.
 ```
 
 ### DynamoDB table naming conflicts
@@ -425,17 +431,17 @@ aws cloudformation delete-stack --stack-name dsg-one-dev-v2
 // CDK auto-generates unique names without explicit tableName
 
 # Then deploy new version (dsg-one-dev-v3)
-npx cdk deploy --require-approval=never
+npx cdk deploy --require-approval=any-change  # ONLY after an approved bounded DSG plan and reviewed diff
 ```
 
 ***
 
 ## Deployment success criteria
 
-✅ **Deployment is ready when:**
+**Deployment acceptance checklist (not a statement that any checks passed):**
 
 * [ ] CloudFormation stack status: `CREATE_COMPLETE`
-* [ ] 75+ resources created successfully
+* [ ] CloudFormation resource inventory matches the approved synthesized template
 * [ ] ECS cluster running ≥1 task
 * [ ] ALB health checks passing
 * [ ] `GET /api/health` returns 200 OK
@@ -446,7 +452,7 @@ npx cdk deploy --require-approval=never
 * [ ] CloudWatch metrics being published
 * [ ] No DLQ messages or error logs
 
-✅ **Production readiness when:**
+**Additional production-readiness checklist (requires independently observed evidence):**
 
 * [ ] All dev success criteria met
 * [ ] Compliance evidence pack generated
@@ -462,7 +468,7 @@ npx cdk deploy --require-approval=never
 
 ## Next steps
 
-1. **Complete CDK deployment** (wait 30-45 minutes for initial stack)
+1. **Review the approved stack plan and real CDK diff; execute deployment only under the authorized scope**
 2. **Verify infrastructure health** (run health checks and diagnostics)
 3. **Capture AWS outputs** (document resources created)
 4. **Build and deploy application** (Docker → ECR → ECS)
