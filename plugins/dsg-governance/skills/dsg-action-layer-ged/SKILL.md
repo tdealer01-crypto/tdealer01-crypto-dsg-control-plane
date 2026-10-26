@@ -48,7 +48,7 @@ UNSUPPORTED and UNVERIFIED are never PASS. A browser hash, signature, or local r
 
 The DSG OS / Browser is the user-facing workspace, Adapter Builder, and local verification surface. DSG Spacetime is the execution and governance control plane. A local browser verifier must not grant execution permission or substitute for Spacetime policy and approval.
 
-See the repository architecture contract at docs/architecture/dsg-os-spacetime-boundary.md.
+See the bundled architecture contract at ../../references/dsg-os-spacetime-boundary.md.
 
 ## Safety and truth rules
 
