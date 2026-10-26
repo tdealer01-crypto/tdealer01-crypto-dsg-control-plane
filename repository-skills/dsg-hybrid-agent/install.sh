@@ -5,7 +5,7 @@
 set -euo pipefail
 
 SKILL_NAME="dsg-hybrid-agent"
-SKILL_DIR="skills/$SKILL_NAME"
+SKILL_DIR="repository-skills/$SKILL_NAME"
 PROJECT_ROOT="$(pwd)"
 
 echo "=== Installing DSG Hybrid Agent Skill ==="
