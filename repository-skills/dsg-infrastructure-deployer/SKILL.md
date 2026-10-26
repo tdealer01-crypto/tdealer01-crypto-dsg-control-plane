@@ -423,7 +423,8 @@ aws cloudformation describe-stacks --stack-name DSGOneStack-dev
 // CDK auto-generates unique names without explicit tableName
 
 # Deploy only the reviewed stack after checking existing table names and ownership
-npx cdk deploy --require-approval=any-change  # ONLY after an approved bounded DSG plan and reviewed diff
+npx cdk diff DSGOneStack-dev
+npx cdk deploy DSGOneStack-dev --require-approval=any-change  # Approved stack only; manual confirmation
 ```
 
 ***
