@@ -60,6 +60,18 @@ describe('DSG production gate origin and credential safety', () => {
     assert.match(script, /redirect:\s*'error'/);
     assert.doesNotMatch(script, /process\.env\.DSG_CONTROL_PLANE_URL\?\.trim\(\)\s*\|\|/);
   });
+  it('revenue OIDC dispatch has an independent pre-token active origin gate', () => {
+    const flow = readFileSync(new URL('../../.github/workflows/revenue-autopilot.yml', import.meta.url), 'utf8');
+    const preflight = flow.indexOf('Validate active revenue endpoint before requesting GitHub OIDC token');
+    const token = flow.indexOf('- name: Request GitHub OIDC token');
+    assert.ok(preflight > 0 && token > preflight);
+    assert.match(flow, /AUTOPILOT_URL: \\${\\{ vars\\.DSG_REVENUE_AUTOPILOT_URL \\}\\}/);
+    assert.match(flow, /AUTOPILOT_TRUSTED_ORIGIN: \\${\\{ vars\\.DSG_TRUSTED_REVENUE_ORIGIN \\}\\}/);
+    assert.match(flow, /url\\.pathname !== '\/api\/cron\/revenue-autopilot'/);
+    assert.doesNotMatch(flow, /AUTOPILOT_URL:\\s*https:\/\/tdealer01-crypto-dsg-control-plane/);
+    assert.doesNotMatch(flow, /--retry-all-errors/);
+  });
+
   it('workflow validates exact pinned origin before injecting DSG_API_KEY', () => {
     const workflow = readFileSync(new URL('../../.github/workflows/verified-software-e2e.yml', import.meta.url), 'utf8');
     const preflight = workflow.indexOf('Validate pinned active DSG gate origin before loading credentials');
