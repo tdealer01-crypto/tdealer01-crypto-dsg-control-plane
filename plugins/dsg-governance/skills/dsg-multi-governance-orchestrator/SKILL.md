@@ -30,7 +30,7 @@ Use this skill to organize governance requirements across systems and milestones
 - Spacetime owns plan/route, entitlement, policy, approval, payload binding, and the deterministic execution gate.
 - The browser verifier reports integrity checks; it does not grant permission or establish provider-side execution.
 
-See docs/architecture/dsg-os-spacetime-boundary.md for the architecture contract.
+See ../../references/dsg-os-spacetime-boundary.md for the bundled architecture contract.
 
 ## Truth rules
 
