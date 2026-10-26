@@ -67,7 +67,8 @@ Legacy AWS CDK deployment reference for **DSG ONE / ProofGate** infrastructure. 
 
 ```bash
 cd infra/cdk
-npx cdk synth --require-approval=never
+npx cdk list
+npx cdk synth DSGOneStack-dev  # Example target; verify actual environment before running
 # Review generated CloudFormation template
 # Inspect actual generated templates; file name and size are not guaranteed.
 ```
@@ -76,8 +77,11 @@ npx cdk synth --require-approval=never
 
 ```bash
 cd infra/cdk
-npx cdk deploy --require-approval=any-change  # ONLY after an approved bounded DSG plan and reviewed diff
-# Duration, resource count and outputs depend on the actual stack; do not assume them.
+npx cdk list
+npx cdk diff DSGOneStack-dev  # Example only; select the exact approved stack
+npx cdk deploy DSGOneStack-dev --require-approval=any-change  # Manual-approval path
+# A DSG executor with a verified signed grant may use its plan-governed non-interactive dispatch instead.
+# Do not deploy every stack implicitly. Counts and outputs require actual observations.
 ```
 
 ### Phase 4: Post-deployment verification
@@ -188,25 +192,15 @@ npx cdk deploy --require-approval=any-change  # ONLY after an approved bounded D
 
 ## Stack naming and versioning
 
-DSG uses a versioned stack naming convention to avoid CloudFormation conflicts:
+The checked-in [CDK entrypoint](../../infra/cdk/bin/dsg-one.ts) defines **two stack IDs** per environment, not a versioned `dsg-one-*-v2` convention:
 
 ```
-Pattern:  dsg-one-{environment}-v{number}
-Examples:
-  dsg-one-dev-v1      (old, may be stuck in DELETE_FAILED)
-  dsg-one-dev-v2      (current)
-  dsg-one-dev-v3      (next version if v2 conflicts)
-  
-  dsg-one-staging-v1
-  dsg-one-prod-v1
+DSGOneStack-dev             BedrockAgentCoreStack-dev
+DSGOneStack-staging         BedrockAgentCoreStack-staging
+DSGOneStack-prod            BedrockAgentCoreStack-prod
 ```
 
-**Why versioning?**
-
-* CloudFormation can get stuck in `DELETE_FAILED` if the old stack can't clean up resources
-* Incrementing version allows immediate redeployment without waiting
-* Old stacks can be manually cleaned up later
-* Resource naming also uses `-v{N}` suffix (e.g., `dsg-policy-table-v2`)
+These are source-defined stack IDs, **not** proof of live AWS stacks. Run `npx cdk list` with the target environment, and inspect the actual CloudFormation stacks in the authorized account/region. Do not rename stacks to bypass failed updates; duplicate infrastructure may incur charges and harm evidence retention. Recovery requires a reviewed plan.
 
 ***
 
@@ -221,10 +215,11 @@ aws sts get-caller-identity --query '{Account:Account,Arn:Arn}' --output json
 # Compare returned identity with the approved plan. Never assume an account ID.
 
 # 2. Synth
-cd infra/cdk && npx cdk synth --require-approval=never
+cd infra/cdk && npx cdk synth DSGOneStack-dev
 
 # 3. Deploy
-npx cdk deploy --require-approval=any-change  # ONLY after an approved bounded DSG plan and reviewed diff
+npx cdk diff DSGOneStack-dev
+npx cdk deploy DSGOneStack-dev --require-approval=any-change  # Approved plan + reviewed diff
 
 # 4. Verify
 curl https://<ALB_DNS>/api/health
@@ -238,7 +233,7 @@ npm run go:no-go https://<ALB_DNS>
 # e.g., update infra/cdk/lib/constructs/ecs.ts
 
 # Synth to see what will change
-cd infra/cdk && npx cdk synth --require-approval=never
+cd infra/cdk && npx cdk synth DSGOneStack-dev
 
 # Review the diff (CDK shows what will be added/modified/removed)
 
@@ -253,21 +248,21 @@ curl https://<ALB_DNS>/api/agent/status
 
 ```bash
 # Check CloudFormation stack status
-aws cloudformation describe-stacks --stack-name dsg-one-dev-v2 --region us-east-1
+aws cloudformation describe-stacks --stack-name DSGOneStack-dev --region "${AWS_REGION:?Set approved AWS region}"
 
 # If stack is in CREATE_FAILED or DELETE_FAILED:
-# Option 1: Rename stack and redeploy (dsg-one-dev-v3)
-# Option 2: Manually delete via AWS Console → CloudFormation → Delete Stack
+# Diagnose via stack events; do not automatically rename or delete a stack.
+# Use the approved exact-scope recovery plan if replacement is required.
 
 # Check specific resource failure
 aws cloudformation describe-stack-resources \
-  --stack-name dsg-one-dev-v2 \
+  --stack-name DSGOneStack-dev \
   --query 'StackResources[?ResourceStatus==`CREATE_FAILED`]' \
-  --region us-east-1
+  --region "${AWS_REGION:?Set approved AWS region}"
 
 # Review CDK build errors
-cd infra/cdk && npx cdk synth --require-approval=never
-npm run typecheck
+cd infra/cdk && npx cdk synth DSGOneStack-dev
+npm run build  # infra/cdk/package.json defines build, not typecheck
 ```
 
 ***
@@ -276,18 +271,17 @@ npm run typecheck
 
 ### 1. Capture infrastructure outputs
 
-```bash
-# Use the provided capture script
-./scripts/capture-aws-outputs.sh \
-  --stack-name dsg-one-dev-v2 \
-  --region us-east-1 \
-  --environment dev
+The earlier `scripts/capture-aws-outputs.sh` example refers to a file **not present** in the checked repository. Use the AWS API directly:
 
-# Generates:
-# - docs/infrastructure/DSG_AWS_Infrastructure_Outputs.md
-# - docs/infrastructure/dsg-aws-outputs.json
-# - docs/infrastructure/dsg-aws-outputs.env (for reference only, never commit)
+```bash
+aws cloudformation describe-stacks \
+  --stack-name DSGOneStack-dev \
+  --region "${AWS_REGION:?Set approved AWS region}" \
+  --query 'Stacks[0].{Status:StackStatus,Outputs:Outputs}' \
+  --output json
 ```
+
+Store reviewed, non-sensitive outputs in the approved evidence location; do not check credentials or secrets into Git.
 
 ### 2. Build and deploy application
 
@@ -305,7 +299,7 @@ docker push <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/dsg-api:latest
 
 # Update ECS task definition and service
 aws ecs update-service \
-  --cluster dsg-one-dev-v2 \
+  --cluster <verified-ecs-cluster> \
   --service dsg-service \
   --force-new-deployment
 ```
@@ -360,14 +354,12 @@ ps aux | grep cdk
 
 # Option 2: Check stack events for specific resource
 aws cloudformation describe-stack-events \
-  --stack-name dsg-one-dev-v2 \
+  --stack-name DSGOneStack-dev \
   --query 'StackEvents[0:10]' \
   --region us-east-1
 
-# Option 3: If truly stuck, increment version
-# Edit infra/cdk/bin/dsg-one.ts
-# Change stackName from dsg-one-dev-v2 to dsg-one-dev-v3
-# Only after approved plan + reviewed diff: npx cdk deploy --require-approval=any-change
+# If a new stack is actually necessary, verify the resulting diff and approve a recovery plan.
+# Never increment a stack version just to bypass a failure.
 ```
 
 ### ALB target group reports "Unhealthy"
@@ -379,7 +371,7 @@ aws cloudformation describe-stack-events \
 ```bash
 # Check ECS task logs
 aws ecs describe-tasks \
-  --cluster dsg-one-dev-v2 \
+  --cluster <verified-ecs-cluster> \
   --tasks <TASK_ARN> \
   --region us-east-1
 
@@ -412,7 +404,7 @@ aws s3 ls s3://dsg-evidence-bucket-<approved-account>/ --recursive
 // → removalPolicy: cdk.RemovalPolicy.RETAIN,
 
 # Then retry stack deletion
-aws cloudformation describe-stacks --stack-name dsg-one-dev-v2
+aws cloudformation describe-stacks --stack-name DSGOneStack-dev
 # Deletion is not automated here; review dependencies and obtain exact-scope approval.
 ```
 
@@ -430,7 +422,7 @@ aws cloudformation describe-stacks --stack-name dsg-one-dev-v2
 # Or use auto-generated names (recommended)
 // CDK auto-generates unique names without explicit tableName
 
-# Then deploy new version (dsg-one-dev-v3)
+# Deploy only the reviewed stack after checking existing table names and ownership
 npx cdk deploy --require-approval=any-change  # ONLY after an approved bounded DSG plan and reviewed diff
 ```
 
