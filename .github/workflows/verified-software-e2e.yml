@@ -41,6 +41,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Fail-closed DSG production gate credential security regression
+        run: node --test tests/security/dsg-production-gate-origin.test.mjs
+
       - name: Prepare evidence directory
         run: mkdir -p .dsg-evidence
 
