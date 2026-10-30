@@ -6,13 +6,13 @@
   },
   "metadata": {
     "description": "Governance-first, evidence-first Claude Code plugins for working inside the DSG ONE / ProofGate Control Plane repository. Each plugin encodes the repo's own operating rules: truth-boundary claim policy, verification ladder, API route and security conventions, and the mandatory PR body format.",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "pluginRoot": "./plugins"
   },
   "plugins": [
     {
       "name": "proofgate-review",
-      "source": "./proofgate-review",
+      "source": "./plugins/proofgate-review",
       "description": "Governance-aware code review for the DSG Control Plane. Reviews changes against the repo's API route conventions, security conventions, truth boundary, runtime spine flow, deterministic gate boundary (UNSUPPORTED is never PASS), and Supabase/RLS rules. Includes a security-reviewer subagent.",
       "version": "1.0.0",
       "author": {
@@ -30,7 +30,7 @@
     },
     {
       "name": "dsg-verify",
-      "source": "./dsg-verify",
+      "source": "./plugins/dsg-verify",
       "description": "Slash commands that wrap the repo verification ladder: typecheck, targeted route verification, and a pre-PR check. Commands reference only npm scripts that exist in package.json.",
       "version": "1.0.0",
       "author": {
@@ -48,7 +48,7 @@
     },
     {
       "name": "evidence-guard",
-      "source": "./evidence-guard",
+      "source": "./plugins/evidence-guard",
       "description": "Enforces the repo truth boundary and claim policy. Helps classify statements as verified fact / inference / pending / blocked / not verified, and warns about forbidden readiness claims. Ships an advisory PostToolUse hook.",
       "version": "1.0.0",
       "author": {
@@ -66,7 +66,7 @@
     },
     {
       "name": "pr-body-helper",
-      "source": "./pr-body-helper",
+      "source": "./plugins/pr-body-helper",
       "description": "Generates a PR body that matches the repo's mandatory format (Goal / Files changed / Verification / Known limits / User-visible benefit / Next step), with honest 'Not run' handling for unrun checks.",
       "version": "1.0.0",
       "author": {
@@ -85,7 +85,7 @@
       "name": "dsg-governance",
       "source": "./plugins/dsg-governance",
       "description": "DSG Spacetime production MCP client: governed plan, discover, owner approval, execute, verify evidence. Uses the existing https://aws.dsg.pics/mcp backend; does not deploy another control plane.",
-      "version": "1.0.2",
+      "version": "1.1.0",
       "author": {
         "name": "DSG ONE / ProofGate"
       },
@@ -103,7 +103,7 @@
     },
     {
       "name": "compliance-ising-z3",
-      "source": "./compliance-ising-z3",
+      "source": "./plugins/compliance-ising-z3",
       "description": "Deterministic QUBO/Ising policy-optimization and Z3/SMT-style formal constraint verification, bundled locally from the tdealer01-crypto/Compliance-ising-z3-Deterministic- engine. Includes a z3-compliance-review skill, a compliance-agent subagent, and reference build/test scripts. Constraint checks are Z3/SMT-style in native Kotlin (no external Z3 process).",
       "version": "3.0.0",
       "author": {
@@ -119,26 +119,6 @@
         "deterministic",
         "simulation",
         "audit"
-      ]
-    },
-    {
-      "name": "dsg-verified-execution",
-      "source": "./dsg-verified-execution",
-      "description": "AI agent execution governance plugin for DSG ONE. Aligns agent intentions with approved plans, evaluates deterministic constraints, generates cryptographic proofs, and captures audit trails. Agent Plugins 1.0 compatible, works across Copilot, VS Code, Claude Code, and GitHub CLI.",
-      "version": "1.0.0",
-      "author": {
-        "name": "DSG ONE / ProofGate"
-      },
-      "category": "governance",
-      "keywords": [
-        "agent-plugins",
-        "ai-governance",
-        "verified-execution",
-        "proof-generation",
-        "audit-trail",
-        "deterministic-gate",
-        "plan-alignment",
-        "constraint-evaluation"
       ]
     }
   ]
