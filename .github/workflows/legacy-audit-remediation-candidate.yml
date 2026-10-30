@@ -5,6 +5,9 @@ on:
       - '.github/workflows/legacy-audit-remediation-candidate.yml'
       - 'package.json'
       - 'package-lock.json'
+concurrency:
+  group: legacy-audit-remediation-${{ github.event.pull_request.head.ref }}
+  cancel-in-progress: true
 permissions:
   contents: write
 jobs:
@@ -28,6 +31,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p audit-candidate-evidence
+          npm install --package-lock-only --ignore-scripts --no-fund
           npm ci --ignore-scripts
           set +e
           npm audit fix --package-lock-only --ignore-scripts --no-fund > audit-candidate-evidence/audit-fix.log 2>&1
