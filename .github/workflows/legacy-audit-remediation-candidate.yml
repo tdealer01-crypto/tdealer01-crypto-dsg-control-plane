@@ -32,6 +32,9 @@ jobs:
           set -euo pipefail
           mkdir -p audit-candidate-evidence
           npm install --package-lock-only --ignore-scripts --no-fund
+          # SECURITY CANDIDATE ONLY: test the latest published OpenAI SDK 5.x,
+          # do not use npm audit fix --force; commit only after full checks.
+          npm install openai@5 --package-lock-only --ignore-scripts --no-fund
           npm ci --ignore-scripts
           set +e
           npm audit fix --package-lock-only --ignore-scripts --no-fund > audit-candidate-evidence/audit-fix.log 2>&1
@@ -49,6 +52,7 @@ jobs:
           npm ci --ignore-scripts
           npm run typecheck
           npm run test:integration
+          npm run test:unit
       - name: Retain actual production audit verdict
         shell: bash
         run: |
@@ -59,7 +63,11 @@ jobs:
           set -e
           echo "production_audit_exit=$code" >> audit-candidate-evidence/result.txt
           node -e "let x=require('./audit-candidate-evidence/audit-after.json'); console.log('Vulnerability counts:',JSON.stringify(x.metadata?.vulnerabilities??{}))"
-          echo 'NOT VERIFIED: a nonzero production audit exit is still a security release blocker' >> audit-candidate-evidence/result.txt
+          if [ "$code" -ne 0 ]; then
+            echo 'BLOCKED: production npm audit not clean; candidate must not be committed' >> audit-candidate-evidence/result.txt
+            exit 1
+          fi
+          echo 'production_audit=PASS' >> audit-candidate-evidence/result.txt
       - name: Commit safe candidate to this PR branch only
         shell: bash
         run: |
