@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Governance-first, evidence-first Claude Code plugins for working inside the DSG ONE / ProofGate Control Plane repository. Each plugin encodes the repo's own operating rules: truth-boundary claim policy, verification ladder, API route and security conventions, and the mandatory PR body format.",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -85,7 +85,7 @@
       "name": "dsg-governance",
       "source": "./plugins/dsg-governance",
       "description": "DSG Spacetime production MCP client: governed plan, discover, owner approval, execute, verify evidence. Uses the existing https://aws.dsg.pics/mcp backend; does not deploy another control plane.",
-      "version": "1.0.2",
+      "version": "1.1.0",
       "author": {
         "name": "DSG ONE / ProofGate"
       },
