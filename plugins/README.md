@@ -37,6 +37,11 @@ or from a local checkout:
 
 You can also browse and install interactively with `/plugin`.
 
+`dsg-verified-execution` remains in `plugins/dsg-verified-execution/` as a
+separately packaged Agent Plugins format; its legacy `manifest.json` is not a
+Claude Code `.claude-plugin/plugin.json`. Do not advertise it as a Claude Code
+installation until the latter package is separately implemented and tested.
+
 ## Plugins
 
 | Plugin | What it gives you | Components |
