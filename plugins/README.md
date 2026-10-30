@@ -1,5 +1,7 @@
 # DSG Plugins — Claude Code Plugin Marketplace
 
+**Single public DSG Governance install:** `dsg-governance@dsg-plugins` v1.1.0 is the public distribution of the already-public client skills and existing AWS MCP configuration. The private `dsg-aws-plugins` entry is for authorized maintainers; do not install both versions in the same scope. Marketplace CI checks matching hashes against an inspected private canonical source snapshot, not future private changes or authenticated user E2E.
+
 `dsg-plugins` is a Claude Code plugin marketplace for working **inside** the
 DSG ONE / ProofGate Control Plane repository. Each plugin encodes the repo's
 own operating rules from `CLAUDE.md` and `AGENTS.md` so agents and humans stay
