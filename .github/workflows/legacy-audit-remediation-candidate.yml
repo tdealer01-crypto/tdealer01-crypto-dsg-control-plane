@@ -32,9 +32,9 @@ jobs:
           set -euo pipefail
           mkdir -p audit-candidate-evidence
           npm install --package-lock-only --ignore-scripts --no-fund
-          # SECURITY CANDIDATE ONLY: test the latest published OpenAI SDK 5.x,
+          # SECURITY CANDIDATE ONLY: test the latest published OpenAI SDK 7.x,
           # do not use npm audit fix --force; commit only after full checks.
-          npm install openai@5 --package-lock-only --ignore-scripts --no-fund
+          npm install openai@7 --package-lock-only --ignore-scripts --no-fund
           npm ci --ignore-scripts
           set +e
           npm audit fix --package-lock-only --ignore-scripts --no-fund > audit-candidate-evidence/audit-fix.log 2>&1
