@@ -35,6 +35,18 @@ jobs:
         run: node scripts/verify-claude-marketplace.mjs
       - name: Check offline manifest and scoped server contract
         run: node scripts/verify-dsg-governance-plugin.mjs
+      - name: Probe existing AWS MCP authentication boundary (read-only, no credentials)
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl --silent --show-error --max-time 15 \
+            -H 'Accept: application/json, text/event-stream' \
+            -o /dev/null -w '%{http_code}' 'https://aws.dsg.pics/mcp')"
+          printf 'Unauthenticated AWS MCP HTTP status: %s\n' "$code"
+          if [ "$code" != '401' ]; then
+            echo 'BLOCKED: expected OAuth authorization boundary (HTTP 401); no execution attempted' >&2
+            exit 1
+          fi
       - name: Install pinned Claude Code validator
         run: npm install -g @anthropic-ai/claude-code@2.1.300
       - name: Confirm CLI version
@@ -78,11 +90,18 @@ jobs:
             echo "run_attempt=${GITHUB_RUN_ATTEMPT}"
             echo "timestamp_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
             echo "claude_cli_version=$(claude --version)"
-            echo 'status=PASS (preceding validation/install steps exited successfully)'
+            echo 'status=PASS (preceding packaging validation/install steps exited successfully)'
+            echo 'aws_mcp_anonymous_probe=HTTP_401'
+            echo 'user_oauth=NOT_TESTED'
+            echo 'governed_execute=NOT_TESTED'
+            echo 'production_evidence=NOT_TESTED'
           } > marketplace-ci-evidence/result.txt
           claude plugin list > marketplace-ci-evidence/plugin-list.txt
           claude plugin details dsg-governance > marketplace-ci-evidence/dsg-governance-details.txt
-          sha256sum .claude-plugin/marketplace.json plugins/{proofgate-review,dsg-verify,evidence-guard,pr-body-helper,dsg-governance,compliance-ising-z3}/.claude-plugin/plugin.json > marketplace-ci-evidence/SHA256SUMS
+          sha256sum .claude-plugin/marketplace.json \
+            plugins/{proofgate-review,dsg-verify,evidence-guard,pr-body-helper,dsg-governance,compliance-ising-z3}/.claude-plugin/plugin.json \
+            plugins/dsg-governance/.mcp.json \
+            plugins/dsg-governance/skills/*/SKILL.md > marketplace-ci-evidence/SHA256SUMS
           sha256sum -c marketplace-ci-evidence/SHA256SUMS
 
       - name: Upload package installation evidence (not production proof)
