@@ -67,51 +67,7 @@ jobs:
           details="$(claude plugin details dsg-governance)"
           printf '%s\n' "$details"
           printf '%s\n' "$details" | grep -Fq 'Source: dsg-governance@dsg-plugins'
-          printf '%s\n' "$details" | grep -Eq '\(dsg-governance\) 1\.1\.0
-          if printf '%s\n' "$details" | grep -Eq 'Skills \(25\)|MCP servers \(10\)'; then
-            echo 'FAIL: installed package accidentally includes legacy monorepo components' >&2
-            exit 1
-          fi
-      - name: Install remaining Claude marketplace plugins in isolated runner
-        run: |
-          set -euo pipefail
-          for plugin in proofgate-review dsg-verify evidence-guard pr-body-helper compliance-ising-z3; do
-            claude plugin install "${plugin}@dsg-plugins"
-            claude plugin details "$plugin"
-          done
-
-      - name: Record installation E2E evidence and SHA-256 checksums
-        run: |
-          set -euo pipefail
-          mkdir -p marketplace-ci-evidence
-          {
-            echo 'scope=Claude Code marketplace local install only; NO production execution'
-            echo "commit=$(git rev-parse HEAD)"
-            echo "run_id=${GITHUB_RUN_ID}"
-            echo "run_attempt=${GITHUB_RUN_ATTEMPT}"
-            echo "timestamp_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-            echo "claude_cli_version=$(claude --version)"
-            echo 'status=PASS (preceding packaging validation/install steps exited successfully)'
-            echo 'aws_mcp_anonymous_probe=HTTP_401'
-            echo 'user_oauth=NOT_TESTED'
-            echo 'governed_execute=NOT_TESTED'
-            echo 'production_evidence=NOT_TESTED'
-          } > marketplace-ci-evidence/result.txt
-          claude plugin list > marketplace-ci-evidence/plugin-list.txt
-          claude plugin details dsg-governance > marketplace-ci-evidence/dsg-governance-details.txt
-          sha256sum .claude-plugin/marketplace.json \
-            plugins/{proofgate-review,dsg-verify,evidence-guard,pr-body-helper,dsg-governance,compliance-ising-z3}/.claude-plugin/plugin.json \
-            plugins/dsg-governance/.mcp.json \
-            plugins/dsg-governance/skills/*/SKILL.md > marketplace-ci-evidence/SHA256SUMS
-          sha256sum -c marketplace-ci-evidence/SHA256SUMS
-
-      - name: Upload package installation evidence (not production proof)
-        uses: actions/upload-artifact@v4
-        with:
-          name: claude-marketplace-install-${{ github.run_id }}-${{ github.run_attempt }}
-          path: marketplace-ci-evidence/
-          if-no-files-found: error
-
+          printf '%s\n' "$details" | grep -Fq '(dsg-governance) 1.1.0'
           printf '%s\n' "$details" | grep -Eq 'Skills \(3\)'
           printf '%s\n' "$details" | grep -Eq 'MCP servers \(1\)[[:space:]]+dsg-spacetime'
           if printf '%s\n' "$details" | grep -Eq 'Skills \(25\)|MCP servers \(10\)'; then
