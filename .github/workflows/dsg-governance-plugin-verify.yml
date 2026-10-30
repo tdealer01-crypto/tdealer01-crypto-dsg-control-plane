@@ -5,9 +5,10 @@ on:
       - '.claude-plugin/plugin.json'
       - '.claude-plugin/marketplace.json'
       - '.claude-plugin/README.md'
-      - 'plugins/dsg-governance/**'
+      - 'plugins/**'
       - 'skills/dsg-action-layer-ged/SKILL.md'
       - 'scripts/verify-dsg-governance-plugin.mjs'
+      - 'scripts/verify-claude-marketplace.mjs'
       - '.github/workflows/dsg-governance-plugin-verify.yml'
   push:
     branches:
@@ -16,9 +17,10 @@ on:
       - '.claude-plugin/plugin.json'
       - '.claude-plugin/marketplace.json'
       - '.claude-plugin/README.md'
-      - 'plugins/dsg-governance/**'
+      - 'plugins/**'
       - 'skills/dsg-action-layer-ged/SKILL.md'
       - 'scripts/verify-dsg-governance-plugin.mjs'
+      - 'scripts/verify-claude-marketplace.mjs'
       - '.github/workflows/dsg-governance-plugin-verify.yml'
 permissions:
   contents: read
@@ -29,6 +31,8 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
+      - name: Verify all Claude marketplace source paths and identities
+        run: node scripts/verify-claude-marketplace.mjs
       - name: Check offline manifest and scoped server contract
         run: node scripts/verify-dsg-governance-plugin.mjs
       - name: Install pinned Claude Code validator
@@ -37,7 +41,7 @@ jobs:
         run: claude --version
       - name: Validate scoped DSG Governance plugin
         run: claude plugin validate ./plugins/dsg-governance --strict
-      - name: Validate marketplace packaging (unrelated root warnings are non-blocking)
+      - name: Validate marketplace packaging with Claude CLI
         run: claude plugin validate .
       - name: Add local checkout marketplace
         run: claude plugin marketplace add ./
@@ -55,3 +59,35 @@ jobs:
             echo 'FAIL: installed package accidentally includes legacy monorepo components' >&2
             exit 1
           fi
+      - name: Install remaining Claude marketplace plugins in isolated runner
+        run: |
+          set -euo pipefail
+          for plugin in proofgate-review dsg-verify evidence-guard pr-body-helper compliance-ising-z3; do
+            claude plugin install "${plugin}@dsg-plugins"
+            claude plugin details "$plugin"
+          done
+
+      - name: Record installation E2E evidence and SHA-256 checksums
+        run: |
+          set -euo pipefail
+          mkdir -p marketplace-ci-evidence
+          {
+            echo 'scope=Claude Code marketplace local install only; NO production execution'
+            echo "commit=$(git rev-parse HEAD)"
+            echo "run_id=${GITHUB_RUN_ID}"
+            echo "run_attempt=${GITHUB_RUN_ATTEMPT}"
+            echo "timestamp_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "claude_cli_version=$(claude --version)"
+            echo 'status=PASS (preceding validation/install steps exited successfully)'
+          } > marketplace-ci-evidence/result.txt
+          claude plugin list > marketplace-ci-evidence/plugin-list.txt
+          claude plugin details dsg-governance > marketplace-ci-evidence/dsg-governance-details.txt
+          sha256sum .claude-plugin/marketplace.json plugins/{proofgate-review,dsg-verify,evidence-guard,pr-body-helper,dsg-governance,compliance-ising-z3}/.claude-plugin/plugin.json > marketplace-ci-evidence/SHA256SUMS
+          sha256sum -c marketplace-ci-evidence/SHA256SUMS
+
+      - name: Upload package installation evidence (not production proof)
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-marketplace-install-${{ github.run_id }}-${{ github.run_attempt }}
+          path: marketplace-ci-evidence/
+          if-no-files-found: error
