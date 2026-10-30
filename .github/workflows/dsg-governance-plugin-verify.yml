@@ -1,5 +1,6 @@
 name: DSG governance plugin validation
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - '.claude-plugin/plugin.json'
