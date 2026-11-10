@@ -6,6 +6,7 @@ const PRODUCT_URL = 'https://dsg.pics/';
 const MCP_URL = 'https://aws.dsg.pics/mcp';
 const OAUTH_METADATA_URL = 'https://aws.dsg.pics/.well-known/oauth-protected-resource';
 const DOCS_URL = 'https://dsg-3.gitbook.io/dsg-docs/';
+const PRODUCT_URL = 'https://dsg.pics/';
 
 const installPaths = [
   {

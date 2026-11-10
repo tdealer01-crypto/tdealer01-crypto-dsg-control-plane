@@ -2,7 +2,7 @@
 import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 
-const PROD_URL = 'https://tdealer01-crypto-dsg-control-plane.onrender.com';
+const RETIRED_HOSTS = new Set(['tdealer01-crypto-dsg-control-plane.onrender.com', 'tdealer01-crypto-dsg-control-plane.vercel.app']);
 const VALID_RISKS = new Set(['low', 'medium', 'high', 'critical']);
 const VALID_COMMANDS = new Set(['evaluate', 'prove']);
 
@@ -47,18 +47,23 @@ function token(prefix, bytes = 18) {
   return `${prefix}_${randomBytes(bytes).toString('base64url')}`;
 }
 
-function safeUrl(value) {
-  let url;
+function safeUrl(value, trustedOrigin) {
+  if (!value || !trustedOrigin) fail('Explicit DSG_CONTROL_PLANE_URL and DSG_TRUSTED_GATE_ORIGIN are required; retired/default gateways are denied');
+  let url, pinned;
   try {
     url = new URL(value);
+    pinned = new URL(trustedOrigin);
   } catch {
-    fail('DSG_CONTROL_PLANE_URL must be a valid URL');
+    fail('DSG gate URL or pinned origin is not a valid URL');
   }
-
-  const isLoopback = url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '::1';
-  if (url.protocol !== 'https:' && !isLoopback) {
-    fail('DSG_CONTROL_PLANE_URL must use HTTPS outside localhost');
+  for (const candidate of [url, pinned]) {
+    if (candidate.protocol !== 'https:' || candidate.username || candidate.password ||
+        candidate.pathname !== '/' || candidate.search || candidate.hash ||
+        RETIRED_HOSTS.has(candidate.hostname.toLowerCase())) {
+      fail('DSG gate origin must be explicit, HTTPS, credential-free and not retired');
+    }
   }
+  if (url.origin !== pinned.origin) fail('DSG gate origin differs from pinned trusted origin');
   return url.origin;
 }
 
@@ -72,12 +77,11 @@ function exitForGate(gateStatus) {
 const args = parseArgs(process.argv.slice(2));
 if (!VALID_COMMANDS.has(args.command)) fail('Command must be evaluate or prove');
 
+const baseUrl = safeUrl(process.env.DSG_CONTROL_PLANE_URL?.trim(), process.env.DSG_TRUSTED_GATE_ORIGIN?.trim());
 const apiKey = process.env.DSG_API_KEY?.trim();
 if (!apiKey) {
   fail('DSG_API_KEY is required. Create a key with gates:evaluate and/or proofs:prove scope.');
 }
-
-const baseUrl = safeUrl(process.env.DSG_CONTROL_PLANE_URL?.trim() || PROD_URL);
 const riskLevel = args.risk || 'medium';
 if (!VALID_RISKS.has(riskLevel)) fail('--risk must be low, medium, high, or critical');
 
@@ -127,6 +131,7 @@ try {
     },
     body: JSON.stringify(payload),
     signal: controller.signal,
+    redirect: 'error', // Never forward a production bearer token to a redirected origin.
   });
 
   const text = await response.text();
