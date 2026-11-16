@@ -1,5 +1,8 @@
 # DSG ONE
 
+> **Production connector notice (2026-10-19):** This repository includes historical DSG Control Plane application code and archived deployment material. The installable Claude Code plugin `dsg-governance@dsg-plugins` is a **client** whose only scoped runtime MCP server is the live AWS DSG Spacetime endpoint `https://aws.dsg.pics/mcp` (`plugins/dsg-governance/.mcp.json`). The prior Vercel/Azure Control Plane addresses elsewhere in this repository are not this plugin's production backend. Plugin package validation is separate from OAuth-authorized production execution; see [the plugin-specific installation and verification notes](plugins/dsg-governance/README.md). Do not use older README links as production activation proof.
+
+
 [![Listed on ClaudePluginHub](https://www.claudepluginhub.com/badge/tdealer01-crypto-dsg-governance)](https://www.claudepluginhub.com/plugins/tdealer01-crypto-dsg-governance?ref=badge)
 
 **Govern AI actions. Prove the result.**
@@ -12,14 +15,18 @@ DSG ONE is a governance and evidence layer for AI agents, MCP tools, APIs, brows
 4. Where is the evidence?
 
 **Website:** https://www.dsg.pics  
-**Control Plane:** https://dsg-control-plane.azurewebsites.net  
-**Market-Ready product surface:** https://dsg-cinema-production.nicetree-a005fe99.westus3.azurecontainerapps.io/dashboard
+**Current production execution backend (AWS):** https://aws.dsg.pics/mcp  
+**Claude Code plugin:** `dsg-governance@dsg-plugins` — [3 skills + 1 remote MCP server](plugins/dsg-governance/README.md)
+
+> Historical product guides below describe earlier Control Plane phases. References to prior Azure/Vercel services are archival, not the runtime endpoint for this plugin. The package's effective components come from `plugins/dsg-governance`, not the monorepo's root `skills/` or `.mcp.json`.
 
 ---
 
-## Current product experience
+## Historical Control Plane product experience (archived)
 
-The current DSG ONE customer flow is organized around getting to a **first verified result**, not merely showing a connected badge.
+The following describes the **older Control Plane application's intended customer flow**. It is retained for architecture and migration reference. It is **not a declaration that these installation paths are currently deployed or verified on AWS Spacetime**. For the current supported public plugin path, use [DSG Governance plugin instructions](plugins/dsg-governance/README.md).
+
+The earlier experience was designed around getting a **first verified result**, rather than merely showing a connected badge.
 
 ```text
 Choose installation path
@@ -43,13 +50,13 @@ HEALTHY
 
 ### Install with Web, AI or CLI
 
-The Market-Ready customer surface supports three entry paths that converge on the same provisioner and verification model:
+The archived Market-Ready design described three entry paths intended to converge on a common provisioner and verification model (not revalidated as current live AWS plugin paths):
 
 - **Web Install** — guided integration, account, scope, permission and verification flow.
 - **AI Install Wizard** — detects the project stack, proposes setup and keeps approval/permission boundaries explicit.
 - **CLI Install** — automation-oriented install, status, Doctor and first-result operations through `dsgctl`.
 
-Supported framework detection currently includes:
+Framework detection documented in the archived implementation includes:
 
 - Next.js
 - React
@@ -62,7 +69,7 @@ Supported framework detection currently includes:
 
 ### Installation reliability
 
-The product includes:
+Features documented by the archived application include (current operational availability requires fresh verification):
 
 - account / target selection;
 - repository and environment scope;
@@ -77,7 +84,7 @@ The product includes:
 - installation lifecycle tracking;
 - automatic first installation proof.
 
-The primary lifecycle is:
+The documented lifecycle was:
 
 ```text
 PENDING
@@ -93,7 +100,9 @@ HEALTHY
 
 ---
 
-## Usage examples (Claude Code plugin)
+## Current supported entry point: Claude Code governance plugin
+
+This is a client plugin that connects to the existing AWS Spacetime MCP endpoint. Installation and manifest validation alone do not prove OAuth authorization, live route availability or provider execution.
 
 Install the DSG Governance plugin from this repository:
 
@@ -138,13 +147,13 @@ Expected result: a checklist-backed readiness decision whose claims are limited 
 
 ## What the first proof means
 
-After installation verification, DSG can create:
+In the archived installation workflow, successful verification was designed to produce:
 
 ```text
 INSTALLATION_INTEGRITY_PROOF
 ```
 
-That proof is intentionally scoped. It can cover:
+This output must be confirmed by an actual run and receipt; the documentation is not evidence that a new installation succeeded. A valid installation proof is intentionally scoped and may cover:
 
 - callback binding;
 - selected scope;
@@ -250,20 +259,20 @@ auditability
 
 ## Production evidence
 
-### Control Plane repository
+### Archived Azure Control Plane deployment (historical)
 
-This repository is bound to **Azure App Service** as its authoritative production platform.
+The repository retains an **Azure App Service deployment binding** in [`config/production-deployment-target.json`](config/production-deployment-target.json). The recorded binding status is `BOUND_FAIL_CLOSED_LIVE_VERIFICATION_REQUIRED`. This describes the prior Control Plane deployment configuration; it is **not the current production MCP backend for the public Claude Code plugin** and **does not establish that an Azure app is presently deployed or healthy**.
 
-- Production URL: `https://dsg-control-plane.azurewebsites.net`
-- Deployment binding: [`config/production-deployment-target.json`](config/production-deployment-target.json)
-- Runtime environment guidance: [`docs/ops/azure-runtime-env-sync.md`](docs/ops/azure-runtime-env-sync.md)
-- Azure deployment evidence: [`qa-logs/azure-production/`](qa-logs/azure-production/)
+- Legacy configured Azure URL: `https://dsg-control-plane.azurewebsites.net`
+- Historical runtime environment guidance: [`docs/ops/azure-runtime-env-sync.md`](docs/ops/azure-runtime-env-sync.md)
+- Archived Azure deployment artifacts: [`qa-logs/azure-production/`](qa-logs/azure-production/)
+- Current public plugin MCP configuration: [`plugins/dsg-governance/.mcp.json`](plugins/dsg-governance/.mcp.json) — points to `https://aws.dsg.pics/mcp`
 
-The deployment binding is fail-closed: configuration alone is not treated as proof that the latest deployment passed.
+A deployment binding, source code, or an old successful workflow is not proof of the latest live deployment.
 
-### Market-Ready / Cinema production surface
+### Historical Market-Ready / Cinema verification records
 
-The related DSG Cinema production path has current executable evidence for the Market-Ready customer surface:
+The repository documents the following earlier Azure-era acceptance results. These records should be checked against their original workflows, commit SHA and timestamps; they **do not reverify current AWS production**, and the statuses below are historical reports:
 
 - Market-Ready product merge commit: `e16e4f2d964f44b4934a99a9297ab3fecfac7208`
 - production Azure deploy: passed;
@@ -276,7 +285,7 @@ The related DSG Cinema production path has current executable evidence for the M
 
 The live UI attestation fetches production `/dashboard`, `/styles.css`, `/app.js` and `/config.js` and requires exact SHA-256 equality with the sandbox-tested Market-Ready source.
 
-This is production runtime evidence. It is **not** a certification, legal-compliance or universal-correctness claim.
+These are historical scoped verification reports, **not evidence of current AWS or external-customer end-to-end execution**. They are also **not** a certification, legal-compliance or universal-correctness claim.
 
 ---
 
@@ -377,7 +386,7 @@ Missing evidence remains `UNVERIFIED`, `REVIEW` or `BLOCKED` according to the ap
 
 Never commit live credentials to this repository.
 
-Production credentials should use the approved Azure secret/environment-management path. Example environment files document configuration names; they are not evidence that the corresponding production secret currently exists.
+For historical Azure deployment workflows, credentials belong in the approved Azure secret/environment-management system. The **current public AWS Spacetime client** uses its supported OAuth and runtime authorization flow; do not paste tokens into chat, commit secrets, or infer that a configured environment variable is a working credential. Example environment files are configuration references, not proof that any live secret exists.
 
 ---
 

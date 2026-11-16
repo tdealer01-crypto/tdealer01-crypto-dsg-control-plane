@@ -28,6 +28,9 @@ jobs:
           npm install --package-lock-only --ignore-scripts
           git diff --exit-code -- package-lock.json
 
+      - name: Fail closed on retired or unpinned DSG gate origin
+        run: node --test tests/security/dsg-production-gate-origin.test.mjs
+
       - name: Install shellcheck
         run: |
           sudo apt-get update -y

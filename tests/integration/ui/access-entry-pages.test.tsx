@@ -6,10 +6,12 @@ function read(relativePath: string) {
 }
 
 describe('public access entry pages', () => {
-  it('homepage primary CTA points to /login', () => {
+  it('homepage primary CTA points to canonical DSG product and agent login remains scoped', () => {
     const source = read('app/page.tsx');
-    expect(source).toContain('href="/login"');
-    expect(source).toContain('Continue with email');
+    expect(source).toContain("const PRODUCT_URL = 'https://dsg.pics/'");
+    expect(source).toContain('href={PRODUCT_URL}');
+    expect(source).toContain('href="/login?next=/dashboard/integrations"');
+    expect(source).toContain('Connect an agent');
   });
 
   it('pricing page renders tier cards with checkout links fetched from pricing APIs', () => {

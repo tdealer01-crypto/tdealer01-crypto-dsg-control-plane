@@ -77,7 +77,8 @@ describe('Q3: Audit traceability & immutability', () => {
       'utf8',
     );
     expect(sql).toContain('audit_logs_select_active_user_same_org');
-    expect(sql).toContain('org_id = public.current_user_org_id()');
+    expect(sql).toContain('public.current_user_is_active()');
+    expect(sql).toContain('org_id::text = public.current_user_org_id()');
   });
 });
 
