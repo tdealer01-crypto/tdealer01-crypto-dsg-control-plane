@@ -24,6 +24,11 @@ for (const entry of catalog.plugins) {
   assert.match(entry.source, /^\.\/plugins\/[a-z0-9-]+$/, 'Unsafe or nonlocal source');
   const directory = fs.realpathSync(path.join(root, entry.source));
   assert.ok(directory.startsWith(pluginRoot), `${entry.name} escapes plugin directory`);
+  const readmePath = path.join(directory, 'README.md');
+  assert.ok(fs.existsSync(readmePath), `Missing user README: ${entry.name}`);
+  assert.ok(fs.statSync(readmePath).isFile(), `User README is not a file: ${entry.name}`);
+  const readme = fs.readFileSync(readmePath, 'utf8');
+  assert.ok(readme.includes(`${entry.name}@dsg-plugins`), `README must document the exact public install identity: ${entry.name}`);
   const manifestPath = path.join(directory, '.claude-plugin', 'plugin.json');
   assert.ok(fs.statSync(manifestPath).isFile(), `Missing Claude plugin manifest: ${entry.name}`);
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
