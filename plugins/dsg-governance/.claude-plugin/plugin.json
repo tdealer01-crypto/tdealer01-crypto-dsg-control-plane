@@ -1,8 +1,8 @@
 {
   "name": "dsg-governance",
-  "displayName": "DSG Governance Control Plane",
-  "description": "Three governance workflow skills for Claude Code backed by the existing DSG Spacetime production MCP server. Runtime authorization, tool availability and evidence are independently verified.",
-  "version": "1.0.2",
+  "displayName": "DSG Governance (AWS Spacetime)",
+  "description": "Governed plan, owner approval and verifiable evidence workflow skills for the existing AWS DSG Spacetime MCP backend.",
+  "version": "1.1.0",
   "author": {
     "name": "DSG ONE / ProofGate"
   },

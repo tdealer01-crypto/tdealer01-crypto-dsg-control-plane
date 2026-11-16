@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -26,6 +27,7 @@ assert.equal('schemaVersion' in rootManifest, false, 'Unsupported manifest field
 assert.equal(catalogEntry?.source, './plugins/dsg-governance');
 assert.equal(catalogEntry?.version, scopedManifest.version);
 assert.equal(scopedManifest.version, rootManifest.version);
+assert.equal(scopedManifest.version, '1.1.0', 'Public release must match canonical AWS plugin version');
 assert.deepEqual(Object.keys(scopedMcp.mcpServers), ['dsg-spacetime']);
 assert.equal(scopedMcp.mcpServers['dsg-spacetime'].type, 'http');
 assert.equal(scopedMcp.mcpServers['dsg-spacetime'].url, PRODUCTION_MCP);
@@ -48,5 +50,26 @@ for (const name of skills) {
   assert.doesNotMatch(content, /https:\/\/[^\\s)]*azurewebsites\.net/);
   assert.doesNotMatch(content, /https:\/\/[^\\s)]*azurecontainerapps\.io/);
 }
+
+// Canonical production SOURCE snapshot from the private repository main, checked
+// by GitHub blob SHA readback on 2026-10-30. All four files were already public
+// before this PR; this gate must never copy private repository content.
+// This pins parity to that verified snapshot; it is NOT a live read of private main.
+const canonicalPackage = {
+  'plugins/dsg-governance/.mcp.json': '4b6b9a0f1a288335905221ed10ef585f83d5bc16',
+  'plugins/dsg-governance/skills/dsg-action-layer-ged/SKILL.md': '601294122a907bad5097f1844e25ecd612ea71dc',
+  'plugins/dsg-governance/skills/dsg-github-marketplace-action-controller/SKILL.md': '5f6aa36dc8aa85c08eac30769c85cb3215852618',
+  'plugins/dsg-governance/skills/dsg-multi-governance-orchestrator/SKILL.md': '1aef9aa1ca12f177dc0e534b96052dac4a3d15e5',
+};
+function gitBlobSha(content) {
+  const bytes = Buffer.from(content, 'utf8');
+  return createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex');
+}
+for (const [file, expected] of Object.entries(canonicalPackage)) {
+  assert.equal(gitBlobSha(read(file)), expected, `Canonical AWS package snapshot drift: ${file}`);
+}
+console.log('PASS: v1.1.0 and four public package payloads match the inspected private AWS canonical source snapshot.');
+console.log('NOT TESTED by snapshot gate: changes to private main after inspection, user OAuth, live route execution.');
+
 console.log('PASS: DSG Governance plugin manifests, scoped MCP URL and three local skills are consistent.');
 console.log('NOT TESTED: network connectivity, OAuth sign-in, owner authority, execute, production evidence, Claude CLI installation.');

@@ -16,6 +16,8 @@ claude plugin install dsg-governance@dsg-plugins
 claude plugin list
 ```
 
+**Public consumer package:** `dsg-governance@dsg-plugins` v1.1.0. The package's 3 skills and 1 MCP configuration match the inspected AWS canonical source snapshot (private `dsg-governance` v1.1.0). Keep the private `dsg-governance@dsg-aws-plugins` for authorized maintainers, not as a second end-user installation; do not enable both qualified governance plugins in the same scope. Only the existing public client files were used for this public PR; this does not approve redistribution of private source.
+
 The marketplace entry points at `plugins/dsg-governance`. The installation-tested inventory is **3 Skills + 1 MCP Server**. ClaudePluginHub may temporarily show the monorepo's legacy root inventory (25 Skills / 10 MCP Servers), which is not the scoped plugin's runtime inventory. Treat the Claude Code CLI `plugin details` and the exact GitHub Actions install check as the package evidence. It is intentionally **not** the entire root project's `.mcp.json` and does not require Vercel, Azure, Supabase or a separate API key configured by this plugin.
 
 ## Connect and use

@@ -8,14 +8,38 @@
   },
   "license": "MIT",
   "homepage": "https://github.com/tdealer01-crypto/Compliance-ising-z3-Deterministic-",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/tdealer01-crypto/Compliance-ising-z3-Deterministic-"
-  },
+  "repository": "https://github.com/tdealer01-crypto/Compliance-ising-z3-Deterministic-",
   "documentation": "README.md",
-  "keywords": ["qubo", "ising", "z3", "smt", "compliance", "deterministic", "simulation", "audit", "rest-api", "policy-optimizer", "formal-verification", "regulatory-compliance", "gdpr", "pdpa", "thai-law"],
-  "tags": ["compliance", "policy-optimization", "formal-verification", "deterministic", "regulatory"],
-  "categories": ["compliance", "governance", "formal-verification", "optimization"],
+  "keywords": [
+    "qubo",
+    "ising",
+    "z3",
+    "smt",
+    "compliance",
+    "deterministic",
+    "simulation",
+    "audit",
+    "rest-api",
+    "policy-optimizer",
+    "formal-verification",
+    "regulatory-compliance",
+    "gdpr",
+    "pdpa",
+    "thai-law"
+  ],
+  "tags": [
+    "compliance",
+    "policy-optimization",
+    "formal-verification",
+    "deterministic",
+    "regulatory"
+  ],
+  "categories": [
+    "compliance",
+    "governance",
+    "formal-verification",
+    "optimization"
+  ],
   "maintenance": {
     "status": "active",
     "updated": "2026-08-01"
