@@ -16,9 +16,29 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     env:
-      AUTOPILOT_URL: https://tdealer01-crypto-dsg-control-plane.onrender.com/api/cron/revenue-autopilot
+      AUTOPILOT_URL: ${{ vars.DSG_REVENUE_AUTOPILOT_URL }}
+      AUTOPILOT_TRUSTED_ORIGIN: ${{ vars.DSG_TRUSTED_REVENUE_ORIGIN }}
       OIDC_AUDIENCE: dsg-revenue-autopilot
     steps:
+      - name: Validate active revenue endpoint before requesting GitHub OIDC token
+        run: |
+          node --input-type=module <<'NODE'
+          const raw = process.env.AUTOPILOT_URL;
+          const pin = process.env.AUTOPILOT_TRUSTED_ORIGIN;
+          if (!raw || !pin) throw Error('BLOCK: revenue endpoint and trusted origin not configured');
+          const url = new URL(raw), expected = new URL(pin);
+          const retired = new Set(['tdealer01-crypto-dsg-control-plane.onrender.com', 'tdealer01-crypto-dsg-control-plane.vercel.app']);
+          if (url.protocol !== 'https:' || expected.protocol !== 'https:' ||
+              url.origin !== expected.origin || retired.has(url.hostname.toLowerCase()) ||
+              url.username || url.password || url.search || url.hash ||
+              url.pathname !== '/api/cron/revenue-autopilot' ||
+              expected.pathname !== '/' || expected.search || expected.hash ||
+              expected.username || expected.password) {
+            throw Error('BLOCK: untrusted, retired or malformed revenue endpoint');
+          }
+          console.log('DSG_REVENUE_ENDPOINT_PREFLIGHT=PASS');
+          NODE
+
       - name: Request GitHub OIDC token
         id: oidc
         shell: bash
@@ -29,9 +49,10 @@ jobs:
             -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
             "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${encoded_audience}")"
           token="$(printf '%s' "$response" | node -e 'let s=""; process.stdin.on("data", c => s += c); process.stdin.on("end", () => { const v = JSON.parse(s).value; if (!v) process.exit(2); process.stdout.write(v); });')"
+          echo "::add-mask::$token"
           echo "token=$token" >> "$GITHUB_OUTPUT"
 
-      - name: Run revenue autopilot on Render
+      - name: Run revenue autopilot only on the pinned approved endpoint
         shell: bash
         env:
           OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
@@ -39,7 +60,7 @@ jobs:
           set -euo pipefail
           tmp="$(mktemp)"
           status="$(curl --silent --show-error \
-            --retry 3 --retry-delay 10 --retry-all-errors \
+            --max-redirs 0 --proto "=https" \
             --connect-timeout 30 --max-time 330 \
             -o "$tmp" -w '%{http_code}' \
             -H "Authorization: Bearer ${OIDC_TOKEN}" \

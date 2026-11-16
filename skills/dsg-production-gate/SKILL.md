@@ -1,8 +1,8 @@
 ---
 name: dsg-production-gate
 compatibility: >
-  Requires Node.js 18+ and a DSG API key. Defaults to the DSG ONE Render
-  production control-plane URL and never falls back to mock data.
+  Requires Node.js 18+, a scoped DSG API key, an explicitly configured active
+  HTTPS DSG gate URL and a separately pinned trusted origin. Never uses a retired host.
 description: >-
   Call DSG ONE's real /api/dsg/v1/gates/evaluate or /api/dsg/v1/proofs/prove
   production API before an agent action. Return PASS, REVIEW, BLOCK, or
@@ -26,11 +26,7 @@ The user should see five things immediately:
 
 ## Production endpoint
 
-Default base URL:
-
-```text
-https://tdealer01-crypto-dsg-control-plane.onrender.com
-```
+There is **no default base URL**. The old Render/Vercel control-plane domains are retired and explicitly denied. Use only an independently verified active gate origin; a configured URL alone is not evidence that an authenticated gate is deployed.
 
 Routes used by this skill:
 
@@ -56,13 +52,14 @@ export DSG_API_KEY='...'
 
 Never print, persist, commit, or place the raw key in logs, issue bodies, evidence bundles, or agent responses.
 
-Optional override for staging or an explicitly approved alternate deployment:
+Before setting a real API key, verify an active authorized gate endpoint and separately pin its exact HTTPS origin:
 
 ```bash
-export DSG_CONTROL_PLANE_URL='https://approved-host.example'
+export DSG_CONTROL_PLANE_URL='https://your-reviewed-active-gate.example'
+export DSG_TRUSTED_GATE_ORIGIN='https://your-reviewed-active-gate.example'
 ```
 
-Outside localhost, the client rejects non-HTTPS URLs.
+In GitHub Actions, configure `secrets.DSG_CONTROL_PLANE_URL` and `vars.DSG_TRUSTED_GATE_ORIGIN` with the **same independently approved, currently active** origin. The workflow checks this before loading the secret `DSG_API_KEY`. Missing/mismatched values, embedded credentials, query or fragment, non-HTTPS URLs, retired hosts and HTTP redirects all fail closed. Do not point this skill to the retired service or use it to infer DSG Spacetime approval.
 
 ## Evaluate an action
 
